@@ -1,0 +1,43 @@
+---
+title: "ADC-US-RES-23234 Insulin Pump Suspension Study"
+description: "To characterize beta-hydroxybutyrate ketone levels in people with type 1 diabetes using continuous subcutaneous insulin infusion (CSII) during a planned suspension of their insulin pump"
+author: "Alvin, Lin"
+date: "`r Sys.Date()`"
+format:
+   html:
+     theme: flatly
+     self-contained: true
+toc: true
+toc-depth: 3
+toc-location: left
+execute:
+  echo: false
+  warning: false 
+  keep-md: true
+---
+
+<!-- EDC \\wf00168p.oneabbott.com\data1\CDM\ADC-US-RES-23234\OpenClinica\Current -->
+
+<!-- UUU \\wf00168p.oneabbott.com\data1\CDM\ADC-US-RES-23234\UploadData\AUU\AUU_DataFiles -->
+
+<!-- Study Protocol \\oneabbott.com\dept\ADC\Technical_OPS\Clinical_Affairs\Clinical Study Files\Apollo\ADC-US-RES-23234_IDE Pump Suspension Study\Protocol -->
+
+<!-- CRF \\oneabbott.com\dept\ADC\Technical_OPS\Clinical_Affairs\Clinical Study Files\Apollo\ADC-US-RES-23234_IDE Pump Suspension Study\Case Report Forms\Version B\Approved\pdf -->
+
+<!-- DMP \\oneabbott.com\dept\ADC\Technical_OPS\Clinical_Affairs\Clinical Study Files\Apollo\ADC-US-RES-23234_IDE Pump Suspension Study\CDM\Study_Binder\Data_Management_Plan\Version_1.0\Final -->
+
+```{r}
+#| label: Libaray Packages 
+#| message: false
+library(tidyverse)
+library(reactable)
+library(haven)
+library(janitor)
+library(reactablefmtr)
+library(htmltools)
+library(UUU)
+library(fs)
+library(highcharter)
+library(vroom)
+library(gt)
+```
