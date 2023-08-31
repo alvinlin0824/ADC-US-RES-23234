@@ -18,7 +18,7 @@ execute:
 
 <!-- EDC \\wf00168p.oneabbott.com\data1\CDM\ADC-US-RES-23234\OpenClinica\Current -->
 
-<!-- UUU \\wf00168p.oneabbott.com\data1\CDM\ADC-US-RES-23234\UploadData\AUU\AUU_DataFiles -->
+<!-- UUU \\wf00168p.oneabbott.com\data1\CDM\ADC-US-RES-23234\UploadData\UUU\UUU_DataFiles -->
 
 <!-- Study Protocol \\oneabbott.com\dept\ADC\Technical_OPS\Clinical_Affairs\Clinical Study Files\Apollo\ADC-US-RES-23234_IDE Pump Suspension Study\Protocol -->
 
@@ -41,3 +41,86 @@ library(highcharter)
 library(vroom)
 library(gt)
 ```
+
+```{r}
+#|label: Import IV1
+iv1 <- read_sas(gsub("\\\\", "/", r"(\\wf00168p.oneabbott.com\data1\CDM\ADC-US-RES-23234\OpenClinica\Current\iv1.sas7bdat)"))
+iv1 <- iv1 |> 
+       filter(!str_detect(IVYN01,regex("Check here if no data recorded",ignore_case = T))) |>
+       mutate(Subject = as.character(Subject)) |>
+       arrange(Subject)
+```
+
+```{r}
+#|label: Import IV2
+iv2 <- read_sas(gsub("\\\\", "/", r"(\\wf00168p.oneabbott.com\data1\CDM\ADC-US-RES-23234\OpenClinica\Current\iv2.sas7bdat)"))
+iv2 <- iv2 |>
+       mutate(Subject = as.character(Subject),
+              IVID01 = as.character(IVID01)) |>
+       arrange(Subject)
+```
+
+```{r}
+#| label: IV2 left join IV1
+iv12 <- iv2 |> 
+        select(Subject,`__STUDYEVENTREPEATKEY`,IVID01:IVCOM01) |> 
+        left_join(iv1 |>
+                  select(Subject,`__STUDYEVENTREPEATKEY`,IVDTC01),
+                  by = join_by("Subject","__STUDYEVENTREPEATKEY")) |> 
+        select(!`__STUDYEVENTREPEATKEY`) |> 
+        arrange(Subject,IVDTC01,IVID01)
+```
+
+```{r}
+#|label: Import KD1
+kd1 <- read_sas(gsub("\\\\", "/", r"(\\wf00168p.oneabbott.com\data1\CDM\ADC-US-RES-23234\OpenClinica\Current\kd1.sas7bdat)"))
+kd1 <- kd1 |>
+       filter(!str_detect(KDYN01,regex("Check here if no data recorded",ignore_case = T))) |>
+       mutate(Subject = as.character(Subject)) |>
+       arrange(Subject)
+```
+
+```{r}
+#|label: Import kd2
+kd2 <- read_sas(gsub("\\\\", "/", r"(\\wf00168p.oneabbott.com\data1\CDM\ADC-US-RES-23234\OpenClinica\Current\kd2.sas7bdat)"))
+kd2 <- kd2 |>
+       mutate(Subject = as.character(Subject),
+              KDID01 = as.character(KDID01)) |>
+       arrange(Subject)
+```
+
+```{r}
+#| label: KD2 left join KD1
+kd12 <- kd2 |> 
+        select(Subject,KDID01:last_col()) |> 
+        left_join(kd1 |>
+                  select(Subject,KDDTC01),
+                  by = join_by(Subject)) |>
+        arrange(Subject,KDID01)
+```
+
+```{r}
+#| label: iv12 left join kd12
+ivkd12 <- iv12 |> 
+          left_join(kd12,by = join_by(Subject,IVID01 == KDID01, IVDTC01 == KDDTC01)) |> 
+          mutate(`IV Draw Date Time` = ymd_hm(str_c(IVDTC01,IVTM01,sep = " ")),.keep = "unused")
+```
+
+```{r}
+summary_calculation <- list(Mean = ~ mean(.x, na.rm = T),
+                            Median = ~ median(.x, na.rm = T),
+                            SD = ~ sd(.x, na.rm = T),
+                            Min = ~ min(.x, na.rm = T),
+                            Max = ~ max(.x, na.rm = T),
+                            N = ~ sum(!is.na(.x),na.rm = T))
+ivkd12 |> 
+   filter(IVVAL01 == "Valid") |> 
+   group_by(Subject) |> 
+   summarise_at("KDORES02",summary_calculation) |> 
+   gt() |>
+   cols_align(align = "center") |>
+   fmt_number(columns = Mean:Max,decimals = 2) |> 
+   opt_stylize(style = 6, color = "blue") |> 
+   tab_header(title = md("**Ketone Test Result (mmol/L)**"))
+```
+
