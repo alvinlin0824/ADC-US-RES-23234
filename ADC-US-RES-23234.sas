@@ -1,6 +1,6 @@
 /*EDC \\wf00168p.oneabbott.com\data1\CDM\ADC-US-RES-23234\OpenClinica\Current*/
 
-/*UUU \\wf00168p.oneabbott.com\data1\CDM\ADC-US-RES-23234\UploadData\AUU\AUU_DataFiles*/
+/*UUU M:\ADC-US-RES-23234\UploadData\UUU\UUU_DataFiles*/
 
 /*Study Protocol \\oneabbott.com\dept\ADC\Technical_OPS\Clinical_Affairs\Clinical Study Files\Apollo\ADC-US-RES-23234_IDE Pump Suspension Study\Protocol*/
 
@@ -72,10 +72,14 @@ dtm = dhms(IVDTC01,0,0,iv_tm);
 drop iv_tm;
 run;
 
+options papersize=a3 orientation=portrait;
+ods rtf file="C:\Project\ADC-US-RES-23234\Report_%trim(%sysfunc(today(),yymmddn8.)).rtf" startpage=no;
+
 /*Summary Statistics on Ketone Result*/
-Proc means data = ivkd12 maxdec=2;
+Proc means data = ivkd12 maxdec=2 nonobs;
+title;
 var kdores02;
-by Subject;
+class Subject;
 where IVVAL01 = "Valid";
 run;
 
@@ -98,3 +102,5 @@ proc gplot data = ivkd12;
  legend1 repeat=1 label=none
  value=(tick=1 justify=l 'Ketone Test Result (mmol/L)');
 run;
+
+ODS RTF CLOSE;

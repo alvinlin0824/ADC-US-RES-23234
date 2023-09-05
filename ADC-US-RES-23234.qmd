@@ -41,6 +41,59 @@ library(highcharter)
 library(vroom)
 library(gt)
 ```
+<!-- UDP  , type = "directory"-->
+```{r}
+#| label: Import all events, gluc and glucPlus files csv
+file_list <- dir_ls(gsub("\\\\", "/", r"(\\wf00168p.oneabbott.com\data1\CDM\ADC-US-RES-23234\UploadData\UUU\UUU_DataFiles)"),recurse = T)
+```
+
+```{r}
+#| label: Copy extracted_realm.zip to T drive
+file_list[str_detect(file_list,"extracted_realm.zip")][c(1,2)] |> 
+  file_copy(gsub("\\\\", "/", r"(\\oneabbott.com\dept\ADC\Technical_OPS\Clinical_Affairs\Clinical Study Files\Apollo\ADC-US-RES-23234_IDE Pump Suspension Study\Statistics\Programs\Datasets\AL)"))
+```
+
+```{r}
+file_list[str_detect(file_list,"upload_info.xml") & !str_detect(file_list,regex("Transfers"))][c(1,2)] |> 
+  file_copy(gsub("\\\\", "/", r"(\\oneabbott.com\dept\ADC\Technical_OPS\Clinical_Affairs\Clinical Study Files\Apollo\ADC-US-RES-23234_IDE Pump Suspension Study\Statistics\Programs\Datasets\AL)")) 
+```
+
+```{r}
+dir_copy(dir_ls(gsub("\\\\", "/", r"(\\oneabbott.com\dept\ADC\Technical_OPS\Clinical_Affairs\Clinical Study Files\Apollo\ADC-US-RES-23234_IDE Pump Suspension Study\Statistics\Programs\Datasets\AL)"))[2],
+          dir_ls(gsub("\\\\", "/", r"(\\oneabbott.com\dept\ADC\Technical_OPS\Clinical_Affairs\Clinical Study Files\Apollo\ADC-US-RES-23234_IDE Pump Suspension Study\Statistics\Programs\Datasets\AL)"))[1])
+```
+
+
+```{r}
+dir_ls(gsub("\\\\", "/", r"(\\oneabbott.com\dept\ADC\Technical_OPS\Clinical_Affairs\Clinical Study Files\Apollo\ADC-US-RES-23234_IDE Pump Suspension Study\Statistics\Programs\Datasets\AL)"))
+```
+
+```{r}
+#| label: Upload_info.xml
+file.copy(from = file_list[str_detect(file_list,"upload_info.xml") & !str_detect(file_list,regex("Transfers"))][2],
+          to = dir_ls(gsub("\\\\", "/", r"(\\oneabbott.com\dept\ADC\Technical_OPS\Clinical_Affairs\Clinical Study Files\Apollo\ADC-US-RES-23234_IDE Pump Suspension Study\Statistics\Programs\Datasets\AL)"))[2], recursive = TRUE)
+```
+
+```{r}
+#| label: extracted_realm.zip
+# file_list[str_detect(file_list,"extracted_realm.zip")]
+```
+
+
+
+```{r}
+# file_list[str_detect(file_list,"dualsensors") & !str_detect(file_list,regex("Transfers"))][1] |> 
+#   zip(zipfile = "testZip",extras = "-x")
+```
+
+
+
+<!-- UDP -->
+
+```{r}
+#| warning: false
+mobi(events = events_path,gluc = gluc_path,index = 16) |> View()
+```
 
 ```{r}
 #|label: Import IV1
@@ -124,3 +177,72 @@ ivkd12 |>
    tab_header(title = md("**Ketone Test Result (mmol/L)**"))
 ```
 
+```{r}
+breakdown_condition_plot <- function(Id) {
+  highchart() %>%
+  # Add title
+  hc_title(text = str_c("Subject = ",Id)) %>% 
+  # continuous Sensor Data
+  # hc_add_series(
+  #   # name = "Libre Sensor Reading",
+  #   data = UUU %>%
+  #          filter(`Subject ID` == Id,
+  #                 Type != "SENSOR_STARTED (58)") %>%
+  #          # multiple and consecutive wears
+  #          arrange(`Date Time`) %>%
+  #          # 904 is Real-time glucose 906 is current glucose
+  #          mutate(Type = case_when(Type == "906" ~ "Current Glucose",
+  #                                  Type == "904" ~ "Real-Time Glucose",
+  #                                 .default =  "Historic Glucose")),
+  #   type = "line",
+  #   hcaes(x = datetime_to_timestamp(`Date Time`), y = Gl/18.016, group = Type)) %>%
+    # Sibionics data 
+    # hc_add_series(
+    # name = "Sibionics",
+    # data = Sib %>%
+    #        filter(`Subject ID` == Id),
+    # type = "line",
+    # color = "#7FFF00",
+    # # marker = list(symbol = "triangle"),
+    # hcaes(x = datetime_to_timestamp(`Date Time`), y = Gl)) %>%
+    # BG data 
+    hc_add_series(
+    name = "Ketone Test Result",
+    data = ivkd12 %>%
+           filter(Subject == Id),
+    type = "scatter",
+    color = "#FF0000",
+    # marker = list(symbol = "triangle"),
+    hcaes(x = datetime_to_timestamp(`IV Draw Date Time`), y = KDORES02)) %>% 
+    # Add X label
+    hc_xAxis(title = list(text = "Date Time"),
+             type = "datetime", 
+             dateTimeLabelFormats = list(day = '%d %b %y')) %>%
+    # Add Y axis
+    hc_yAxis(title = list(text = "Ketone Test Result (mmol/L)")) %>%
+    # Change the size of marker
+    hc_plotOptions(scatter = list(
+                            marker = list(radius = 1.9, symbol = "circle"))) %>%
+    # Change the format of point
+    hc_tooltip(pointFormat = '{point.x: %Y-%m-%d %H:%M:%S} {point.y:.1f} ')  %>% 
+    # Add zoom in function
+    hc_chart(zoomType = "xy") %>% 
+    # Add navigator
+    hc_navigator(enabled = TRUE)
+    # {if (UUU %>%
+    #      filter(Type != "SENSOR_STARTED (58)") %>%
+    #      filter(`Subject ID` == Id, `Condition ID` == Condition) %>% 
+    #      nrow() != 0) 
+    #      hc_navigator(.,enabled = TRUE) else .}  %>%
+    # {if (UUU %>%
+    #      filter(Type != "SENSOR_STARTED (58)") %>%
+    #      filter(`Subject ID` == Id, `Condition ID` == Condition) %>% 
+    #      nrow() == 0) 
+    #      hc_navigator(.,enabled = TRUE,series = list(color = "white")) else .} 
+}
+```
+
+```{r}
+#| eval: false
+breakdown_condition_plot(Id = "90002")
+```
