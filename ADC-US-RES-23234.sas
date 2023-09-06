@@ -9,6 +9,7 @@
 /*DMP \\oneabbott.com\dept\ADC\Technical_OPS\Clinical_Affairs\Clinical Study Files\Apollo\ADC-US-RES-23234_IDE Pump Suspension Study\CDM\Study_Binder\Data_Management_Plan\Version_1.0\Final*/
 
 libname edc 'M:\ADC-US-RES-23234\OpenClinica\Current';
+
 /*IV SAMPLE COLLECTION*/
 data iv1;
 set edc.iv1(where = (IVYN01 ^= "Check Here if no data recorded"));
@@ -73,7 +74,7 @@ drop iv_tm;
 run;
 
 /*Upload Data*/
-filename dir pipe "dir /b/l/s  ""\\oneabbott.com\dept\ADC\Technical_OPS\Clinical_Affairs\Clinical Study Files\Apollo\ADC-US-RES-23234_IDE Pump Suspension Study\Statistics\Upload Data\Output_2023-09-05-14-30\outputs\*.csv""";
+filename dir pipe "dir /b/l/s  ""C:\UDP\OutputFiles\Output_2023-09-06-15-21\outputs\*.csv""";
 
 data list;
 	infile dir truncover;
@@ -127,15 +128,19 @@ data anaplus;
         output;
 	end;
 run;
-
+libname out "\\oneabbott.com\dept\ADC\Technical_OPS\Clinical_Affairs\Clinical Study Files\Apollo\ADC-US-RES-23234_IDE Pump Suspension Study\Statistics\Programs\Datasets\AL";
 /*stack*/
 data auu;
 	set events_start anaplus;
 run;
 /*Remove Duplicated uploads*/
-proc sort data = auu NODUP; 
+proc sort data = auu NODUP out = out.AUU; 
 by subject condition_id date time;
 run;
+
+/*data out.auu;*/
+/*set auu;*/
+/*run;*/
 
 /*options papersize=a3 orientation=portrait;*/
 /*ods rtf file="C:\Project\ADC-US-RES-23234\Report_%trim(%sysfunc(today(),yymmddn8.)).rtf" startpage=no;*/

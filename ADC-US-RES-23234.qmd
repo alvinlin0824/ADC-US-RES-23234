@@ -41,46 +41,24 @@ library(highcharter)
 library(vroom)
 library(gt)
 ```
-<!-- UDP  , type = "directory"-->
+
+<!-- UDP -->
 ```{r}
 #| label: Import all events, gluc and glucPlus files csv
-# file_list <- dir_ls(gsub("\\\\", "/", r"(\\wf00168p.oneabbott.com\data1\CDM\ADC-US-RES-23234\UploadData\UUU\UUU_DataFiles)"),recurse = T)
+#| eval: false
+file_list <- dir_ls(gsub("\\\\", "/", r"(\\wf00168p.oneabbott.com\data1\CDM\ADC-US-RES-23234\UploadData\UUU\UUU_DataFiles)"),recurse = T)
 ```
 
 ```{r}
 #| label: Copy extracted_realm.zip to T drive
-# file_list[str_detect(file_list,"extracted_realm.zip")][c(1,2)] |> 
-#   file_copy(gsub("\\\\", "/", r"(\\oneabbott.com\dept\ADC\Technical_OPS\Clinical_Affairs\Clinical Study Files\Apollo\ADC-US-RES-23234_IDE Pump Suspension Study\Statistics\Programs\Datasets\AL)"))
+#| eval: false
+file_list[str_detect(file_list,"extracted_realm.zip|dualsensors_upload_info.xml") & !str_detect(file_list,regex("Transfers|Archive"))] |>
+  file_copy(gsub("\\\\", "/", r"(C:\UDP\InputFiles)"))
 ```
 
 ```{r}
-# file_list[str_detect(file_list,"upload_info.xml") & !str_detect(file_list,regex("Transfers"))][c(1,2)] |> 
-#   file_copy(gsub("\\\\", "/", r"(\\oneabbott.com\dept\ADC\Technical_OPS\Clinical_Affairs\Clinical Study Files\Apollo\ADC-US-RES-23234_IDE Pump Suspension Study\Statistics\Programs\Datasets\AL)")) 
-```
-
-```{r}
-# dir_copy(dir_ls(gsub("\\\\", "/", r"(\\oneabbott.com\dept\ADC\Technical_OPS\Clinical_Affairs\Clinical Study Files\Apollo\ADC-US-RES-23234_IDE Pump Suspension Study\Statistics\Programs\Datasets\AL)"))[2],
-#           dir_ls(gsub("\\\\", "/", r"(\\oneabbott.com\dept\ADC\Technical_OPS\Clinical_Affairs\Clinical Study Files\Apollo\ADC-US-RES-23234_IDE Pump Suspension Study\Statistics\Programs\Datasets\AL)"))[1])
-```
-
-```{r}
-# dir_ls(gsub("\\\\", "/", r"(\\oneabbott.com\dept\ADC\Technical_OPS\Clinical_Affairs\Clinical Study Files\Apollo\ADC-US-RES-23234_IDE Pump Suspension Study\Statistics\Programs\Datasets\AL)"))
-```
-
-```{r}
-#| label: Upload_info.xml
-# file.copy(from = file_list[str_detect(file_list,"upload_info.xml") & !str_detect(file_list,regex("Transfers"))][2],
-#           to = dir_ls(gsub("\\\\", "/", r"(\\oneabbott.com\dept\ADC\Technical_OPS\Clinical_Affairs\Clinical Study Files\Apollo\ADC-US-RES-23234_IDE Pump Suspension Study\Statistics\Programs\Datasets\AL)"))[2], recursive = TRUE)
-```
-
-```{r}
-#| label: extracted_realm.zip
-# file_list[str_detect(file_list,"extracted_realm.zip")]
-```
-
-```{r}
-# file_list[str_detect(file_list,"dualsensors") & !str_detect(file_list,regex("Transfers"))][1] |> 
-#   zip(zipfile = "testZip",extras = "-x")
+#| label: Move UDP output files to T drive
+# file_copy(gsub("\\\\", "/", r"(C:\UDP\OutputFiles\Output_2023-09-06-15-01)"),gsub("\\\\", "/", r"(\\oneabbott.com\dept\ADC\Technical_OPS\Clinical_Affairs\Clinical Study Files\Apollo\ADC-US-RES-23234_IDE Pump Suspension Study\Statistics\Upload Data)"))
 ```
 <!-- UDP -->
 
@@ -168,7 +146,7 @@ ivkd12 <- iv12 |>
 
 ```{r}
 #| label: Import ketone events, anaplus files csv
-file_list_ketone <- dir_ls(gsub("\\\\", "/", r"(\\oneabbott.com\dept\ADC\Technical_OPS\Clinical_Affairs\Clinical Study Files\Apollo\ADC-US-RES-23234_IDE Pump Suspension Study\Statistics\Upload Data\Output_2023-09-05-14-30\outputs)"),recurse = T,glob = "*events.csv|*anaPlus.csv")
+file_list_ketone <- dir_ls(gsub("\\\\", "/", r"(C:\UDP\OutputFiles\Output_2023-09-06-15-21\outputs)"),recurse = T,glob = "*events.csv|*anaPlus.csv")
 ```
 
 ```{r}
@@ -204,8 +182,22 @@ mobi1 <- function(events, gluc, index = NULL) {
         gluc[index] |>
           purrr::map(purrr::possibly(\(path) data.table::fread(path,select = c(1:5),skip = 3,col.names = c("Unique Record ID","Date","Time","Type","ANA"),colClasses = c("V2" = "character","V3" = "character","V4" = "character")),tibble::tibble()),.progress = TRUE),
         dplyr::bind_rows,.progress = TRUE) |> 
-        purrr::map(\(df) df |> dplyr::transmute(`Subject ID` = "",
-                                  `Condition ID` = "",
+        purrr::map(\(df) df |> dplyr::transmute(`Subject ID` =
+                                    dplyr::case_when(
+                                      # Site ID == ADC
+                                      stringr::str_to_upper(stringr::str_extract(df[1,1],stringr::regex("(?<=Site ID = ).{3}",ignore_case = T))) == "ADC" ~ stringr::str_extract(df[1,1],stringr::regex("(?<=Subject ID = )[:digit:]{4}",ignore_case = T)),
+                                      # Site ID == 009
+                                      stringr::str_extract(df[1,1],stringr::regex("(?<=Site ID = ).{2}",ignore_case = T)) == "00" ~
+                                        stringr::str_c(stringr::str_extract(df[1,1],stringr::regex("(?<=Site ID = 00).{1}",ignore_case = T)),stringr::str_extract(df[1,1],stringr::regex("(?<=Subject ID = ).{4}",ignore_case = T))),
+                                      # Site ID starts with 1
+                                      stringr::str_extract(df[1,1],stringr::regex("(?<=Site ID = ).{1}",ignore_case = T)) == "1" ~
+                                        stringr::str_c(stringr::str_extract(df[1,1],stringr::regex("(?<=Site ID = ).{3}",ignore_case = T)),stringr::str_extract(df[1,1],stringr::regex("(?<=Subject ID = ).{4}",ignore_case = T))),
+                                      # Site ID == 081 or 057
+                                      stringr::str_extract(df[1,1],stringr::regex("(?<=Site ID = ).{1}",ignore_case = T)) == "0" ~ stringr::str_c(stringr::str_extract(df[1,1],stringr::regex("(?<=Site ID = 0).{2}",ignore_case = T)),stringr::str_extract(df[1,1],stringr::regex("(?<=Subject ID = )[:digit:]+",ignore_case = T))),
+                                      # Site ID mislabeled
+                                      .default = stringr::str_c(stringr::str_extract(df[1,1],stringr::regex("(?<=Site ID = )[:alnum:]+",ignore_case = T)),stringr::str_extract(df[1,1],stringr::regex("(?<=Subject ID = )[:digit:]+",ignore_case = T)))
+                                    ),
+                                  `Condition ID` = stringr::str_extract(df[1,1],stringr::regex("(?<=Condition ID = ).{3}",ignore_case = T)),
                                   `Date Time` = lubridate::ymd_hms(stringr::str_c(Date,Time,sep = " ")),
                                   Type = Type,
                                   ANA = ANA),.progress = TRUE) |>
@@ -242,8 +234,22 @@ mobi1 <- function(events, gluc, index = NULL) {
         gluc |>
           purrr::map(purrr::possibly(\(path) data.table::fread(path,select = c(1:5),skip = 3,col.names = c("Unique Record ID","Date","Time","Type","ANA"),colClasses = c("V2" = "character","V3" = "character","V4" = "character")),tibble::tibble()),.progress = TRUE),
         dplyr::bind_rows,.progress = TRUE) |> 
-        purrr::map(\(df) df |> dplyr::transmute(`Subject ID` = "",
-                                  `Condition ID` = "",
+        purrr::map(\(df) df |> dplyr::transmute(`Subject ID` =
+                                    dplyr::case_when(
+                                      # Site ID == ADC
+                                      stringr::str_to_upper(stringr::str_extract(df[1,1],stringr::regex("(?<=Site ID = ).{3}",ignore_case = T))) == "ADC" ~ stringr::str_extract(df[1,1],stringr::regex("(?<=Subject ID = )[:digit:]{4}",ignore_case = T)),
+                                      # Site ID == 009
+                                      stringr::str_extract(df[1,1],stringr::regex("(?<=Site ID = ).{2}",ignore_case = T)) == "00" ~
+                                        stringr::str_c(stringr::str_extract(df[1,1],stringr::regex("(?<=Site ID = 00).{1}",ignore_case = T)),stringr::str_extract(df[1,1],stringr::regex("(?<=Subject ID = ).{4}",ignore_case = T))),
+                                      # Site ID starts with 1
+                                      stringr::str_extract(df[1,1],stringr::regex("(?<=Site ID = ).{1}",ignore_case = T)) == "1" ~
+                                        stringr::str_c(stringr::str_extract(df[1,1],stringr::regex("(?<=Site ID = ).{3}",ignore_case = T)),stringr::str_extract(df[1,1],stringr::regex("(?<=Subject ID = ).{4}",ignore_case = T))),
+                                      # Site ID == 081 or 057
+                                      stringr::str_extract(df[1,1],stringr::regex("(?<=Site ID = ).{1}",ignore_case = T)) == "0" ~ stringr::str_c(stringr::str_extract(df[1,1],stringr::regex("(?<=Site ID = 0).{2}",ignore_case = T)),stringr::str_extract(df[1,1],stringr::regex("(?<=Subject ID = )[:digit:]+",ignore_case = T))),
+                                      # Site ID mislabeled
+                                      .default = stringr::str_c(stringr::str_extract(df[1,1],stringr::regex("(?<=Site ID = )[:alnum:]+",ignore_case = T)),stringr::str_extract(df[1,1],stringr::regex("(?<=Subject ID = )[:digit:]+",ignore_case = T)))
+                                    ),
+                                  `Condition ID` = stringr::str_extract(df[1,1],stringr::regex("(?<=Condition ID = ).{3}",ignore_case = T)),
                                   `Date Time` = lubridate::ymd_hms(stringr::str_c(Date,Time,sep = " ")),
                                   Type = Type,
                                   ANA = ANA),.progress = TRUE) |>
@@ -266,10 +272,10 @@ mobi1 <- function(events, gluc, index = NULL) {
 #| label: Output lac.rds
 #| warning: false
 upload_ketone <- mobi1(events = events_path_ketone,gluc = anaplus_path_ketone) |> 
-                dplyr::mutate(`Subject ID` = case_when(str_extract(Path,regex("(?<=/Mobi)[:digit:]{2}")) == "00" ~ 
-       str_extract(Path,regex("(?<=/Mobi00)[:digit:]{5}")),
-          .default = str_extract(Path,regex("(?<=/Mobi)[:digit:]{7}"))),
-                  `Condition ID` = str_to_upper(str_extract(Path,regex(".{3}(?=_[:digit:]{6}_[:digit:]{6})")))) |> 
+       #          dplyr::mutate(`Subject ID` = case_when(str_extract(Path,regex("(?<=/Mobi)[:digit:]{2}")) == "00" ~ 
+       # str_extract(Path,regex("(?<=/Mobi00)[:digit:]{5}")),
+       #    .default = str_extract(Path,regex("(?<=/Mobi)[:digit:]{7}"))),
+       #            `Condition ID` = str_to_upper(str_extract(Path,regex(".{3}(?=_[:digit:]{6}_[:digit:]{6})")))) |> 
   arrange(`Subject ID`) 
   # saveRDS(gsub("\\\\", "/", r"(\\oneabbott.com\dept\ADC\Technical_OPS\Clinical_Affairs\Clinical Study Files\Apollo\ADC-US-RES-23234_IDE Pump Suspension Study\Statistics\Programs\Datasets\AL\ketone.rds)"))
 ```
