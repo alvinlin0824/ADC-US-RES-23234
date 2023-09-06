@@ -44,34 +44,33 @@ library(gt)
 <!-- UDP  , type = "directory"-->
 ```{r}
 #| label: Import all events, gluc and glucPlus files csv
-file_list <- dir_ls(gsub("\\\\", "/", r"(\\wf00168p.oneabbott.com\data1\CDM\ADC-US-RES-23234\UploadData\UUU\UUU_DataFiles)"),recurse = T)
+# file_list <- dir_ls(gsub("\\\\", "/", r"(\\wf00168p.oneabbott.com\data1\CDM\ADC-US-RES-23234\UploadData\UUU\UUU_DataFiles)"),recurse = T)
 ```
 
 ```{r}
 #| label: Copy extracted_realm.zip to T drive
-file_list[str_detect(file_list,"extracted_realm.zip")][c(1,2)] |> 
-  file_copy(gsub("\\\\", "/", r"(\\oneabbott.com\dept\ADC\Technical_OPS\Clinical_Affairs\Clinical Study Files\Apollo\ADC-US-RES-23234_IDE Pump Suspension Study\Statistics\Programs\Datasets\AL)"))
+# file_list[str_detect(file_list,"extracted_realm.zip")][c(1,2)] |> 
+#   file_copy(gsub("\\\\", "/", r"(\\oneabbott.com\dept\ADC\Technical_OPS\Clinical_Affairs\Clinical Study Files\Apollo\ADC-US-RES-23234_IDE Pump Suspension Study\Statistics\Programs\Datasets\AL)"))
 ```
 
 ```{r}
-file_list[str_detect(file_list,"upload_info.xml") & !str_detect(file_list,regex("Transfers"))][c(1,2)] |> 
-  file_copy(gsub("\\\\", "/", r"(\\oneabbott.com\dept\ADC\Technical_OPS\Clinical_Affairs\Clinical Study Files\Apollo\ADC-US-RES-23234_IDE Pump Suspension Study\Statistics\Programs\Datasets\AL)")) 
+# file_list[str_detect(file_list,"upload_info.xml") & !str_detect(file_list,regex("Transfers"))][c(1,2)] |> 
+#   file_copy(gsub("\\\\", "/", r"(\\oneabbott.com\dept\ADC\Technical_OPS\Clinical_Affairs\Clinical Study Files\Apollo\ADC-US-RES-23234_IDE Pump Suspension Study\Statistics\Programs\Datasets\AL)")) 
 ```
 
 ```{r}
-dir_copy(dir_ls(gsub("\\\\", "/", r"(\\oneabbott.com\dept\ADC\Technical_OPS\Clinical_Affairs\Clinical Study Files\Apollo\ADC-US-RES-23234_IDE Pump Suspension Study\Statistics\Programs\Datasets\AL)"))[2],
-          dir_ls(gsub("\\\\", "/", r"(\\oneabbott.com\dept\ADC\Technical_OPS\Clinical_Affairs\Clinical Study Files\Apollo\ADC-US-RES-23234_IDE Pump Suspension Study\Statistics\Programs\Datasets\AL)"))[1])
+# dir_copy(dir_ls(gsub("\\\\", "/", r"(\\oneabbott.com\dept\ADC\Technical_OPS\Clinical_Affairs\Clinical Study Files\Apollo\ADC-US-RES-23234_IDE Pump Suspension Study\Statistics\Programs\Datasets\AL)"))[2],
+#           dir_ls(gsub("\\\\", "/", r"(\\oneabbott.com\dept\ADC\Technical_OPS\Clinical_Affairs\Clinical Study Files\Apollo\ADC-US-RES-23234_IDE Pump Suspension Study\Statistics\Programs\Datasets\AL)"))[1])
 ```
 
-
 ```{r}
-dir_ls(gsub("\\\\", "/", r"(\\oneabbott.com\dept\ADC\Technical_OPS\Clinical_Affairs\Clinical Study Files\Apollo\ADC-US-RES-23234_IDE Pump Suspension Study\Statistics\Programs\Datasets\AL)"))
+# dir_ls(gsub("\\\\", "/", r"(\\oneabbott.com\dept\ADC\Technical_OPS\Clinical_Affairs\Clinical Study Files\Apollo\ADC-US-RES-23234_IDE Pump Suspension Study\Statistics\Programs\Datasets\AL)"))
 ```
 
 ```{r}
 #| label: Upload_info.xml
-file.copy(from = file_list[str_detect(file_list,"upload_info.xml") & !str_detect(file_list,regex("Transfers"))][2],
-          to = dir_ls(gsub("\\\\", "/", r"(\\oneabbott.com\dept\ADC\Technical_OPS\Clinical_Affairs\Clinical Study Files\Apollo\ADC-US-RES-23234_IDE Pump Suspension Study\Statistics\Programs\Datasets\AL)"))[2], recursive = TRUE)
+# file.copy(from = file_list[str_detect(file_list,"upload_info.xml") & !str_detect(file_list,regex("Transfers"))][2],
+#           to = dir_ls(gsub("\\\\", "/", r"(\\oneabbott.com\dept\ADC\Technical_OPS\Clinical_Affairs\Clinical Study Files\Apollo\ADC-US-RES-23234_IDE Pump Suspension Study\Statistics\Programs\Datasets\AL)"))[2], recursive = TRUE)
 ```
 
 ```{r}
@@ -79,21 +78,11 @@ file.copy(from = file_list[str_detect(file_list,"upload_info.xml") & !str_detect
 # file_list[str_detect(file_list,"extracted_realm.zip")]
 ```
 
-
-
 ```{r}
 # file_list[str_detect(file_list,"dualsensors") & !str_detect(file_list,regex("Transfers"))][1] |> 
 #   zip(zipfile = "testZip",extras = "-x")
 ```
-
-
-
 <!-- UDP -->
-
-```{r}
-#| warning: false
-mobi(events = events_path,gluc = gluc_path,index = 16) |> View()
-```
 
 ```{r}
 #|label: Import IV1
@@ -160,21 +149,129 @@ ivkd12 <- iv12 |>
 ```
 
 ```{r}
-summary_calculation <- list(Mean = ~ mean(.x, na.rm = T),
-                            Median = ~ median(.x, na.rm = T),
-                            SD = ~ sd(.x, na.rm = T),
-                            Min = ~ min(.x, na.rm = T),
-                            Max = ~ max(.x, na.rm = T),
-                            N = ~ sum(!is.na(.x),na.rm = T))
-ivkd12 |> 
-   filter(IVVAL01 == "Valid") |> 
-   group_by(Subject) |> 
-   summarise_at("KDORES02",summary_calculation) |> 
-   gt() |>
-   cols_align(align = "center") |>
-   fmt_number(columns = Mean:Max,decimals = 2) |> 
-   opt_stylize(style = 6, color = "blue") |> 
-   tab_header(title = md("**Ketone Test Result (mmol/L)**"))
+# summary_calculation <- list(Mean = ~ mean(.x, na.rm = T),
+#                             Median = ~ median(.x, na.rm = T),
+#                             SD = ~ sd(.x, na.rm = T),
+#                             Min = ~ min(.x, na.rm = T),
+#                             Max = ~ max(.x, na.rm = T),
+#                             N = ~ sum(!is.na(.x),na.rm = T))
+# ivkd12 |> 
+#    filter(IVVAL01 == "Valid") |> 
+#    group_by(Subject) |> 
+#    summarise_at("KDORES02",summary_calculation) |> 
+#    gt() |>
+#    cols_align(align = "center") |>
+#    fmt_number(columns = Mean:Max,decimals = 2) |> 
+#    opt_stylize(style = 6, color = "blue") |> 
+#    tab_header(title = md("**Ketone Test Result (mmol/L)**"))
+```
+
+```{r}
+#| label: Import ketone events, anaplus files csv
+file_list_ketone <- dir_ls(gsub("\\\\", "/", r"(\\oneabbott.com\dept\ADC\Technical_OPS\Clinical_Affairs\Clinical Study Files\Apollo\ADC-US-RES-23234_IDE Pump Suspension Study\Statistics\Upload Data\Output_2023-09-05-14-30\outputs)"),recurse = T,glob = "*events.csv|*anaPlus.csv")
+```
+
+```{r}
+#| label: Ketone Filter events, anaPlus
+events_path_ketone <- filter_path(file_path = file_list_ketone)[[1]]
+anaplus_path_ketone <- file_list_ketone[str_detect(file_list_ketone,"anaPlus.csv")]
+```
+
+```{r}
+#| warning: false
+mobi1 <- function(events, gluc, index = NULL) {
+
+  # Individual File
+  if (is.numeric(index)) {
+    purrr::map2(
+      # First List
+      # Import Events
+      events[index] |>
+        purrr::set_names() |>
+        # Consider empty events.csv
+        purrr::map(purrr::possibly(\(path) vroom::vroom(path,delim = ",",col_names = T,show_col_types = F,col_types = c(Time = "c", Type = "c",`Col 9` = "c"),col_select = c(Date,Time,Type,`Col 9`)),tibble::tibble()),.progress = TRUE) |>
+        purrr::map(\(df) df |> dplyr::filter(Type == "SENSOR_STARTED (58)"),.progress = TRUE) |>
+        purrr::map(\(df) df |> dplyr::transmute(
+          `Date Time` = lubridate::ymd_hms(stringr::str_c(Date,Time,sep = " ")),
+          Type = Type,
+          `Sensor Serial Number` = `Col 9`),.progress = TRUE),
+
+      purrr::map2(
+        # Second List
+        # Import gluc.csv
+        gluc[index] |>
+          purrr::map(purrr::possibly(\(path) vroom::vroom(path,delim = ",",col_names = T,show_col_types = F,col_types = c(Date = "c", Time = "c", Type = "c"),col_select = c(`Unique Record ID`,Date,Time,Type,ANA),n_max = 2),tibble::tibble()),.progress = TRUE),
+        gluc[index] |>
+          purrr::map(purrr::possibly(\(path) data.table::fread(path,select = c(1:5),skip = 3,col.names = c("Unique Record ID","Date","Time","Type","ANA"),colClasses = c("V2" = "character","V3" = "character","V4" = "character")),tibble::tibble()),.progress = TRUE),
+        dplyr::bind_rows,.progress = TRUE) |> 
+        purrr::map(\(df) df |> dplyr::transmute(`Subject ID` = "",
+                                  `Condition ID` = "",
+                                  `Date Time` = lubridate::ymd_hms(stringr::str_c(Date,Time,sep = " ")),
+                                  Type = Type,
+                                  ANA = ANA),.progress = TRUE) |>
+      purrr::map(\(df) df |> dplyr::slice(2:n())),dplyr::bind_rows,.progress = TRUE) |>
+      purrr::map(\(df) df |> dplyr::arrange(`Date Time`),.progress = TRUE) |>
+      purrr::map(\(df) df |> tidyr::fill(c(`Subject ID`,`Condition ID`),.direction = "up"),.progress = TRUE) |>
+      purrr::map(\(df) df |> tidyr::fill(`Sensor Serial Number`,.direction = "down"),.progress = TRUE) |>
+      purrr::map(\(df) df |> dplyr::filter(!(!is.na(`Sensor Serial Number`) & is.na(`Date Time`))),.progress = TRUE) |>
+      purrr::map(\(df) df |> dplyr::relocate(`Subject ID`,`Condition ID`,`Sensor Serial Number`,
+                               `Date Time`,Type,ANA),.progress = TRUE) |>
+      purrr::list_rbind(names_to = "Path")
+
+  } else {
+
+    # All Upload Data
+    purrr::map2(
+      # First List
+      # Import Events
+      events |>
+        purrr::set_names() |>
+        # Consider empty events.csv
+        purrr::map(purrr::possibly(\(path) vroom::vroom(path,delim = ",",col_names = T,show_col_types = F,col_types = c(Time = "c", Type = "c",`Col 9` = "c"),col_select = c(Date,Time,Type,`Col 9`)),tibble::tibble()),.progress = TRUE) |>
+        purrr::map(\(df) df |> dplyr::filter(Type == "SENSOR_STARTED (58)"),.progress = TRUE) |>
+        purrr::map(\(df) df |> dplyr::transmute(
+          `Date Time` = lubridate::ymd_hms(stringr::str_c(Date,Time,sep = " ")),
+          Type = Type,
+          `Sensor Serial Number` = `Col 9`),.progress = TRUE),
+
+      purrr::map2(
+        # Second List
+        # Import gluc.csv
+        gluc |>
+          purrr::map(purrr::possibly(\(path) vroom::vroom(path,delim = ",",col_names = T,show_col_types = F,col_types = c(Date = "c", Time = "c", Type = "c"),col_select = c(`Unique Record ID`,Date,Time,Type,ANA),n_max = 2),tibble::tibble()),.progress = TRUE),
+        gluc |>
+          purrr::map(purrr::possibly(\(path) data.table::fread(path,select = c(1:5),skip = 3,col.names = c("Unique Record ID","Date","Time","Type","ANA"),colClasses = c("V2" = "character","V3" = "character","V4" = "character")),tibble::tibble()),.progress = TRUE),
+        dplyr::bind_rows,.progress = TRUE) |> 
+        purrr::map(\(df) df |> dplyr::transmute(`Subject ID` = "",
+                                  `Condition ID` = "",
+                                  `Date Time` = lubridate::ymd_hms(stringr::str_c(Date,Time,sep = " ")),
+                                  Type = Type,
+                                  ANA = ANA),.progress = TRUE) |>
+      purrr::map(\(df) df |> dplyr::slice(2:n())),dplyr::bind_rows,.progress = TRUE) |>
+      purrr::map(\(df) df |> dplyr::arrange(`Date Time`),.progress = TRUE) |>
+      purrr::map(\(df) df |> tidyr::fill(c(`Subject ID`,`Condition ID`),.direction = "up"),.progress = TRUE) |>
+      purrr::map(\(df) df |> tidyr::fill(`Sensor Serial Number`,.direction = "down"),.progress = TRUE) |>
+      purrr::map(\(df) df |> dplyr::filter(!(!is.na(`Sensor Serial Number`) & is.na(`Date Time`))),.progress = TRUE) |>
+      purrr::map(\(df) df |> dplyr::relocate(`Subject ID`,`Condition ID`,`Sensor Serial Number`,
+                               `Date Time`,Type,ANA),.progress = TRUE) |>
+      purrr::list_rbind(names_to = "Path") |>
+      # Remove Duplicated Uploads
+      dplyr::distinct() |>
+      dplyr::arrange(Path,`Subject ID`,`Condition ID`,`Sensor Serial Number`)
+  }
+}
+```
+
+```{r}
+#| label: Output lac.rds
+#| warning: false
+upload_ketone <- mobi1(events = events_path_ketone,gluc = anaplus_path_ketone) |> 
+                dplyr::mutate(`Subject ID` = case_when(str_extract(Path,regex("(?<=/Mobi)[:digit:]{2}")) == "00" ~ 
+       str_extract(Path,regex("(?<=/Mobi00)[:digit:]{5}")),
+          .default = str_extract(Path,regex("(?<=/Mobi)[:digit:]{7}"))),
+                  `Condition ID` = str_to_upper(str_extract(Path,regex(".{3}(?=_[:digit:]{6}_[:digit:]{6})")))) |> 
+  arrange(`Subject ID`) 
+  # saveRDS(gsub("\\\\", "/", r"(\\oneabbott.com\dept\ADC\Technical_OPS\Clinical_Affairs\Clinical Study Files\Apollo\ADC-US-RES-23234_IDE Pump Suspension Study\Statistics\Programs\Datasets\AL\ketone.rds)"))
 ```
 
 ```{r}
@@ -183,19 +280,15 @@ breakdown_condition_plot <- function(Id) {
   # Add title
   hc_title(text = str_c("Subject = ",Id)) %>% 
   # continuous Sensor Data
-  # hc_add_series(
-  #   # name = "Libre Sensor Reading",
-  #   data = UUU %>%
-  #          filter(`Subject ID` == Id,
-  #                 Type != "SENSOR_STARTED (58)") %>%
-  #          # multiple and consecutive wears
-  #          arrange(`Date Time`) %>%
-  #          # 904 is Real-time glucose 906 is current glucose
-  #          mutate(Type = case_when(Type == "906" ~ "Current Glucose",
-  #                                  Type == "904" ~ "Real-Time Glucose",
-  #                                 .default =  "Historic Glucose")),
-  #   type = "line",
-  #   hcaes(x = datetime_to_timestamp(`Date Time`), y = Gl/18.016, group = Type)) %>%
+  hc_add_series(
+    # name = "Libre Sensor Reading",
+    data = upload_ketone %>%
+           filter(`Subject ID` == Id,
+                  Type == "906") %>%
+           # multiple and consecutive wears
+           arrange(`Date Time`),
+    type = "line",
+    hcaes(x = datetime_to_timestamp(`Date Time`), y = ANA/100, group = `Condition ID`)) %>%
     # Sibionics data 
     # hc_add_series(
     # name = "Sibionics",
@@ -245,4 +338,14 @@ breakdown_condition_plot <- function(Id) {
 ```{r}
 #| eval: false
 breakdown_condition_plot(Id = "90002")
+```
+
+```{r}
+#| label: For Loop Plots
+#| column: screen
+plots <- list()
+for (i in 1:n_distinct(ivkd12$Subject)){
+  plots[[i]] <- breakdown_condition_plot(Id = unique(ivkd12$Subject)[i])
+}
+htmltools::tagList(plots)
 ```

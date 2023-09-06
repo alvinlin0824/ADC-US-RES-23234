@@ -72,8 +72,73 @@ dtm = dhms(IVDTC01,0,0,iv_tm);
 drop iv_tm;
 run;
 
-options papersize=a3 orientation=portrait;
-ods rtf file="C:\Project\ADC-US-RES-23234\Report_%trim(%sysfunc(today(),yymmddn8.)).rtf" startpage=no;
+/*Upload Data*/
+filename dir pipe "dir /b/l/s  ""\\oneabbott.com\dept\ADC\Technical_OPS\Clinical_Affairs\Clinical Study Files\Apollo\ADC-US-RES-23234_IDE Pump Suspension Study\Statistics\Upload Data\Output_2023-09-05-14-30\outputs\*.csv""";
+
+data list;
+	infile dir truncover;
+	input path $256.;
+/*	Extract Subject ID*/
+/*    009*/
+    if find(path,"Mobi00","i") then subject = substr(path,find(path,"Mobi","i")+6,5);
+/*    133*/
+    if find(path,"Mobi133","i") then subject = substr(path,find(path,"Mobi","i")+4,7);
+/*	Extract Condition ID*/
+	if find(path,"Mobi","i") then condition_id = upcase(substr(path,find(path,"Mobi","i")+18,3));
+run;
+
+data events_list anaplus_list;
+	set list;
+	if find(path,"events.csv","i") then output events_list;
+    if find(path,"anaPlus.csv","i")  then output anaplus_list;
+run;
+
+/*Loop events.csv Data*/
+data events;
+	set events_list;
+	infile dummy filevar = path length = reclen end = done missover dlm='2C'x dsd firstobs=4;
+	do while(not done);
+		input uid: $char256. date: yymmdd10. time:time8. type: $char56. col_4: $char3. col_5: $char11. col_6: $char4. col_7: best8. col_8: $char9. 
+ snr: $char11.;
+        format date date9. time time8.;
+		drop uid col_4-col_8;
+        output;
+	end;
+run;
+
+/*Multiple Sensor Start*/
+proc sort data = events;
+by subject condition_id date time;
+run;
+data events_start;
+	set events (where = (type ="SENSOR_STARTED (58)"));
+	by subject condition_id;
+    if last.condition_id;
+run;
+
+/*Loop anaplus.csv Data*/
+data anaplus;
+	set anaplus_list;
+	infile dummy filevar = path length = reclen end = done missover dlm='2C'x dsd firstobs=4;
+	do while(not done);
+		input uid: $char16. date: yymmdd10. time: time8. type: $char56. ANA: best8. st: best8. tr: best1. nonact: best1.;
+        format date date9. time time8.;
+		drop uid st--nonact;
+        output;
+	end;
+run;
+
+/*stack*/
+data auu;
+	set events_start anaplus;
+run;
+/*Remove Duplicated uploads*/
+proc sort data = auu NODUP; 
+by subject condition_id date time;
+run;
+
+/*options papersize=a3 orientation=portrait;*/
+/*ods rtf file="C:\Project\ADC-US-RES-23234\Report_%trim(%sysfunc(today(),yymmddn8.)).rtf" startpage=no;*/
 
 /*Summary Statistics on Ketone Result*/
 Proc means data = ivkd12 maxdec=2 nonobs;
@@ -103,4 +168,4 @@ proc gplot data = ivkd12;
  value=(tick=1 justify=l 'Ketone Test Result (mmol/L)');
 run;
 
-ODS RTF CLOSE;
+/*ODS RTF CLOSE;*/
