@@ -284,7 +284,7 @@ breakdown_condition_plot <- function(Id) {
     # name = "Libre Sensor Reading",
     data = upload_ketone %>%
            filter(`Subject ID` == Id,
-                  Type == "906") %>%
+                  Type == "906", year(`Date Time`) == 2023) %>%
            # multiple and consecutive wears
            arrange(`Date Time`),
     type = "line",
@@ -337,7 +337,7 @@ breakdown_condition_plot <- function(Id) {
 
 ```{r}
 #| eval: false
-breakdown_condition_plot(Id = "90002")
+breakdown_condition_plot(Id = "90004")
 ```
 
 ```{r}
