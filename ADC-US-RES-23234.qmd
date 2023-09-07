@@ -65,7 +65,7 @@ file_list[str_detect(file_list,"extracted_realm.zip|dualsensors_upload_info.xml"
 ```{r}
 #|label: Import IV1
 iv1 <- read_sas(gsub("\\\\", "/", r"(\\wf00168p.oneabbott.com\data1\CDM\ADC-US-RES-23234\OpenClinica\Current\iv1.sas7bdat)"))
-iv1 <- iv1 |> 
+iv1 <- iv1 |>
        filter(!str_detect(IVYN01,regex("Check here if no data recorded",ignore_case = T))) |>
        mutate(Subject = as.character(Subject)) |>
        arrange(Subject)
