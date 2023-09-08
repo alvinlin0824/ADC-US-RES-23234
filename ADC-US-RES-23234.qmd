@@ -44,7 +44,7 @@ library(gt)
 
 <!-- UDP -->
 ```{r}
-#| label: Import all events, gluc and glucPlus files csv
+#| label: Import csv
 #| eval: false
 file_list <- dir_ls(gsub("\\\\", "/", r"(\\wf00168p.oneabbott.com\data1\CDM\ADC-US-RES-23234\UploadData\UUU\UUU_DataFiles)"),recurse = T)
 ```
@@ -308,6 +308,7 @@ breakdown_condition_plot <- function(Id) {
     hc_add_series(
     name = "Ketone Test Result",
     data = ivkd12 %>%
+           filter(IVVAL01 == "Valid") %>%
            filter(Subject == Id),
     type = "scatter",
     color = "#FF0000",
