@@ -75,6 +75,7 @@ iv1 <- iv1 |>
 #|label: Import IV2
 iv2 <- read_sas(gsub("\\\\", "/", r"(\\wf00168p.oneabbott.com\data1\CDM\ADC-US-RES-23234\OpenClinica\Current\iv2.sas7bdat)"))
 iv2 <- iv2 |>
+       filter(!is.na(IVID01)) |> 
        mutate(Subject = as.character(Subject),
               IVID01 = as.character(IVID01)) |>
        arrange(Subject)
@@ -88,7 +89,7 @@ iv12 <- iv2 |>
                   select(Subject,`__STUDYEVENTREPEATKEY`,IVDTC01),
                   by = join_by("Subject","__STUDYEVENTREPEATKEY")) |> 
         select(!`__STUDYEVENTREPEATKEY`) |> 
-        arrange(Subject,IVDTC01,IVID01)
+        arrange(Subject,IVDTC01)
 ```
 
 ```{r}
@@ -127,21 +128,57 @@ ivkd12 <- iv12 |>
 ```
 
 ```{r}
-# summary_calculation <- list(Mean = ~ mean(.x, na.rm = T),
-#                             Median = ~ median(.x, na.rm = T),
-#                             SD = ~ sd(.x, na.rm = T),
-#                             Min = ~ min(.x, na.rm = T),
-#                             Max = ~ max(.x, na.rm = T),
-#                             N = ~ sum(!is.na(.x),na.rm = T))
-# ivkd12 |> 
-#    filter(IVVAL01 == "Valid") |> 
-#    group_by(Subject) |> 
-#    summarise_at("KDORES02",summary_calculation) |> 
-#    gt() |>
-#    cols_align(align = "center") |>
-#    fmt_number(columns = Mean:Max,decimals = 2) |> 
-#    opt_stylize(style = 6, color = "blue") |> 
-#    tab_header(title = md("**Ketone Test Result (mmol/L)**"))
+#|label: Import kgr1
+kgr1 <- read_sas(gsub("\\\\", "/", r"(\\wf00168p.oneabbott.com\data1\CDM\ADC-US-RES-23234\OpenClinica\Current\kgr1.sas7bdat)"))
+kgr1 <- kgr1 |>
+       filter(!str_detect(KRYN01,regex("Check here if no data recorded",ignore_case = T))) |>
+       mutate(Subject = as.character(Subject)) |>
+       arrange(Subject)
+```
+
+```{r}
+#|label: Import kgr2
+kgr2 <- read_sas(gsub("\\\\", "/", r"(\\wf00168p.oneabbott.com\data1\CDM\ADC-US-RES-23234\OpenClinica\Current\kgr2.sas7bdat)"))
+kgr2 <- kgr2 |> 
+        mutate(Subject = as.character(Subject),
+               KRSEQ02 = as.character(KRSEQ02)) |>
+        arrange(Subject)
+```
+
+```{r}
+#| label: KGR2 left join KGR1
+kgr12 <- kgr2 |> 
+         select(Subject,KRSEQ02:KRDTC03) |> 
+         left_join(kgr1 |> 
+                   select(Subject,KRDTC01),
+                   by = join_by(Subject == Subject)) |> 
+         arrange(Subject,KRDTC01)
+```
+
+```{r}
+#| label: KGR12 left join IV12
+kgriv12 <- kgr12 |> 
+           left_join(iv12, 
+                     by = join_by(Subject == Subject,KRSEQ02 == IVID01, KRDTC01 == IVDTC01)) |> 
+           mutate(`Ketone Date Time` = ymd_hm(str_c(KRDTC01,KRDTC02,sep = " ")),.keep = "unused")
+```
+
+```{r}
+summary_calculation <- list(Mean = ~ mean(.x, na.rm = T),
+                            Median = ~ median(.x, na.rm = T),
+                            SD = ~ sd(.x, na.rm = T),
+                            Min = ~ min(.x, na.rm = T),
+                            Max = ~ max(.x, na.rm = T),
+                            N = ~ sum(!is.na(.x),na.rm = T))
+kgriv12 |>
+   filter(IVVAL01 == "Valid") |>
+   group_by(Subject) |>
+   summarise_at("KRSEQ01",summary_calculation) |>
+   gt() |>
+   cols_align(align = "center") |>
+   fmt_number(columns = Mean:Max,decimals = 2) |>
+   opt_stylize(style = 6, color = "blue") |>
+   tab_header(title = md("**Ketone Test Result (mmol/L)**"))
 ```
 
 ```{r}
@@ -307,13 +344,13 @@ breakdown_condition_plot <- function(Id) {
     # BG data 
     hc_add_series(
     name = "Ketone Test Result",
-    data = ivkd12 %>%
+    data = kgriv12 %>%
            filter(IVVAL01 == "Valid") %>%
            filter(Subject == Id),
     type = "scatter",
     color = "#FF0000",
     # marker = list(symbol = "triangle"),
-    hcaes(x = datetime_to_timestamp(`IV Draw Date Time`), y = KDORES02)) %>% 
+    hcaes(x = datetime_to_timestamp(`Ketone Date Time`), y = KRSEQ01)) %>% 
     # Add X label
     hc_xAxis(title = list(text = "Date Time"),
              type = "datetime", 
@@ -351,8 +388,8 @@ breakdown_condition_plot(Id = "90004")
 #| label: For Loop Plots
 #| column: screen
 plots <- list()
-for (i in 1:n_distinct(ivkd12$Subject)){
-  plots[[i]] <- breakdown_condition_plot(Id = unique(ivkd12$Subject)[i])
+for (i in 1:n_distinct(kgriv12$Subject)){
+  plots[[i]] <- breakdown_condition_plot(Id = unique(kgriv12$Subject)[i])
 }
 htmltools::tagList(plots)
 ```

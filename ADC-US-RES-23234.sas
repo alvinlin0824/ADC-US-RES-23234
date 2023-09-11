@@ -63,18 +63,59 @@ by Subject;
 rename KDDTC01 = IVDTC01 KDID01 = IVID01;
 run;
 
-/*Left join IV12 and KD12*/
-data ivkd12;
-format dtm datetime14. iv_tm hhmm5.;
-merge iv12 kd12;
-by Subject IVDTC01 IVID01;
-iv_tm = input(IVTM01,time5.);
-dtm = dhms(IVDTC01,0,0,iv_tm);
-subjid = put(Subject,8.);
-keep subjid dtm kdores02;
-rename subjid = Subject;
-where Subject = 90001;
+/*Ketone Glucose Results*/
+data kgr1;
+set edc.kgr1;
+keep Subject KRDTC01;
 run;
+
+data kgr2;
+set edc.kgr2;
+keep Subject KRSEQ02--KRDTC03;
+run;
+
+/*sort data*/
+proc sort data = kgr1;
+by Subject;
+run;
+
+proc sort data = kgr2;
+by Subject;
+run;
+
+/*KGR2 left join KGR1*/
+data kgr12;
+merge kgr2 kgr1;
+by Subject;
+rename KRDTC01 = IVDTC01 KRSEQ02 = IVID01;
+run;
+
+proc sort data = kgr12;
+by Subject IVDTC01 IVID01;
+run;
+
+/*KGR12 left join IV12*/
+data kgriv12;
+format dtm datetime14.;
+merge kgr12 iv12;
+by Subject IVDTC01 IVID01;
+dtm = dhms(IVDTC01,0,0,input(KRDTC02,time5.));
+subjid = strip(put(Subject,8.));
+drop Subject;
+rename subjid = subject;
+run;
+
+/*Left join IV12 and KD12*/
+/*data ivkd12;*/
+/*format dtm datetime14. iv_tm hhmm5.;*/
+/*merge iv12 kd12;*/
+/*by Subject IVDTC01 IVID01;*/
+/*iv_tm = input(IVTM01,time5.);*/
+/*dtm = dhms(IVDTC01,0,0,iv_tm);*/
+/*subjid = strip(put(Subject,8.));*/
+/*keep subjid dtm kdores02 IVVAL01;*/
+/*rename subjid = subject;*/
+/*run;*/
 
 /*/*Upload Data*/*/
 /*filename dir pipe "dir /b/l/s  ""C:\UDP\OutputFiles\Output_2023-09-06-15-21\outputs\*.csv""";*/
@@ -150,18 +191,6 @@ data auu;
 set out.auu;
 run;
 
-data ivkd12;
-format dtm datetime14. iv_tm hhmm5.;
-merge iv12 kd12;
-by Subject IVDTC01 IVID01;
-iv_tm = input(IVTM01,time5.);
-dtm = dhms(IVDTC01,0,0,iv_tm);
-subjid = strip(put(Subject,8.));
-keep subjid dtm kdores02 IVVAL01;
-rename subjid = subject;
-/*where Subject = 90001;*/
-run;
-
 /*Profile Plot Data*/
 data auu_906;
 format dtm datetime16.;
@@ -180,12 +209,13 @@ run;
 /*left join to ketone reference*/
 proc sql;
 create table ketone as
-select * from ivkd12 as x left join sensor as y
+select * from kgriv12 as x left join sensor as y
 on x.subject = y.subject;
 quit;
 
 data profile_data;
 set auu_906 ketone;
+if ^find(IVVAL01,"Invalid","i");
 run;
 
 /*sort dtm*/
@@ -197,9 +227,9 @@ run;
 /*ods rtf file="C:\Project\ADC-US-RES-23234\Report_%trim(%sysfunc(today(),yymmddn8.)).rtf" startpage=no;*/
 
 /*Summary Statistics on Ketone Result*/
-Proc means data = ivkd12 maxdec=2 nonobs;
+Proc means data = kgriv12 maxdec=2 nonobs;
 title;
-var kdores02;
+var KRSEQ01;
 class Subject;
 where IVVAL01 = "Valid";
 run;
@@ -211,36 +241,14 @@ ftext='arial' htext=9pt hby=16pt gsfname=exfile gsfmode=replace xmax=16in hsize=
 ods graphics on / reset attrpriority=color width=8in height=5in;
 proc sgplot data=profile_data noautolegend cycleattrs;
 by subject;
-title1 "Subject #byval(subject) - All Sensors";
+where subject = "90008";
+/*title1 "Subject #byval(subject) - All Sensors";*/
 styleattrs datacontrastcolors=(magenta green blue orange);
 	scatter x = dtm y = kdores02 / markerattrs = (symbol = StarFilled color = black size=5) name= "Ketone";
 	series x = dtm y = ana_100 / group=condition_id groupdisplay=overlay markers markerattrs=(size=3 symbol=dot) name="REAL";
-/*	reg x=dtm y=fs_bg / lineattrs=(color=black thickness=1) markerattrs=(color=black symbol=StarFilled size=5);*/
 	yaxis label="Ketone Test Result (mmol/L)" values=(0 to 150 by 50);
 	xaxis label="Date" INTERVAL=HOUR VALUESROTATE=DIAGONAL2;
 	keylegend / title="Condition ID" ;
 run;
-
-
-/*goptions device=png target=png rotate=landscape hpos=90 vpos=40 gwait=0 aspect=0.5*/
-/*ftext='arial' htext=9pt hby=16pt gsfname=exfile gsfmode=replace xmax=16in ymax=11in vsize=6in;*/
-/**/
-/*symbol1 c=blue v=V h=0.35 f=marker i=none;     *blue;	    *Ketone Reference;*/
-/*symbol2 c=cx008000 v=dot h=0.25 f=, i=none;    *green;  	*Ketone Sensor;*/
-/*symbol3 c=cx000000 v=dot h=0.35 f=, i=none;    *black;  	*Ketone Sensor;*/
-/*symbol4 c=cxff0000 v=V h=0.35 f=marker i=none; *red;	    *Ketone Sensor;*/
-/*symbol5 c=magenta v=V h=0.35 f=marker i=none; *red;	    *Ketone Sensor;*/
-/**/
-/*proc gplot data = profile_data;*/
-/* where IVVAL01 = "Valid";*/
-/* by subject;*/
-/* title1 "Subject #byval(Subject)";*/
-/*/* plot (kdores02)*dtm / vaxis=axis1 haxis=axis2 wvref=2 legend=legend1 name='PLOT';*/*/
-/* plot (kdores02 ana_100)*dtm = condition_id / overlay vaxis=axis1 haxis=axis2 wvref=2 legend=legend1 name='PLOT';*/
-/* axis1 order=(0 to 60 by 5) label=(a=90 "Ketone Test Result (mmol/L)");*/
-/* axis2 value=(a=60 h=.8) label=('IV Draw Date') offset=(3,3);*/
-/* legend1 repeat=1 label=none*/
-/* value=(tick=1 justify=l 'Ketone Test Result (mmol/L)');*/
-/*run;*/
 
 /*ODS RTF CLOSE;*/
