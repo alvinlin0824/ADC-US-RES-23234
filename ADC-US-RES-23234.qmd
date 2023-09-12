@@ -106,7 +106,8 @@ kgr1 <- kgr1 |>
 kgr2 <- read_sas(gsub("\\\\", "/", r"(\\wf00168p.oneabbott.com\data1\CDM\ADC-US-RES-23234\OpenClinica\Current\kgr2.sas7bdat)"))
 kgr2 <- kgr2 |> 
         mutate(Subject = as.character(Subject),
-               KRSEQ02 = as.character(KRSEQ02)) |>
+               KRSEQ02 = case_when(KRSEQ02 == 3020930 ~ "20930",
+                                   .default = as.character(KRSEQ02))) |>
         arrange(Subject)
 ```
 
@@ -144,6 +145,18 @@ kgriv12 |>
    fmt_number(columns = Mean:Max,decimals = 2) |>
    opt_stylize(style = 6, color = "blue") |>
    tab_header(title = md("**Ketone Test Result (mmol/L)**"))
+```
+
+```{r}
+kgriv12 |>
+   filter(IVVAL01 == "Valid") |>
+   mutate(eTime = as.numeric(difftime(`Ketone Date Time`,first(`Ketone Date Time`),units = "hours")),.by = Subject) |> 
+  ggplot(aes(x = eTime, y = KRSEQ01, color = Subject)) +
+  geom_point() + 
+  geom_line() + 
+  labs(title = "Ketone Reference",x = "Time(Hrs)", y = "Ketone Test Result (mmol/L)") +
+  theme_bw() +
+  theme(panel.grid.major.y = element_blank(),panel.grid.minor.y = element_blank(),legend.position = "bottom",plot.title = element_text(hjust = 0.5))
 ```
 
 ```{r}

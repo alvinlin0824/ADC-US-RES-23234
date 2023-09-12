@@ -223,7 +223,8 @@ run;
 proc sql;
 create table reference as
 select * from kgrivmhcad as x left join sensor as y
-on x.subject = y.subject;
+on x.subject = y.subject
+order by subject, condition_id, dtm;
 quit;
 
 data profile_data;
@@ -253,7 +254,7 @@ ftext='arial' htext=9pt hby=16pt gsfname=exfile gsfmode=replace xmax=16in hsize=
 ods graphics on / reset attrpriority=color width=8in height=5in;
 /*Reference Plot*/
 proc sgplot data = ketone noautolegend cycleattrs;
-where dtm is not missing;
+where dtm is not missing and IVVAL01 = "Valid";
 title1 "Ketone Reference";
 styleattrs datacontrastcolors = (magenta green blue orange);
 	series x = time_diff y = krseq01 / group = subject groupdisplay = overlay markers markerattrs = (size = 3 symbol = dot) name = "REAL";
