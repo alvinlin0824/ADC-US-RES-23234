@@ -17,11 +17,11 @@ keep Subject ivdtc01;
 run;
 
 data iv2;
-set edc.iv2;
+set edc.iv2 (where = (^missing(IVID01)));
 keep Subject IVID01--IVVAL01;
 run;
 
-/*sort data*/
+/*Sort IV1 and IV2*/
 proc sort data = iv1;
 by Subject;
 run;
@@ -36,33 +36,6 @@ merge iv1 iv2;
 by Subject;
 run;
 
-/*SAFETY PARAMETER LOG*/
-data kd1;
-set edc.kd1(where = (KDYN01 ^= "Check Here if no data recorded"));
-keep Subject kddtc01;
-run;
-
-data kd2;
-set edc.kd2;
-keep Subject KDID01--KDORES10;
-run;
-
-/*sort data*/
-proc sort data = kd1;
-by Subject;
-run;
-
-proc sort data = kd2;
-by Subject KDID01;
-run;
-
-/*Left Join kd1 and kd2*/
-data kd12;
-merge kd1 kd2;
-by Subject;
-rename KDDTC01 = IVDTC01 KDID01 = IVID01;
-run;
-
 /*Ketone Glucose Results*/
 data kgr1;
 set edc.kgr1;
@@ -74,7 +47,7 @@ set edc.kgr2;
 keep Subject KRSEQ02--KRDTC03;
 run;
 
-/*sort data*/
+/*Sort KGR1 and KGR2*/
 proc sort data = kgr1;
 by Subject;
 run;
@@ -87,11 +60,37 @@ run;
 data kgr12;
 merge kgr2 kgr1;
 by Subject;
+if KRSEQ02 = 3020930 then KRSEQ02 = 20930;
 rename KRDTC01 = IVDTC01 KRSEQ02 = IVID01;
 run;
 
+/*Sort KGR12*/
 proc sort data = kgr12;
 by Subject IVDTC01 IVID01;
+run;
+
+/*Clinic Visit 3*/
+data cad3;
+set edc.cad3(where = (DSYN01 ^= "Check Here if no data recorded"));
+Visit = "Visit 3";
+keep Subject dsdtc01 Visit;
+run;
+
+/*Sort CAD3*/
+proc sort data = cad3;
+by Subject dsdtc01;
+run;
+
+/*Diabetes History*/
+data mh1;
+set edc.mh1(where = (MHYN01 ^= "Check Here if no data recorded"));
+if MHORES01 = "Type 1" or "Type 2" then Diabetes = "Yes";
+keep Subject MHORES01 Diabetes;
+run;
+
+/*Sort MH1*/
+proc sort data = mh1;
+by Subject;
 run;
 
 /*KGR12 left join IV12*/
@@ -100,22 +99,36 @@ format dtm datetime14.;
 merge kgr12 iv12;
 by Subject IVDTC01 IVID01;
 dtm = dhms(IVDTC01,0,0,input(KRDTC02,time5.));
+run;
+
+/*KGR12 left join mh1 and cad3*/
+data kgrivmhcad;
+merge kgriv12 mh1 cad3;
+by Subject;
 subjid = strip(put(Subject,8.));
 drop Subject;
 rename subjid = subject;
 run;
 
-/*Left join IV12 and KD12*/
-/*data ivkd12;*/
-/*format dtm datetime14. iv_tm hhmm5.;*/
-/*merge iv12 kd12;*/
-/*by Subject IVDTC01 IVID01;*/
-/*iv_tm = input(IVTM01,time5.);*/
-/*dtm = dhms(IVDTC01,0,0,iv_tm);*/
-/*subjid = strip(put(Subject,8.));*/
-/*keep subjid dtm kdores02 IVVAL01;*/
-/*rename subjid = subject;*/
-/*run;*/
+proc sort data = kgrivmhcad;
+by subject dtm;
+run;
+
+/*Get First Ketone Date and Time*/
+data first_ketone;
+set kgrivmhcad;
+by subject;
+if first.subject;
+keep subject dtm;
+rename dtm = first_test_dtm;
+run;
+
+/*Left Join first_keton with kgrivmhcad*/
+data ketone;
+merge kgrivmhcad first_ketone;
+by subject;
+time_diff = (dtm - first_test_dtm)/3600;
+run;
 
 /*/*Upload Data*/*/
 /*filename dir pipe "dir /b/l/s  ""C:\UDP\OutputFiles\Output_2023-09-06-15-21\outputs\*.csv""";*/
@@ -208,13 +221,13 @@ run;
 
 /*left join to ketone reference*/
 proc sql;
-create table ketone as
-select * from kgriv12 as x left join sensor as y
+create table reference as
+select * from kgrivmhcad as x left join sensor as y
 on x.subject = y.subject;
 quit;
 
 data profile_data;
-set auu_906 ketone;
+set auu_906 reference;
 if ^find(IVVAL01,"Invalid","i");
 run;
 
@@ -223,32 +236,44 @@ proc sort data = profile_data;
 by subject condition_id dtm;
 run;
 
-/*options papersize=a3 orientation=portrait;*/
-/*ods rtf file="C:\Project\ADC-US-RES-23234\Report_%trim(%sysfunc(today(),yymmddn8.)).rtf" startpage=no;*/
+options papersize=a3 orientation=portrait;
+ods rtf file="C:\Project\ADC-US-RES-23234\ADC-US-RES-23234-Report-%trim(%sysfunc(today(),yymmddn8.)).rtf" startpage=no;
 
 /*Summary Statistics on Ketone Result*/
-Proc means data = kgriv12 maxdec=2 nonobs;
+Proc means data = ketone maxdec=2 nonobs;
 title;
 var KRSEQ01;
 class Subject;
 where IVVAL01 = "Valid";
 run;
 
-/*Profile Plot*/
 goptions device=png target=png rotate=landscape hpos=90 vpos=40 gwait=0 aspect=0.5
 ftext='arial' htext=9pt hby=16pt gsfname=exfile gsfmode=replace xmax=16in hsize=10in ymax=11in vsize=6in;
 
 ods graphics on / reset attrpriority=color width=8in height=5in;
-proc sgplot data=profile_data noautolegend cycleattrs;
-by subject;
-where subject = "90008";
-/*title1 "Subject #byval(subject) - All Sensors";*/
-styleattrs datacontrastcolors=(magenta green blue orange);
-	scatter x = dtm y = kdores02 / markerattrs = (symbol = StarFilled color = black size=5) name= "Ketone";
-	series x = dtm y = ana_100 / group=condition_id groupdisplay=overlay markers markerattrs=(size=3 symbol=dot) name="REAL";
-	yaxis label="Ketone Test Result (mmol/L)" values=(0 to 150 by 50);
-	xaxis label="Date" INTERVAL=HOUR VALUESROTATE=DIAGONAL2;
-	keylegend / title="Condition ID" ;
+/*Reference Plot*/
+proc sgplot data = ketone noautolegend cycleattrs;
+where dtm is not missing;
+title1 "Ketone Reference";
+styleattrs datacontrastcolors = (magenta green blue orange);
+	series x = time_diff y = krseq01 / group = subject groupdisplay = overlay markers markerattrs = (size = 3 symbol = dot) name = "REAL";
+	yaxis label = "Ketone Test Result (mmol/L)" values=(0 to 5 by 0.5);
+	xaxis label = "Time(Hrs)" INTERVAL = HOUR VALUESROTATE=DIAGONAL2;
+	keylegend / title = "Subject ID";
 run;
 
-/*ODS RTF CLOSE;*/
+
+/*Profile Plot*/
+/*proc sgplot data=profile_data noautolegend cycleattrs;*/
+/*by Subject;*/
+/*where Subject = "90008";*/
+/*/*title1 "Subject #byval(subject) - All Sensors";*/*/
+/*styleattrs datacontrastcolors=(magenta green blue orange);*/
+/*	scatter x = dtm y = krseq01 / markerattrs = (symbol = StarFilled color = black size=5) name= "Ketone";*/
+/*	series x = dtm y = ana_100 / group=condition_id groupdisplay=overlay markers markerattrs=(size=3 symbol=dot) name="REAL";*/
+/*	yaxis label="Ketone Test Result (mmol/L)" values=(0 to 150 by 50);*/
+/*	xaxis label="Date" INTERVAL=HOUR VALUESROTATE=DIAGONAL2;*/
+/*	keylegend / title="Condition ID" ;*/
+/*run;*/
+
+ODS RTF CLOSE;

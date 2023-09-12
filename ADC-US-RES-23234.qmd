@@ -93,41 +93,6 @@ iv12 <- iv2 |>
 ```
 
 ```{r}
-#|label: Import KD1
-kd1 <- read_sas(gsub("\\\\", "/", r"(\\wf00168p.oneabbott.com\data1\CDM\ADC-US-RES-23234\OpenClinica\Current\kd1.sas7bdat)"))
-kd1 <- kd1 |>
-       filter(!str_detect(KDYN01,regex("Check here if no data recorded",ignore_case = T))) |>
-       mutate(Subject = as.character(Subject)) |>
-       arrange(Subject)
-```
-
-```{r}
-#|label: Import kd2
-kd2 <- read_sas(gsub("\\\\", "/", r"(\\wf00168p.oneabbott.com\data1\CDM\ADC-US-RES-23234\OpenClinica\Current\kd2.sas7bdat)"))
-kd2 <- kd2 |>
-       mutate(Subject = as.character(Subject),
-              KDID01 = as.character(KDID01)) |>
-       arrange(Subject)
-```
-
-```{r}
-#| label: KD2 left join KD1
-kd12 <- kd2 |> 
-        select(Subject,KDID01:last_col()) |> 
-        left_join(kd1 |>
-                  select(Subject,KDDTC01),
-                  by = join_by(Subject)) |>
-        arrange(Subject,KDID01)
-```
-
-```{r}
-#| label: iv12 left join kd12
-ivkd12 <- iv12 |> 
-          left_join(kd12,by = join_by(Subject,IVID01 == KDID01, IVDTC01 == KDDTC01)) |> 
-          mutate(`IV Draw Date Time` = ymd_hm(str_c(IVDTC01,IVTM01,sep = " ")),.keep = "unused")
-```
-
-```{r}
 #|label: Import kgr1
 kgr1 <- read_sas(gsub("\\\\", "/", r"(\\wf00168p.oneabbott.com\data1\CDM\ADC-US-RES-23234\OpenClinica\Current\kgr1.sas7bdat)"))
 kgr1 <- kgr1 |>
@@ -381,7 +346,7 @@ breakdown_condition_plot <- function(Id) {
 
 ```{r}
 #| eval: false
-breakdown_condition_plot(Id = "90004")
+breakdown_condition_plot(Id = "90008")
 ```
 
 ```{r}
