@@ -160,7 +160,8 @@ data ketone;
 merge kgrivmhcad first_ketone last_ketone1 peak_ketone;
 by subject;
 time_diff = (dtm - first_test_dtm)/3600;
-time_diff1 = (last_test_dtm - peak_test_dtm)/3600;
+time_diff1 = (peak_test_dtm - first_test_dtm)/3600;
+time_diff2 = (last_test_dtm - peak_test_dtm)/3600;
 run;
 
 /*Filter the peak ketone results*/
@@ -255,12 +256,18 @@ class Subject;
 where IVVAL01 = "Valid";
 run;
 
+proc print data = analysis_ketone(rename = (subject = Subject first_test_dtm = 'Start Time'n peak_test_dtm = 'Peak Time'n time_diff1 = 'Time to Peak(Hours)'n)) noobs;
+format 'Time to Peak(Hours)'n 8.2;
+where ^missing(Peak);
+var Subject 'Start Time'n 'Peak Time'n 'Time to Peak(Hours)'n;
+run;
+
 proc tabulate data = analysis_ketone;
 where IVVAL01 = "Valid" and ^missing(first_below);
 class Visit;
-var KRSEQ01 time_diff time_diff1;
-table  Visit, KRSEQ01 = "Maximum Ketone Level Achieved"*(n mean stddev) time_diff = "Time To Peak Ketone Level From First Test"*(n mean stddev)
-time_diff1 = "Time From Peak Ketone Level to Ketone Level < 1 mmol"*(n mean stddev);
+var KRSEQ01 time_diff1 time_diff2;
+table  Visit, KRSEQ01 = "Maximum Ketone Level Achieved"*(n mean stddev) time_diff1 = "Time(Hours) To Peak Ketone Level From First Test"*(n mean stddev)
+time_diff2 = "Time(Hours) From Peak Ketone Level to Ketone Level < 1 mmol"*(n mean stddev);
 run;
 
 goptions device=png target=png rotate=landscape hpos=90 vpos=40 gwait=0 aspect=0.5
@@ -271,10 +278,10 @@ ods graphics on / reset attrpriority=color width=8in height=5in;
 proc sgplot data = ketone noautolegend cycleattrs;
 where dtm is not missing and IVVAL01 = "Valid";
 title1 "Ketone Reference";
-styleattrs datacontrastcolors = (magenta green blue orange);
+styleattrs datacontrastcolors = (magenta green blue orange lilac lime marron olive steel violet yellow);
 	series x = time_diff y = krseq01 / group = subject groupdisplay = overlay markers markerattrs = (size = 3 symbol = dot) name = "REAL";
 	yaxis label = "Ketone Test Result (mmol/L)" values=(0 to 5 by 0.5);
-	xaxis label = "Time(Hrs)" INTERVAL = HOUR VALUESROTATE=DIAGONAL2;
+	xaxis label = "Time(Hours)" INTERVAL = HOUR VALUESROTATE=DIAGONAL2;
 	keylegend / title = "Subject ID";
 run;
 ODS RTF CLOSE;

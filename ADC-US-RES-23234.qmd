@@ -126,7 +126,7 @@ kgr12 <- kgr2 |>
 kgriv12 <- kgr12 |> 
            left_join(iv12, 
                      by = join_by(Subject == Subject,KRSEQ02 == IVID01, KRDTC01 == IVDTC01)) |> 
-           mutate(`Ketone Date Time` = ymd_hm(str_c(KRDTC01,KRDTC02,sep = " ")),.keep = "unused")
+           mutate(`Ketone Date Time` = ymd_hm(str_c(KRDTC01,KRDTC02,sep = " ")),.keep = "unused",.before = KRSEQ03)
 ```
 
 ```{r}
@@ -146,6 +146,20 @@ kgriv12 |>
    opt_stylize(style = 6, color = "blue") |>
    tab_header(title = md("**Ketone Test Result (mmol/L)**"))
 ```
+
+```{r}
+kgriv12 |>
+   filter(IVVAL01 == "Valid") |> 
+   group_by(Subject) |> 
+   # Find the Peak Time and consider duplicated max values
+   mutate(ID = KRSEQ01 == max(KRSEQ01)) |> 
+   group_by(ID,.add = T) |> 
+   mutate(`Peak Time` = case_when(ID == TRUE & row_number() == 1 ~ `Ketone Date Time`),.after = `Ketone Date Time`) |> 
+   ungroup(ID) |> 
+   fill(`Peak Time`,.direction = "downup") |> 
+   # Find 
+```
+
 
 ```{r}
 kgriv12 |>
