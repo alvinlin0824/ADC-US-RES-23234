@@ -123,11 +123,55 @@ keep subject dtm;
 rename dtm = first_test_dtm;
 run;
 
+/*Get Peak Ketone Date and Time*/
+proc sort data = kgrivmhcad out = kgrivmhcad1;
+by subject descending KRSEQ01;
+run;
+
+data peak_ketone;
+set kgrivmhcad1;
+by subject;
+if first.subject;
+keep subject dtm KRSEQ01;
+rename dtm = peak_test_dtm KRSEQ01 = Peak;
+run;
+
+/*Get Date and Time once Ketone <1 mmol*/
+data last_ketone;
+merge kgrivmhcad peak_ketone;
+by subject;
+if KRSEQ01 < 1 and dtm > peak_test_dtm and Peak >= 1;
+run;
+
+proc sort data = last_ketone;
+by subject dtm;
+run;
+
+data last_ketone1;
+set last_ketone;
+by subject;
+if first.subject;
+keep subject dtm KRSEQ01;
+rename dtm = last_test_dtm KRSEQ01 = first_below;
+run;
+
 /*Left Join first_keton with kgrivmhcad*/
 data ketone;
-merge kgrivmhcad first_ketone;
+merge kgrivmhcad first_ketone last_ketone1 peak_ketone;
 by subject;
 time_diff = (dtm - first_test_dtm)/3600;
+time_diff1 = (last_test_dtm - peak_test_dtm)/3600;
+run;
+
+/*Filter the peak ketone results*/
+proc sort data = ketone out = ketone1;
+by subject descending KRSEQ01;
+run;
+
+data analysis_ketone;
+set ketone1;
+by subject;
+if first.subject;
 run;
 
 /*/*Upload Data*/*/
@@ -200,43 +244,6 @@ libname out "\\oneabbott.com\dept\ADC\Technical_OPS\Clinical_Affairs\Clinical St
 /*set auu;*/
 run;
 
-data auu;
-set out.auu;
-run;
-
-/*Profile Plot Data*/
-data auu_906;
-format dtm datetime16.;
-set auu;
-dtm = dhms(date,0,0,time);
-ana_100 = ANA/100;
-where type = "906" and year(date) = 2023;
-drop date time;
-run;
-
-/*uniqle sensor*/
-proc sort data = auu_906 NODUPKEY out = sensor(keep = subject condition_id);
-by subject condition_id;
-run; 
-
-/*left join to ketone reference*/
-proc sql;
-create table reference as
-select * from kgrivmhcad as x left join sensor as y
-on x.subject = y.subject
-order by subject, condition_id, dtm;
-quit;
-
-data profile_data;
-set auu_906 reference;
-if ^find(IVVAL01,"Invalid","i");
-run;
-
-/*sort dtm*/
-proc sort data = profile_data;
-by subject condition_id dtm;
-run;
-
 options papersize=a3 orientation=portrait;
 ods rtf file="C:\Project\ADC-US-RES-23234\ADC-US-RES-23234-Report-%trim(%sysfunc(today(),yymmddn8.)).rtf" startpage=no;
 
@@ -246,6 +253,14 @@ title;
 var KRSEQ01;
 class Subject;
 where IVVAL01 = "Valid";
+run;
+
+proc tabulate data = analysis_ketone;
+where IVVAL01 = "Valid" and ^missing(first_below);
+class Visit;
+var KRSEQ01 time_diff time_diff1;
+table  Visit, KRSEQ01 = "Maximum Ketone Level Achieved"*(n mean stddev) time_diff = "Time To Peak Ketone Level From First Test"*(n mean stddev)
+time_diff1 = "Time From Peak Ketone Level to Ketone Level < 1 mmol"*(n mean stddev);
 run;
 
 goptions device=png target=png rotate=landscape hpos=90 vpos=40 gwait=0 aspect=0.5
@@ -262,9 +277,46 @@ styleattrs datacontrastcolors = (magenta green blue orange);
 	xaxis label = "Time(Hrs)" INTERVAL = HOUR VALUESROTATE=DIAGONAL2;
 	keylegend / title = "Subject ID";
 run;
-
+ODS RTF CLOSE;
 
 /*Profile Plot*/
+/*data auu;*/
+/*set out.auu;*/
+/*run;*/
+
+/*Profile Plot Data*/
+/*data auu_906;*/
+/*format dtm datetime16.;*/
+/*set auu;*/
+/*dtm = dhms(date,0,0,time);*/
+/*ana_100 = ANA/100;*/
+/*where type = "906" and year(date) = 2023;*/
+/*drop date time;*/
+/*run;*/
+
+/*uniqle sensor*/
+/*proc sort data = auu_906 NODUPKEY out = sensor(keep = subject condition_id);*/
+/*by subject condition_id;*/
+/*run; */
+
+/*left join to ketone reference*/
+/*proc sql;*/
+/*create table reference as*/
+/*select * from kgrivmhcad as x left join sensor as y*/
+/*on x.subject = y.subject*/
+/*order by subject, condition_id, dtm;*/
+/*quit;*/
+
+/*data profile_data;*/
+/*set auu_906 reference;*/
+/*if ^find(IVVAL01,"Invalid","i");*/
+/*run;*/
+
+/*sort dtm*/
+/*proc sort data = profile_data;*/
+/*by subject condition_id dtm;*/
+/*run;*/
+
 /*proc sgplot data=profile_data noautolegend cycleattrs;*/
 /*by Subject;*/
 /*where Subject = "90008";*/
