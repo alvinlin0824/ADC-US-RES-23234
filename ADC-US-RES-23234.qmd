@@ -84,7 +84,7 @@ iv2 <- iv2 |>
 ```{r}
 #| label: IV2 left join IV1
 iv12 <- iv2 |> 
-        select(Subject,`__STUDYEVENTREPEATKEY`,IVID01:IVCOM01) |> 
+        select(Subject,`__STUDYEVENTREPEATKEY`,IVID01,IVTM01,IVVAL01) |> 
         left_join(iv1 |>
                   select(Subject,`__STUDYEVENTREPEATKEY`,IVDTC01),
                   by = join_by("Subject","__STUDYEVENTREPEATKEY")) |> 
@@ -96,15 +96,15 @@ iv12 <- iv2 |>
 #|label: Import kgr1
 kgr1 <- read_sas(gsub("\\\\", "/", r"(\\wf00168p.oneabbott.com\data1\CDM\ADC-US-RES-23234\OpenClinica\Current\kgr1.sas7bdat)"))
 kgr1 <- kgr1 |>
-       filter(!str_detect(KRYN01,regex("Check here if no data recorded",ignore_case = T))) |>
-       mutate(Subject = as.character(Subject)) |>
-       arrange(Subject)
+        filter(!str_detect(KRYN01,regex("Check here if no data recorded",ignore_case = T))) |>
+        mutate(Subject = as.character(Subject)) |>
+        arrange(Subject)
 ```
 
 ```{r}
 #|label: Import kgr2
 kgr2 <- read_sas(gsub("\\\\", "/", r"(\\wf00168p.oneabbott.com\data1\CDM\ADC-US-RES-23234\OpenClinica\Current\kgr2.sas7bdat)"))
-kgr2 <- kgr2 |> 
+kgr2 <- kgr2 |>
         mutate(Subject = as.character(Subject),
                KRSEQ02 = case_when(KRSEQ02 == 3020930 ~ "20930",
                                    .default = as.character(KRSEQ02))) |>
@@ -126,7 +126,8 @@ kgr12 <- kgr2 |>
 kgriv12 <- kgr12 |> 
            left_join(iv12, 
                      by = join_by(Subject == Subject,KRSEQ02 == IVID01, KRDTC01 == IVDTC01)) |> 
-           mutate(`Ketone Date Time` = ymd_hm(str_c(KRDTC01,KRDTC02,sep = " ")),.keep = "unused",.before = KRSEQ03)
+           mutate(`Ketone Date Time` = ymd_hm(str_c(KRDTC01,KRDTC02,sep = " ")),.keep = "unused",.before = KRSEQ03) |> 
+           filter(IVVAL01 == "Valid")
 ```
 
 ```{r}
@@ -137,7 +138,6 @@ summary_calculation <- list(Mean = ~ mean(.x, na.rm = T),
                             Max = ~ max(.x, na.rm = T),
                             N = ~ sum(!is.na(.x),na.rm = T))
 kgriv12 |>
-   filter(IVVAL01 == "Valid") |>
    group_by(Subject) |>
    summarise_at("KRSEQ01",summary_calculation) |>
    gt() |>
@@ -145,6 +145,24 @@ kgriv12 |>
    fmt_number(columns = Mean:Max,decimals = 2) |>
    opt_stylize(style = 6, color = "blue") |>
    tab_header(title = md("**Ketone Test Result (mmol/L)**"))
+```
+
+```{r}
+kgriv12 |> 
+    filter(max(KRSEQ01) > 1 & `Ketone Date Time` > `Peak Time` & KRSEQ01 < 1) |> View()
+```
+
+```{r}
+kgriv12 |> 
+  left_join(
+    # Find the Peak Time and consider duplicated max values
+    kgriv12 |> 
+      slice_max(KRSEQ01,n = 1,with_ties = F,by = Subject) |> 
+      select(Subject, `Peak Time` = `Ketone Date Time`),
+      by = join_by(Subject)) |> 
+  mutate(`Time < 1 mmol/L` = case_when(max(KRSEQ01) > 1 & `Ketone Date Time` > `Peak Time` &
+                                        KRSEQ01 < 1  ~ `Ketone Date Time`)) |> View()
+
 ```
 
 ```{r}
@@ -157,7 +175,9 @@ kgriv12 |>
    mutate(`Peak Time` = case_when(ID == TRUE & row_number() == 1 ~ `Ketone Date Time`),.after = `Ketone Date Time`) |> 
    ungroup(ID) |> 
    fill(`Peak Time`,.direction = "downup") |> 
-   # Find 
+   # Find the time after peak when Ketone < 1 mmol/L
+   mutate(`Time < 1 mmol/L` = case_when(max(KRSEQ01) > 1 & `Ketone Date Time` > `Peak Time` &
+                                        KRSEQ01 < 1  ~ `Ketone Date Time`)) |> View()
 ```
 
 

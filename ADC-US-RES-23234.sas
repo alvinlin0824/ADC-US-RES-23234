@@ -18,7 +18,7 @@ run;
 
 data iv2;
 set edc.iv2 (where = (^missing(IVID01)));
-keep Subject IVID01--IVVAL01;
+keep Subject IVID01 IVTM01 IVVAL01;
 run;
 
 /*Sort IV1 and IV2*/
@@ -160,8 +160,9 @@ data ketone;
 merge kgrivmhcad first_ketone last_ketone1 peak_ketone;
 by subject;
 time_diff = (dtm - first_test_dtm)/3600;
-time_diff1 = (peak_test_dtm - first_test_dtm)/3600;
-time_diff2 = (last_test_dtm - peak_test_dtm)/3600;
+time_diif1 = (dtm - peak_test_dtm)/3600;
+duration_to_peak = (peak_test_dtm - first_test_dtm)/3600;
+duration_to_last = (last_test_dtm - peak_test_dtm)/3600;
 run;
 
 /*Filter the peak ketone results*/
@@ -253,21 +254,21 @@ Proc means data = ketone maxdec=2 nonobs;
 title;
 var KRSEQ01;
 class Subject;
-where IVVAL01 = "Valid";
+where IVVAL01 = "Valid" and ^missing(KRSEQ01);
 run;
 
-proc print data = analysis_ketone(rename = (subject = Subject first_test_dtm = 'Start Time'n peak_test_dtm = 'Peak Time'n time_diff1 = 'Time to Peak(Hours)'n)) noobs;
-format 'Time to Peak(Hours)'n 8.2;
+proc print data = analysis_ketone(rename = (subject = Subject first_test_dtm = 'Start Time'n peak_test_dtm = 'Peak Time'n last_test_dtm = 'Time once < 1 mmol/L'n duration_to_peak = 'Time to Peak(Hours)'n duration_to_last = 'Time to < 1 mmol/L(Hours)'n)) noobs;
+format 'Time to Peak(Hours)'n 'Time to < 1 mmol/L(Hours)'n 8.2;
 where ^missing(Peak);
-var Subject 'Start Time'n 'Peak Time'n 'Time to Peak(Hours)'n;
+var Subject 'Start Time'n 'Peak Time'n 'Time once < 1 mmol/L'n 'Time to Peak(Hours)'n 'Time to < 1 mmol/L(Hours)'n;
 run;
 
 proc tabulate data = analysis_ketone;
 where IVVAL01 = "Valid" and ^missing(first_below);
 class Visit;
-var KRSEQ01 time_diff1 time_diff2;
-table  Visit, KRSEQ01 = "Maximum Ketone Level Achieved"*(n mean stddev) time_diff1 = "Time(Hours) To Peak Ketone Level From First Test"*(n mean stddev)
-time_diff2 = "Time(Hours) From Peak Ketone Level to Ketone Level < 1 mmol"*(n mean stddev);
+var KRSEQ01 duration_to_peak duration_to_last;
+table  Visit, KRSEQ01 = "Maximum Ketone Level Achieved"*(n mean stddev) duration_to_peak = "Time(Hours) To Peak Ketone Level From First Test"*(n mean stddev)
+duration_to_last = "Time(Hours) From Peak Ketone Level to Ketone Level < 1 mmol/L"*(n mean stddev);
 run;
 
 goptions device=png target=png rotate=landscape hpos=90 vpos=40 gwait=0 aspect=0.5
@@ -281,9 +282,33 @@ title1 "Ketone Reference";
 styleattrs datacontrastcolors = (magenta green blue orange lilac lime marron olive steel violet yellow);
 	series x = time_diff y = krseq01 / group = subject groupdisplay = overlay markers markerattrs = (size = 3 symbol = dot) name = "REAL";
 	yaxis label = "Ketone Test Result (mmol/L)" values=(0 to 5 by 0.5);
-	xaxis label = "Time(Hours)" INTERVAL = HOUR VALUESROTATE=DIAGONAL2;
+	xaxis label = "Time(Hours)" values=(0 to 8 by 1) INTERVAL = HOUR VALUESROTATE=DIAGONAL2;
 	keylegend / title = "Subject ID";
 run;
+
+/*Time from baseline to peak*/
+proc sgplot data = ketone noautolegend cycleattrs;
+where ^missing(dtm) and IVVAL01 = "Valid" and dtm <= peak_test_dtm;
+title1 "Time From Baseline To Peak";
+styleattrs datacontrastcolors = (magenta green blue orange lilac lime marron olive steel violet yellow);
+	series x = time_diff y = krseq01 / group = subject groupdisplay = overlay markers markerattrs = (size = 3 symbol = dot) name = "REAL";
+	yaxis label = "Ketone Test Result (mmol/L)" values=(0 to 5 by 0.5);
+	xaxis label = "Time(Hours)" values=(0 to 8 by 1) INTERVAL = HOUR VALUESROTATE=DIAGONAL2;
+	keylegend / title = "Subject ID";
+run;
+
+/*Time from peak to 1 mmol*/
+proc sgplot data = ketone noautolegend cycleattrs;
+where ^missing(dtm) and IVVAL01 = "Valid" and ^missing(duration_to_last);
+title1 "Time From Peak To < 1 mmol/L";
+styleattrs datacontrastcolors = (magenta green blue orange lilac lime marron olive steel violet yellow);
+	series x = time_diif1 y = krseq01 / group = subject groupdisplay = overlay markers markerattrs = (size = 3 symbol = dot) name = "REAL";
+	yaxis label = "Ketone Test Result (mmol/L)" values=(0 to 5 by 0.5);
+	xaxis label = "Time(Hours)" values=(0 to 8 by 1) INTERVAL = HOUR VALUESROTATE=DIAGONAL2;
+	keylegend / title = "Subject ID";
+run;
+
+
 ODS RTF CLOSE;
 
 /*Profile Plot*/
