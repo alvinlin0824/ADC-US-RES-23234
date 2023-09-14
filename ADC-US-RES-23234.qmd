@@ -131,13 +131,31 @@ kgriv12 <- kgr12 |>
 ```
 
 ```{r}
+#| label: Get Time duration
+ketone <- kgriv12 |> 
+          left_join(
+            # Find the Peak Time and consider duplicated max values
+            kgriv12 |> 
+              slice_max(KRSEQ01,n = 1,with_ties = F,by = Subject) |> 
+              select(Subject, `Peak Time` = `Ketone Date Time`),
+              by = join_by(Subject)) |> 
+          mutate(`Time < 1 mmol/L` = case_when(max(KRSEQ01) > 1 & 
+                                             `Ketone Date Time` > `Peak Time` & 
+                                              KRSEQ01 < 1  ~ `Ketone Date Time`),
+                 `Time < 1 mmol/L` = first(`Time < 1 mmol/L`,na_rm = T),
+                 duration_to_peak = as.numeric(difftime(`Ketone Date Time`,first(`Ketone Date Time`),units = "hours")),
+                 duration_to_below_1mmol = as.numeric(difftime(`Time < 1 mmol/L`,`Peak Time` ,units = "hours")),.by = Subject) 
+```
+
+```{r}
+#| label: Summary for Ketone Reference
 summary_calculation <- list(Mean = ~ mean(.x, na.rm = T),
                             Median = ~ median(.x, na.rm = T),
                             SD = ~ sd(.x, na.rm = T),
                             Min = ~ min(.x, na.rm = T),
                             Max = ~ max(.x, na.rm = T),
                             N = ~ sum(!is.na(.x),na.rm = T))
-kgriv12 |>
+ketone |>
    group_by(Subject) |>
    summarise_at("KRSEQ01",summary_calculation) |>
    gt() |>
@@ -148,49 +166,69 @@ kgriv12 |>
 ```
 
 ```{r}
-kgriv12 |> 
-    filter(max(KRSEQ01) > 1 & `Ketone Date Time` > `Peak Time` & KRSEQ01 < 1) |> View()
+#| label: Summary for Peak
+#| column: body
+ketone |> 
+     filter(KRSEQ01 == max(KRSEQ01) & !is.na(`Time < 1 mmol/L`) ,.by = Subject) |> 
+     slice_min(`Ketone Date Time`, n = 1, with_ties = F,by = Subject) |> 
+     summarise(across(c(KRSEQ01,duration_to_peak,duration_to_below_1mmol),summary_calculation[c(1,3,6)],.names = "{.col} {.fn}")) |> 
+     gt() |> 
+     cols_align(align = "center") |>
+     tab_spanner(label = "Maximum Ketone Level Achieved",columns = c("KRSEQ01 Mean","KRSEQ01 SD","KRSEQ01 N")) |>
+     tab_spanner(label = "Time(Hours) To Peak Ketone Level From First Test",columns = c("duration_to_peak Mean","duration_to_peak SD","duration_to_peak N")) |>
+     tab_spanner(label = "Time(Hours) From Peak Ketone Level to Ketone Level < 1 mmol/L",columns = c("duration_to_below_1mmol Mean","duration_to_below_1mmol SD","duration_to_below_1mmol N")) |>
+     fmt_number(columns = contains(c("Mean","SD")),decimals = 2) |>
+     cols_label(
+      `KRSEQ01 Mean` = "Mean",`KRSEQ01 SD` = "SD",
+      `KRSEQ01 N` = "N",
+      `duration_to_peak Mean` = "Mean",`duration_to_peak SD` = "SD",`duration_to_peak N` = "N",
+      `duration_to_below_1mmol Mean` = "Mean",`duration_to_below_1mmol SD` = "SD",
+      `duration_to_below_1mmol N` =  "N") |>
+      opt_stylize(style = 6, color = "blue")
 ```
 
 ```{r}
-kgriv12 |> 
-  left_join(
-    # Find the Peak Time and consider duplicated max values
-    kgriv12 |> 
-      slice_max(KRSEQ01,n = 1,with_ties = F,by = Subject) |> 
-      select(Subject, `Peak Time` = `Ketone Date Time`),
-      by = join_by(Subject)) |> 
-  mutate(`Time < 1 mmol/L` = case_when(max(KRSEQ01) > 1 & `Ketone Date Time` > `Peak Time` &
-                                        KRSEQ01 < 1  ~ `Ketone Date Time`)) |> View()
-
-```
-
-```{r}
-kgriv12 |>
-   filter(IVVAL01 == "Valid") |> 
-   group_by(Subject) |> 
-   # Find the Peak Time and consider duplicated max values
-   mutate(ID = KRSEQ01 == max(KRSEQ01)) |> 
-   group_by(ID,.add = T) |> 
-   mutate(`Peak Time` = case_when(ID == TRUE & row_number() == 1 ~ `Ketone Date Time`),.after = `Ketone Date Time`) |> 
-   ungroup(ID) |> 
-   fill(`Peak Time`,.direction = "downup") |> 
-   # Find the time after peak when Ketone < 1 mmol/L
-   mutate(`Time < 1 mmol/L` = case_when(max(KRSEQ01) > 1 & `Ketone Date Time` > `Peak Time` &
-                                        KRSEQ01 < 1  ~ `Ketone Date Time`)) |> View()
-```
-
-
-```{r}
-kgriv12 |>
-   filter(IVVAL01 == "Valid") |>
+#| label: Ketone Reference Plot
+#| fig-align: center
+ketone |>
    mutate(eTime = as.numeric(difftime(`Ketone Date Time`,first(`Ketone Date Time`),units = "hours")),.by = Subject) |> 
   ggplot(aes(x = eTime, y = KRSEQ01, color = Subject)) +
   geom_point() + 
   geom_line() + 
-  labs(title = "Ketone Reference",x = "Time(Hrs)", y = "Ketone Test Result (mmol/L)") +
+  geom_hline(yintercept = 1,linewidth = 1) + 
+  labs(title = "Ketone Reference",x = "Time(Hours)", y = "Ketone Test Result (mmol/L)") +
   theme_bw() +
   theme(panel.grid.major.y = element_blank(),panel.grid.minor.y = element_blank(),legend.position = "bottom",plot.title = element_text(hjust = 0.5))
+```
+
+```{r}
+#| label: Time From Baseline To Peak
+#| fig-align: center
+ketone |>
+  filter(`Peak Time` >= `Ketone Date Time`,.by = Subject) |> 
+  ggplot(aes(x = duration_to_peak, y = KRSEQ01, color = Subject)) +
+  geom_point() +
+  geom_line() +
+  labs(title = "Time From Baseline To Peak",x = "Time(Hours)", y = "Ketone Test Result (mmol/L)") +
+  theme_bw() +
+  theme(panel.grid.major.y = element_blank(),panel.grid.minor.y = element_blank(),legend.position = "bottom",plot.title = element_text(hjust = 0.5))
+```
+
+```{r}
+#| label: Time From Peak To 1 mmol/L
+#| fig-align: center
+ketone |>
+  filter(`Peak Time` <= `Ketone Date Time` & !is.na(duration_to_below_1mmol) >= 1,.by = Subject) |> 
+  ggplot(aes(x = as.numeric(difftime(`Ketone Date Time`,`Peak Time`,units = "hours")), y = KRSEQ01, color = Subject)) +
+  geom_point() +
+  geom_line() +
+  labs(title = "Time From Peak To 1 mmol/L",x = "Time(Hours)", y = "Ketone Test Result (mmol/L)") +
+  theme_bw() +
+  theme(panel.grid.major.y = element_blank(),panel.grid.minor.y = element_blank(),legend.position = "bottom",plot.title = element_text(hjust = 0.5))
+```
+
+```{r}
+knitr::knit_exit()
 ```
 
 ```{r}
