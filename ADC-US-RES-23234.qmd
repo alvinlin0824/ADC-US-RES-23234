@@ -126,7 +126,9 @@ kgr12 <- kgr2 |>
 kgriv12 <- kgr12 |> 
            left_join(iv12, 
                      by = join_by(Subject == Subject,KRSEQ02 == IVID01, KRDTC01 == IVDTC01)) |> 
-           mutate(`Ketone Date Time` = ymd_hm(str_c(KRDTC01,KRDTC02,sep = " ")),.keep = "unused",.before = KRSEQ03) |> 
+           mutate(`Ketone Date Time` = ymd_hm(str_c(KRDTC01,KRDTC02,sep = " ")),
+                  `Glucose Date Time` = ymd_hm(str_c(KRDTC01,KRDTC03,sep = " "))
+                  ,.keep = "unused",.before = KRSEQ03) |> 
            filter(IVVAL01 == "Valid")
 ```
 
@@ -149,6 +151,7 @@ ketone <- kgriv12 |>
 
 ```{r}
 #| label: Summary for Ketone Reference
+#| eval: false
 summary_calculation <- list(Mean = ~ mean(.x, na.rm = T),
                             Median = ~ median(.x, na.rm = T),
                             SD = ~ sd(.x, na.rm = T),
@@ -168,6 +171,7 @@ ketone |>
 ```{r}
 #| label: Summary for Peak
 #| column: body
+#| eval: false
 ketone |> 
      filter(KRSEQ01 == max(KRSEQ01) & !is.na(`Time < 1 mmol/L`) ,.by = Subject) |> 
      slice_min(`Ketone Date Time`, n = 1, with_ties = F,by = Subject) |> 
@@ -190,6 +194,7 @@ ketone |>
 ```{r}
 #| label: Ketone Reference Plot
 #| fig-align: center
+#| eval: false
 ketone |>
    mutate(eTime = as.numeric(difftime(`Ketone Date Time`,first(`Ketone Date Time`),units = "hours")),.by = Subject) |> 
   ggplot(aes(x = eTime, y = KRSEQ01, color = Subject)) +
@@ -204,6 +209,7 @@ ketone |>
 ```{r}
 #| label: Time From Baseline To Peak
 #| fig-align: center
+#| eval: false
 ketone |>
   filter(`Peak Time` >= `Ketone Date Time`,.by = Subject) |> 
   ggplot(aes(x = duration_to_peak, y = KRSEQ01, color = Subject)) +
@@ -217,6 +223,7 @@ ketone |>
 ```{r}
 #| label: Time From Peak To 1 mmol/L
 #| fig-align: center
+#| eval: false
 ketone |>
   filter(`Peak Time` <= `Ketone Date Time` & !is.na(duration_to_below_1mmol) >= 1,.by = Subject) |> 
   ggplot(aes(x = as.numeric(difftime(`Ketone Date Time`,`Peak Time`,units = "hours")), y = KRSEQ01, color = Subject)) +
@@ -228,12 +235,8 @@ ketone |>
 ```
 
 ```{r}
-knitr::knit_exit()
-```
-
-```{r}
 #| label: Import ketone events, anaplus files csv
-file_list_ketone <- dir_ls(gsub("\\\\", "/", r"(C:\UDP\OutputFiles\Output_2023-09-06-15-21\outputs)"),recurse = T,glob = "*events.csv|*anaPlus.csv")
+file_list_ketone <- dir_ls(gsub("\\\\", "/", r"(C:\UDP\OutputFiles\Output_2023-09-19-13-56\outputs)"),recurse = T,glob = "*events.csv|*anaPlus.csv")
 ```
 
 ```{r}
@@ -363,6 +366,9 @@ upload_ketone <- mobi1(events = events_path_ketone,gluc = anaplus_path_ketone) |
        # str_extract(Path,regex("(?<=/Mobi00)[:digit:]{5}")),
        #    .default = str_extract(Path,regex("(?<=/Mobi)[:digit:]{7}"))),
        #            `Condition ID` = str_to_upper(str_extract(Path,regex(".{3}(?=_[:digit:]{6}_[:digit:]{6})")))) |> 
+                  mutate(`Date Time` = case_when(`Sensor Serial Number` == "089CR2FAX" ~ `Date Time` + dhours(2),
+                                                 `Sensor Serial Number` == "089CR2ELD" ~ `Date Time` - dhours(1),
+                                                  .default = `Date Time`)) |> 
   arrange(`Subject ID`) 
   # saveRDS(gsub("\\\\", "/", r"(\\oneabbott.com\dept\ADC\Technical_OPS\Clinical_Affairs\Clinical Study Files\Apollo\ADC-US-RES-23234_IDE Pump Suspension Study\Statistics\Programs\Datasets\AL\ketone.rds)"))
 ```
@@ -381,23 +387,25 @@ breakdown_condition_plot <- function(Id) {
            # multiple and consecutive wears
            arrange(`Date Time`),
     type = "line",
+    yAxis = 0,
     hcaes(x = datetime_to_timestamp(`Date Time`), y = ANA/100, group = `Condition ID`)) %>%
-    # Sibionics data 
-    # hc_add_series(
-    # name = "Sibionics",
-    # data = Sib %>%
-    #        filter(`Subject ID` == Id),
-    # type = "line",
-    # color = "#7FFF00",
-    # # marker = list(symbol = "triangle"),
-    # hcaes(x = datetime_to_timestamp(`Date Time`), y = Gl)) %>%
-    # BG data 
+    # Glucose Reference 
+    hc_add_series(
+    name = "Glucose Test Result",
+    data = kgriv12 %>%
+           filter(Subject == Id),
+    type = "scatter",
+    yAxis = 1,
+    color = "#9900FF",
+    marker = list(symbol = "triangle"),
+    hcaes(x = datetime_to_timestamp(`Glucose Date Time`), y = KRSEQ03)) %>%
+    # Ketone Reference 
     hc_add_series(
     name = "Ketone Test Result",
     data = kgriv12 %>%
-           filter(IVVAL01 == "Valid") %>%
            filter(Subject == Id),
     type = "scatter",
+    yAxis = 0,
     color = "#FF0000",
     # marker = list(symbol = "triangle"),
     hcaes(x = datetime_to_timestamp(`Ketone Date Time`), y = KRSEQ01)) %>% 
@@ -406,7 +414,10 @@ breakdown_condition_plot <- function(Id) {
              type = "datetime", 
              dateTimeLabelFormats = list(day = '%d %b %y')) %>%
     # Add Y axis
-    hc_yAxis(title = list(text = "Ketone Test Result (mmol/L)")) %>%
+    # Add new y axis
+    hc_yAxis_multiples(list(title = list(text = "Ketone Test Result(mmol/L)"), opposite = FALSE),
+                      list(showLastLabel = FALSE, opposite = TRUE, title = list(text = "Glucose Test Result(mg/dL)"))) %>%
+    # hc_yAxis(title = list(text = "Ketone Test Result (mmol/L)")) %>%
     # Change the size of marker
     hc_plotOptions(scatter = list(
                             marker = list(radius = 1.9, symbol = "circle"))) %>%
@@ -416,27 +427,18 @@ breakdown_condition_plot <- function(Id) {
     hc_chart(zoomType = "xy") %>% 
     # Add navigator
     hc_navigator(enabled = TRUE)
-    # {if (UUU %>%
-    #      filter(Type != "SENSOR_STARTED (58)") %>%
-    #      filter(`Subject ID` == Id, `Condition ID` == Condition) %>% 
-    #      nrow() != 0) 
-    #      hc_navigator(.,enabled = TRUE) else .}  %>%
-    # {if (UUU %>%
-    #      filter(Type != "SENSOR_STARTED (58)") %>%
-    #      filter(`Subject ID` == Id, `Condition ID` == Condition) %>% 
-    #      nrow() == 0) 
-    #      hc_navigator(.,enabled = TRUE,series = list(color = "white")) else .} 
 }
 ```
 
 ```{r}
-#| eval: false
-breakdown_condition_plot(Id = "90008")
+#| column: screen
+breakdown_condition_plot(Id = "1330001")
 ```
 
 ```{r}
 #| label: For Loop Plots
 #| column: screen
+#| eval: false
 plots <- list()
 for (i in 1:n_distinct(kgriv12$Subject)){
   plots[[i]] <- breakdown_condition_plot(Id = unique(kgriv12$Subject)[i])

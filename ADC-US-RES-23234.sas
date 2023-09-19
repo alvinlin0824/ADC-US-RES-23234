@@ -329,7 +329,6 @@ styleattrs datacontrastcolors = (magenta green blue orange lilac lime marron oli
 	keylegend / title = "Subject ID";
 run;
 
-
 ODS RTF CLOSE;
 
 /*Profile Plot*/
