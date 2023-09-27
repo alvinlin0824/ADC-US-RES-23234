@@ -254,17 +254,20 @@ ketone |>
 
 ```{r}
 #| label: Import ketone events, anaplus files csv
+#| eval: false
 file_list_ketone <- dir_ls(gsub("\\\\", "/", r"(C:\UDP\OutputFiles\Output_2023-09-19-13-56\outputs)"),recurse = T,glob = "*events.csv|*anaPlus.csv")
 ```
 
 ```{r}
 #| label: Ketone Filter events, anaPlus
+#| eval: false
 events_path_ketone <- filter_path(file_path = file_list_ketone)[[1]]
 anaplus_path_ketone <- file_list_ketone[str_detect(file_list_ketone,"anaPlus.csv")]
 ```
 
 ```{r}
 #| warning: false
+#| eval: false
 mobi1 <- function(events, gluc, index = NULL) {
 
   # Individual File
@@ -379,7 +382,8 @@ mobi1 <- function(events, gluc, index = NULL) {
 ```{r}
 #| label: Output lac.rds
 #| warning: false
-upload_ketone <- mobi1(events = events_path_ketone,gluc = anaplus_path_ketone) |> 
+#| eval: false
+mobi1(events = events_path_ketone,gluc = anaplus_path_ketone) |> 
        #          dplyr::mutate(`Subject ID` = case_when(str_extract(Path,regex("(?<=/Mobi)[:digit:]{2}")) == "00" ~ 
        # str_extract(Path,regex("(?<=/Mobi00)[:digit:]{5}")),
        #    .default = str_extract(Path,regex("(?<=/Mobi)[:digit:]{7}"))),
@@ -387,8 +391,13 @@ upload_ketone <- mobi1(events = events_path_ketone,gluc = anaplus_path_ketone) |
                   mutate(`Date Time` = case_when(`Sensor Serial Number` == "089CR2FAX" ~ `Date Time` + dhours(2),
                                                  `Sensor Serial Number` == "089CR2ELD" ~ `Date Time` - dhours(1),
                                                   .default = `Date Time`)) |> 
-  arrange(`Subject ID`) 
-  # saveRDS(gsub("\\\\", "/", r"(\\oneabbott.com\dept\ADC\Technical_OPS\Clinical_Affairs\Clinical Study Files\Apollo\ADC-US-RES-23234_IDE Pump Suspension Study\Statistics\Programs\Datasets\AL\ketone.rds)"))
+  arrange(`Subject ID`) |>  
+  saveRDS(gsub("\\\\", "/", r"(\\oneabbott.com\dept\ADC\Technical_OPS\Clinical_Affairs\Clinical Study Files\Apollo\ADC-US-RES-23234_IDE Pump Suspension Study\Statistics\Programs\Datasets\AL\ketone.rds)"))
+```
+
+```{r}
+#| label: Import ketone.rds
+upload_ketone <- readRDS(gsub("\\\\", "/", r"(\\oneabbott.com\dept\ADC\Technical_OPS\Clinical_Affairs\Clinical Study Files\Apollo\ADC-US-RES-23234_IDE Pump Suspension Study\Statistics\Programs\Datasets\AL\ketone.rds)"))
 ```
 
 ```{r}
