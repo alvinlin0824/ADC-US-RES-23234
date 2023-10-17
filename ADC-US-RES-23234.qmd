@@ -255,7 +255,7 @@ ketone |>
 ```{r}
 #| label: Import ketone events, anaplus files csv
 #| eval: false
-file_list_ketone <- dir_ls(gsub("\\\\", "/", r"(C:\UDP\OutputFiles\Output_2023-09-19-13-56\outputs)"),recurse = T,glob = "*events.csv|*anaPlus.csv")
+file_list_ketone <- dir_ls(gsub("\\\\", "/", r"(C:\UDP\OutputFiles\Output_2023-10-16-09-55\outputs)"),recurse = T,glob = "*events.csv|*anaPlus.csv")
 ```
 
 ```{r}
@@ -411,6 +411,7 @@ breakdown_condition_plot <- function(Id) {
     data = upload_ketone %>%
            filter(`Subject ID` == Id,
                   Type == "906", year(`Date Time`) == 2023) %>%
+           slice(seq(1,n(),5),.by = c(`Sensor Serial Number`)) %>%
            # multiple and consecutive wears
            arrange(`Date Time`),
     type = "line",
@@ -459,16 +460,16 @@ breakdown_condition_plot <- function(Id) {
 
 ```{r}
 #| column: screen
-breakdown_condition_plot(Id = "1330001")
+#| eval: false
+breakdown_condition_plot(Id = "90004")
 ```
 
 ```{r}
 #| label: For Loop Plots
 #| column: screen
-#| eval: false
 plots <- list()
-for (i in 1:n_distinct(kgriv12$Subject)){
-  plots[[i]] <- breakdown_condition_plot(Id = unique(kgriv12$Subject)[i])
+for (i in 1:n_distinct(upload_ketone$`Subject ID`)){
+  plots[[i]] <- breakdown_condition_plot(Id = unique(upload_ketone$`Subject ID`)[i])
 }
 htmltools::tagList(plots)
 ```
