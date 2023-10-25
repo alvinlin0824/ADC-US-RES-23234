@@ -43,8 +43,6 @@ colorize <- function(x, color) {
 
 [Statistics Data Queries](https://abbott.sharepoint.com/teams/adc-rnd/Clinical_Affairs/Shared%20Documents/Forms/AllItems.aspx?originalPath=aHR0cHM6Ly9hYmJvdHQuc2hhcmVwb2ludC5jb20vOmY6L3QvYWRjLXJuZC9DbGluaWNhbF9BZmZhaXJzL0VxQVVMSVZNWmoxRWdFUHppbFYyXy1zQjlwcnpnWk5mY0xTbE9UcWVIT3JfNVE%5FcnRpbWU9dHNNSHg3RjUxMGc&id=%2Fteams%2Fadc%2Drnd%2FClinical%5FAffairs%2FShared%20Documents%2F09%20Data%20Management%2FStatistics%20Data%20Queries%2FADC%2DUS%2DRES%2D23234&viewid=314c97dd%2D7a24%2D48d8%2Dbb69%2D24b617321996)
 
-`r htmltools::a("Adverse Event Report",href = gsub("\\\\", "/", r"(\\oneabbott.com\dept\ADC\Technical_OPS\Clinical_Affairs\Clinical Study Files\Apollo\ADC-US-RES-23234_IDE Pump Suspension Study\Case Report Forms\Version B\Approved\pdf\AE_Report.pdf)"))`
-
 # **CAD2 Review**
 
 `r htmltools::a("Clinic Visit 2 Admission and Discharge",href = gsub("\\\\", "/", r"(\\oneabbott.com\dept\ADC\Technical_OPS\Clinical_Affairs\Clinical Study Files\Apollo\ADC-US-RES-23234_IDE Pump Suspension Study\Case Report Forms\Version B\Approved\pdf\Clinic Visit 2_Admission_Discharge.pdf)"))`
@@ -58,7 +56,8 @@ cad2 <- cad2 |>
         arrange(Subject)
 ```
 
-```{r cad2, eval=is.character(params$data3)}
+```{r}
+#| label: CAD2
 htmltools::browsable(
    tagList(
     tags$button(
@@ -76,7 +75,7 @@ cad2$DSDTC02 < cad2$DSDTC01 & !str_detect(cad2$DSYN04,"Not required if Date conf
 # Urine Pregnancy Test Result:
 !str_detect(cad2$DSORES01,regex("Positive result|Negative result|Not Applicable")) |
 # If Not Applicable, Please check one of the reasons: should not be blank
-str_detect(cad2$DSORES01,regex("Not Applicable")) & str_detect(cad2$DSORES02,"^$|pattern") |
+str_detect(cad2$DSORES01,regex("Not Applicable",ignore_case = T)) & !str_detect(cad2$DSORES02,regex("Subject was born male|Subject is post-menopausal|Subject has had a hysterectomy",ignore_case = T)) |
 # Was at least one sensor working properly upon discharge?
 !str_detect(cad2$DSYN05,regex("Yes|No",ignore_case = T))
 ,] %>%
@@ -102,22 +101,18 @@ str_detect(cad2$DSORES01,regex("Not Applicable")) & str_detect(cad2$DSORES02,"^$
 
 `r knitr::asis_output("DSORES01(Urine Pregnancy Test Result:) should be either Positive result, Negative result or Not Applicable")` `r colorize(cad2[!str_detect(cad2$DSORES01,regex("Positive result|Negative result|Not Applicable")),]$Subject,"red")`
 
-`r knitr::asis_output("If DSORES01(Urine Pregnancy Test Result:) is Not Applicable, DSORES02(Please check one of the reasons:) should not be blank")` `r colorize(cad2[str_detect(cad2$DSORES01,regex("Not Applicable")) & str_detect(cad2$DSORES02,"^$|pattern"),]$Subject,"red")`
+`r knitr::asis_output("If DSORES01(Urine Pregnancy Test Result:) is Not Applicable, DSORES02(Please check one of the reasons:) should be either Subject was born male, Subject is post-menopausal or Subject has had a hysterectomy")` `r colorize(cad2[str_detect(cad2$DSORES01,regex("Not Applicable")) & !str_detect(cad2$DSORES02,regex("Subject was born male|Subject is post-menopausal|Subject has had a hysterectomy",ignore_case = T)),]$Subject,"red")`
 
 `r knitr::asis_output("DSYN05(Was at least one sensor confirmed to be working properly?) should be either Yes or No")` `r colorize(cad2[!str_detect(cad2$DSYN05,regex("Yes|No",ignore_case = T)),]$Subject,"red")`
 
-<!-- # CAD3 Review -->
 
-<!-- [Clinic Visit 3 Admission and Discharge](//oneabbott.com/dept/ADC/Technical_OPS/Clinical_Affairs/Clinical Study Files/Apollo/ADC-US-RES-21217 Vitamin C Events/Case Report Forms/Version A/Approved/PDF_file/CV3_Admission_Discharge.pdf) -->
+# **CAD3 Review**
 
-`r if(is.character(params$data4)){knitr::asis_output("# **CAD3 Review**")}`
-
-`r if(is.character(params$data4)){htmltools::a("Clinic Visit 3 Admission and Discharge",href = "//oneabbott.com/dept/ADC/Technical_OPS/Clinical_Affairs/Clinical Study Files/Apollo/ADC-US-RES-22225 Multi-Analyte Studies/Case Report Forms/Version_G/PDF/CV3_Admission.pdf")}`
+`r htmltools::a("Clinic Visit 3 Admission and Discharge",href = gsub("\\\\", "/", r"(\\oneabbott.com\dept\ADC\Technical_OPS\Clinical_Affairs\Clinical Study Files\Apollo\ADC-US-RES-23234_IDE Pump Suspension Study\Case Report Forms\Version B\Approved\pdf\Clinic Visit 2_Admission_Discharge.pdf)"))`
 
 ```{r}
-# cad3 <- read_sas(gsub("\\\\", "/", r"(\\wf00168p.oneabbott.com\data1\CDM\ADC-US-RES-21217\SE02\Openclinica\Current\cad3.sas7bdat)"))
-# cad3 <- read_sas(gsub("\\\\", "/", r"(\\wf00168p.oneabbott.com\data1\CDM\ADC-US-VAL-21216\Openclinica\Current\cad3.sas7bdat)"))
-# cad3 <- read_sas(gsub("\\\\", "/", r"(\\wf00168p.oneabbott.com\data1\CDM\ADC-US-RES-22225\SE23_24_Glu\OpenClinica\Current\cad3.sas7bdat)"))
+#| label: SAS cad3
+cad3 <- read_sas(gsub("\\\\", "/", r"(\\wf00168p.oneabbott.com\data1\CDM\ADC-US-RES-23234\OpenClinica\Current\cad3.sas7bdat)"))
 ```
 
 ```{r Load cad3, eval=is.character(params$data4)}
