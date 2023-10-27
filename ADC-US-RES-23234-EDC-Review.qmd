@@ -30,6 +30,7 @@ column: screen
 library(tidyverse)
 library(haven)
 library(htmltools)
+library(reactablefmtr)
 library(reactable)
 ```
 
@@ -613,6 +614,7 @@ ie001 <- ie001 |>
 ```
 
 ```{r}
+#| label: IE001
 htmltools::browsable(
    tagList(
     tags$button(
@@ -624,14 +626,6 @@ ie001[
 (is.na(ie001$IEDTC01) | str_detect(ie001$IEDTC01,"^$|pattern")) |
 # Length of Visit Date
 str_length(ie001$IEDTC01) != median(str_length(ie001$IEDTC01),na.rm = T)    |
-# Date informed consent form was signed
-# (is.na(ie$IEDTC02) | str_detect(ie$IEDTC02,"^$|pattern")) |
-# # Length of Date informed consent form was signed
-# str_length(ie$IEDTC02) != median(str_length(ie$IEDTC02),na.rm = T)                              |
-# # Time Informed Consent Form was signed
-# (is.na(ie$IETM01) | str_detect(ie$IETM01,"^$|pattern"))   |
-# # Length of Time Informed Consent Form was signed         
-# str_length(ie$IETM01) != median(str_length(ie$IETM01),na.rm = T)                          |
 # Did Subject meet all the Inclusion Criteria and none of the Exclusion Criteria?
 !str_detect(ie001$IEORES01,regex("Yes|No",ignore_case = T))       | 
 # If no, Please provide the Inclusion/Exclusion Number(s) not satisfied
@@ -656,28 +650,22 @@ str_detect(ie001$IEORES01,regex("No",ignore_case = T)) & str_detect(ie001$IEORES
 
 `r knitr::asis_output("If IEORES01(Did Subject meet all the Inclusion Criteria and none of the Exclusion Criteria?) is No, so IEORES02(If No Please provide the Inclusion/Exclusion Number(s) not satisfied) should not be blank")` `r colorize(ie001[str_detect(ie001$IEORES01,regex("No",ignore_case = T)) & str_detect(ie001$IEORES02,"^$|pattern"),]$Subject,"red")`
 
-<!-- # IV1 Review -->
 
-<!-- [IV Sample Collection](//oneabbott.com/dept/ADC/Technical_OPS/Clinical_Affairs/Clinical Study Files/Apollo/ADC-US-RES-21217 Vitamin C Events/Case Report Forms/Version A/Approved/PDF_file/IV_Sample_Collection.pdf) -->
+# **IV1 Review**
 
-`r if(is.character(params$data13)){knitr::asis_output("# **IV1 Review**")}`
-
-`r if(is.character(params$data13)){htmltools::a("IV Sample Collection",href = "//oneabbott.com/dept/ADC/Technical_OPS/Clinical_Affairs/Clinical Study Files/Apollo/ADC-US-RES-22225 Multi-Analyte Studies/Case Report Forms/Version_G/PDF/IV_Sample_Collection.pdf")}`
+`r htmltools::a("IV Sample Collection",href = gsub("\\\\", "/", r"(\\oneabbott.com\dept\ADC\Technical_OPS\Clinical_Affairs\Clinical Study Files\Apollo\ADC-US-RES-23234_IDE Pump Suspension Study\Case Report Forms\Version B\Approved\pdf\IV_Sample_Collection.pdf)"))`
 
 ```{r}
-# iv1 <- read_sas(gsub("\\\\", "/", r"(\\wf00168p.oneabbott.com\data1\CDM\ADC-US-RES-21217\SE01\Openclinica\Current\iv1.sas7bdat)"))
-# iv1 <- read_sas(gsub("\\\\", "/", r"(\\wf00168p.oneabbott.com\data1\CDM\ADC-US-VAL-21216\Openclinica\Current\iv1.sas7bdat)"))
-```
-
-```{r Load iv1, eval=is.character(params$data13)}
-iv1 <- read_sas(params$data13)
-iv1 <- iv1 %>% 
-       filter(!str_detect(IVYN01,regex("CHECK HERE IF NO DATA RECORDED|no_data_recorded",ignore_case = T))) %>%
-       mutate(Subject = as.character(Subject)) %>% 
+#| label: SAS IV1
+iv1 <- read_sas(gsub("\\\\", "/", r"(\\wf00168p.oneabbott.com\data1\CDM\ADC-US-RES-23234\OpenClinica\Current\iv1.sas7bdat)"))
+iv1 <- iv1 |>  
+       filter(!str_detect(IVYN01,regex("CHECK HERE IF NO DATA RECORDED|no_data_recorded",ignore_case = T))) |> 
+       mutate(Subject = as.character(Subject)) |>  
        arrange(Subject)
 ```
 
-```{r iv1, eval=is.character(params$data13)}
+```{r}
+#| label: IV1
 htmltools::browsable(
    tagList(
     tags$button(
@@ -690,7 +678,7 @@ iv1[
 # Length of IV Draw Date
 str_length(iv1$IVDTC01) != median(str_length(iv1$IVDTC01),na.rm = T),] %>% 
   select(-c(`StudyStatus`,`SubjectID`:`__ITEMGROUPREPEATKEY`)) %>%
-  {if (params$label) (sjlabelled::label_to_colnames(.)) else .} %>%
+  # {if (params$label) (sjlabelled::label_to_colnames(.)) else .} %>%
   reactable(paginationType = "jump", striped = TRUE, highlight = TRUE, searchable = TRUE, defaultPageSize = 6, resizable = TRUE, filterable = TRUE,elementId = "iv1",
      defaultColDef = colDef(align = "center",minWidth = 115),
      columns = list(Subject = colDef(sticky = "left"))
@@ -699,33 +687,27 @@ str_length(iv1$IVDTC01) != median(str_length(iv1$IVDTC01),na.rm = T),] %>%
 )
 ```
 
-`r if(is.character(params$data13) && is_empty(iv1$Subject)){knitr::asis_output(colorize("IV1 is empty","red"))}`
+`r if(is_empty(iv1$Subject)){knitr::asis_output(colorize("IV1 is empty","red"))}`
 
-`r if(is.character(params$data13)){knitr::asis_output("IVDTC01(IV Draw Date) should not be blank")}` `r if(is.character(params$data13)){colorize(iv1[(is.na(iv1$IVDTC01) | str_detect(iv1$IVDTC01,"^$|pattern")),]$Subject,"red")}`
+`r knitr::asis_output("IVDTC01(IV Draw Date) should not be blank")` `r colorize(iv1[(is.na(iv1$IVDTC01) | str_detect(iv1$IVDTC01,"^$|pattern")),]$Subject,"red")`
 
-`r if(is.character(params$data13)){knitr::asis_output("Length of IVDTC01(IV Draw Date) should be")}` `r if(is.character(params$data13)){colorize(median(str_length(iv1$IVDTC01),na.rm = T),"red")}``r if(is.character(params$data13)){colorize(iv1[str_length(iv1$IVDTC01) != median(str_length(iv1$IVDTC01),na.rm = T),]$Subject,"red")}`
+`r knitr::asis_output("Length of IVDTC01(IV Draw Date) should be")` `r colorize(median(str_length(iv1$IVDTC01),na.rm = T),"red")` `r colorize(iv1[str_length(iv1$IVDTC01) != median(str_length(iv1$IVDTC01),na.rm = T),]$Subject,"red")`
 
-<!-- # IV2 Review -->
 
-<!-- [IV Sample Collection](//oneabbott.com/dept/ADC/Technical_OPS/Clinical_Affairs/Clinical Study Files/Apollo/ADC-US-RES-21217 Vitamin C Events/Case Report Forms/Version A/Approved/PDF_file/IV_Sample_Collection.pdf) -->
+# **IV2 Review**
 
-`r if(is.character(params$data14)){knitr::asis_output("# **IV2 Review**")}`
-
-`r if(is.character(params$data14)){htmltools::a("IV Sample Collection",href = "//oneabbott.com/dept/ADC/Technical_OPS/Clinical_Affairs/Clinical Study Files/Apollo/ADC-US-RES-22225 Multi-Analyte Studies/Case Report Forms/Version_G/PDF/IV_Sample_Collection.pdf")}`
+`r htmltools::a("IV Sample Collection",href = gsub("\\\\", "/", r"(\\oneabbott.com\dept\ADC\Technical_OPS\Clinical_Affairs\Clinical Study Files\Apollo\ADC-US-RES-23234_IDE Pump Suspension Study\Case Report Forms\Version B\Approved\pdf\IV_Sample_Collection.pdf)"))`
 
 ```{r}
-# iv2 <- read_sas(gsub("\\\\", "/", r"(\\wf00168p.oneabbott.com\data1\CDM\ADC-US-RES-21217\SE01\Openclinica\Current\iv2.sas7bdat)"))
-# iv2 <- read_sas(gsub("\\\\", "/", r"(\\wf00168p.oneabbott.com\data1\CDM\ADC-US-VAL-21216\Openclinica\Current\iv2.sas7bdat)"))
-```
-
-```{r Load iv2, eval=is.character(params$data14)}
-iv2 <- read_sas(params$data14)
-iv2 <- iv2 %>% 
-       mutate(Subject = as.character(Subject)) %>% 
+#| label: SAS IV2
+iv2 <- read_sas(gsub("\\\\", "/", r"(\\wf00168p.oneabbott.com\data1\CDM\ADC-US-RES-23234\OpenClinica\Current\iv2.sas7bdat)"))
+iv2 <- iv2 |>  
+       mutate(Subject = as.character(Subject)) |>  
        arrange(Subject)
 ```
 
-```{r iv2, eval=is.character(params$data14)}
+```{r}
+#| label: IV2
 htmltools::browsable(
    tagList(
     tags$button(
@@ -735,22 +717,30 @@ htmltools::browsable(
 iv2[
 # Sample number (N)
 is.na(iv2$IVID01) |
+# Length of Sample Number
+str_length(iv2$IVID01) != median(str_length(iv2$IVID01),na.rm = T) | 
 # IV sample draw time (C)
 (str_detect(iv2$IVTM01,"^$|pattern") | is.na(iv2$IVTM01))   |
 # Length of IV sample draw time
 str_length(iv2$IVTM01) != median(str_length(iv2$IVTM01),na.rm = T) | 
 # The delimiter between Hours and mins
-str_detect(iv2$IVTM01,";|\"\\.")       |
+!str_detect(iv2$IVTM01,":")       |
 # Centrifuge Completion Time  (C)
 (str_detect(iv2$IVTM02,"^$|pattern") |is.na(iv2$IVTM02))            |
 # Length of Centrifuge Completion Time
 str_length(iv2$IVTM02) != median(str_length(iv2$IVTM02),na.rm = T) |
 # The delimiter between Hours and mins
-str_detect(iv2$IVTM02,";|\"\\.")       |
+!str_detect(iv2$IVTM02,":")       |
+# Sample Frozen Time (24-hr)
+(str_detect(iv2$IVTM03,"^$|pattern") |is.na(iv2$IVTM03))            |
+# Length of Sample Frozen Time
+str_length(iv2$IVTM03) != median(str_length(iv2$IVTM03),na.rm = T) |
+# The delimiter between Hours and mins
+!str_detect(iv2$IVTM03,":")       |
 # IV Sample Viability (C)
 str_detect(iv2$IVVAL01,"^$|pattern"),] %>% 
-  select(-c(`StudyStatus`,`SubjectID`:`__ITEMGROUPREPEATKEY`)) %>%
-  {if (params$label) (sjlabelled::label_to_colnames(.)) else .} %>%
+  select(Subject,`__ITEMGROUPREPEATKEY`:last_col()) %>%
+  # {if (params$label) (sjlabelled::label_to_colnames(.)) else .} %>%
   reactable(paginationType = "jump", striped = TRUE, highlight = TRUE, searchable = TRUE, defaultPageSize = 6, resizable = TRUE, filterable = TRUE,elementId = "iv2",
      defaultColDef = colDef(align = "center",minWidth = 115),
      columns = list(Subject = colDef(sticky = "left"))
@@ -759,23 +749,151 @@ str_detect(iv2$IVVAL01,"^$|pattern"),] %>%
 )
 ```
 
-`r if(is.character(params$data14) && is_empty(iv2$Subject)){knitr::asis_output(colorize("IV2 is empty","red"))}`
+`r if(is_empty(iv2$Subject)){knitr::asis_output(colorize("IV2 is empty","red"))}`
 
-`r if(is.character(params$data14)){knitr::asis_output("IVID01(Sample Number) should not be blank")}` `r if(is.character(params$data14)){colorize(iv2[is.na(iv2$IVID01),]$Subject,"red")}`
+`r knitr::asis_output("IVID01(Sample Number) should not be blank")` `r colorize(iv2[is.na(iv2$IVID01),]$Subject,"red")` `r knitr::asis_output("and length of IVID01(Sample Number) should be")` `r colorize(median(str_length(iv2$IVID01),na.rm = T),"red")` `r colorize(iv2[str_length(iv2$IVID01) != median(str_length(iv2$IVID01),na.rm = T) | is.na(iv2$IVID01),]$Subject,"red")` 
 
-`r if(is.character(params$data14)){knitr::asis_output("IVTM01(IV sample draw time) should not be blank")}` `r if(is.character(params$data14)){colorize(iv2[(str_detect(iv2$IVTM01,"^$|pattern") | is.na(iv2$IVTM01)),]$Subject,"red")}`
+`r knitr::asis_output("IVTM01(IV sample draw time) should not be blank")` `r colorize(iv2[(str_detect(iv2$IVTM01,"^$|pattern") | is.na(iv2$IVTM01)),]$Subject,"red")`
 
-`r if(is.character(params$data14)){knitr::asis_output("Length of IVTM01(IV sample draw time) should be")}` `r if(is.character(params$data14)){colorize(median(str_length(iv2$IVTM01),na.rm = T),"red")}` `r if(is.character(params$data14)){colorize(iv2[str_length(iv2$IVTM01) != median(str_length(iv2$IVTM01),na.rm = T),]$Subject,"red")}`
+`r knitr::asis_output("Length of IVTM01(IV sample draw time) should be")` `r colorize(median(str_length(iv2$IVTM01),na.rm = T),"red")` `r colorize(iv2[str_length(iv2$IVTM01) != median(str_length(iv2$IVTM01),na.rm = T),]$Subject,"red")`
 
-`r if(is.character(params$data14)){knitr::asis_output("The delimiter of IVTM01(IV sample draw time) should be colon")}` `r if(is.character(params$data14)){colorize(iv2[str_detect(iv2$IVTM01,";|\"\\."),]$Subject,"red")}`
+`r knitr::asis_output("The delimiter of IVTM01(IV sample draw time) should be colon")` `r colorize(iv2[!str_detect(iv2$IVTM01,":"),]$Subject,"red")`
 
-`r if(is.character(params$data14)){knitr::asis_output("IVTM02(Centrifuge Completion Time) should not be blank")}` `r if(is.character(params$data14)){colorize(iv2[(str_detect(iv2$IVTM02,"^$|pattern") |is.na(iv2$IVTM02)),]$Subject,"red")}`
+`r knitr::asis_output("IVTM02(Centrifuge Completion Time) should not be blank")` `r colorize(iv2[(str_detect(iv2$IVTM02,"^$|pattern") |is.na(iv2$IVTM02)),]$Subject,"red")`
 
-`r if(is.character(params$data14)){knitr::asis_output("Length of IVTM02(Centrifuge Completion Time) should be")}` `r if(is.character(params$data14)){colorize(median(str_length(iv2$IVTM02),na.rm = T),"red")}` `r if(is.character(params$data14)){colorize(iv2[str_length(iv2$IVTM02) != median(str_length(iv2$IVTM02),na.rm = T),]$Subject,"red")}`
+`r knitr::asis_output("Length of IVTM02(Centrifuge Completion Time) should be")` `r colorize(median(str_length(iv2$IVTM02),na.rm = T),"red")` `r colorize(iv2[str_length(iv2$IVTM02) != median(str_length(iv2$IVTM02),na.rm = T),]$Subject,"red")`
 
-`r if(is.character(params$data14)){knitr::asis_output("The delimiter of IVTM02(Centrifuge Completion Time) should be colon")}` `r if(is.character(params$data14)){colorize(iv2[str_detect(iv2$IVTM02,";|\"\\."),]$Subject,"red")}`
+`r knitr::asis_output("The delimiter of IVTM02(Centrifuge Completion Time) should be colon")` `r colorize(iv2[!str_detect(iv2$IVTM02,":"),]$Subject,"red")`
 
-`r if(is.character(params$data14)){knitr::asis_output("IVVAL01(IV Sample Viability) should not be blank")}` `r if(is.character(params$data14)){colorize(iv2[str_detect(iv2$IVVAL01,"^$|pattern"),]$Subject,"red")}`
+`r knitr::asis_output("IVTM03(Sample Frozen Time (24-hr)) should not be blank")` `r colorize(iv2[(str_detect(iv2$IVTM03,"^$|pattern") |is.na(iv2$IVTM03)),]$Subject,"red")`
+
+`r knitr::asis_output("Length of IVTM03(Sample Frozen Time (24-hr)) should be")` `r colorize(median(str_length(iv2$IVTM03),na.rm = T),"red")` `r colorize(iv2[str_length(iv2$IVTM03) != median(str_length(iv2$IVTM03),na.rm = T),]$Subject,"red")`
+
+`r knitr::asis_output("The delimiter of IVTM03(Sample Frozen Time (24-hr)) should be colon")` `r colorize(iv2[!str_detect(iv2$IVTM03,":"),]$Subject,"red")`
+
+`r knitr::asis_output("IVVAL01(IV Sample Viability) should not be blank")` `r colorize(iv2[str_detect(iv2$IVVAL01,"^$|pattern"),]$Subject,"red")`
+
+
+# **KD1 Review**
+
+`r htmltools::a("IV Sample Collection",href = gsub("\\\\", "/", r"(\\oneabbott.com\dept\ADC\Technical_OPS\Clinical_Affairs\Clinical Study Files\Apollo\ADC-US-RES-23234_IDE Pump Suspension Study\Case Report Forms\Version B\Approved\pdf\Safety_Parameter_Log.pdf)"))`
+
+```{r}
+#| label: SAS KD1
+kd1 <- read_sas(gsub("\\\\", "/", r"(\\wf00168p.oneabbott.com\data1\CDM\ADC-US-RES-23234\OpenClinica\Current\kd1.sas7bdat)"))
+kd1 <- kd1 |>  
+       filter(!str_detect(KDYN01,regex("CHECK HERE IF NO DATA RECORDED|no_data_recorded",ignore_case = T))) |>
+       mutate(Subject = as.character(Subject)) |>  
+       arrange(Subject)
+```
+
+```{r}
+#| label: KD1
+htmltools::browsable(
+   tagList(
+    tags$button(
+      tagList(fontawesome::fa("download"), "Download as CSV"),
+      onclick = "Reactable.downloadDataCSV('kd1', 'kd1.csv')"
+    ),
+kd1[
+# Date
+(str_detect(kd1$KDDTC01,"^$|pattern") | is.na(kd1$KDDTC01))   |
+# Date
+str_length(kd1$KDDTC01) != median(str_length(kd1$KDDTC01),na.rm = T)
+,] %>% 
+  select(Subject,KDDTC01) %>%
+  # {if (params$label) (sjlabelled::label_to_colnames(.)) else .} %>%
+  reactable(paginationType = "jump", striped = TRUE, highlight = TRUE, searchable = TRUE, defaultPageSize = 6, resizable = TRUE, filterable = TRUE,elementId = "kd1",
+     defaultColDef = colDef(align = "center",minWidth = 115),
+     columns = list(Subject = colDef(sticky = "left"))
+     )
+   )
+)
+```
+
+`r if(is_empty(kd1$Subject)){knitr::asis_output(colorize("KD1 is empty","red"))}`
+
+`r knitr::asis_output("KDDTC01(Date) should not be blank")` `r colorize(kd1[(str_detect(kd1$KDDTC01,"^$|pattern") | is.na(kd1$KDDTC01)),]$Subject,"red")`
+
+`r knitr::asis_output("Length of KDDTC01(Date) should be")` `r colorize(median(str_length(iv1$IVDTC01),na.rm = T),"red")` `r colorize(kd1[str_length(kd1$KDDTC01) != median(str_length(kd1$KDDTC01),na.rm = T),]$Subject,"red")`
+
+# **KD2 Review**
+
+`r htmltools::a("IV Sample Collection",href = gsub("\\\\", "/", r"(\\oneabbott.com\dept\ADC\Technical_OPS\Clinical_Affairs\Clinical Study Files\Apollo\ADC-US-RES-23234_IDE Pump Suspension Study\Case Report Forms\Version B\Approved\pdf\Safety_Parameter_Log.pdf)"))`
+
+```{r}
+#| label: SAS KD2
+kd2 <- read_sas(gsub("\\\\", "/", r"(\\wf00168p.oneabbott.com\data1\CDM\ADC-US-RES-23234\OpenClinica\Current\kd2.sas7bdat)"))
+kd2 <- kd2 |>
+       mutate(Subject = as.character(Subject)) |>
+       arrange(Subject)
+```
+
+```{r}
+#| label: KD2
+htmltools::browsable(
+   tagList(
+    tags$button(
+      tagList(fontawesome::fa("download"), "Download as CSV"),
+      onclick = "Reactable.downloadDataCSV('kd2', 'kd2.csv')"
+    ),
+kd2[
+# Sample ID
+is.na(kd2$KDID01) |
+# Ketone Test Result (mmol/L) Check here if result was not obtained (Ketone)
+is.na(kd2$KDORES02) & !str_detect(kd2$KDORES03,"Check here if result was not obtained.") | 
+# Glucose Test Result (mg/dL) Check here if result was not obtained (Glucose)
+is.na(kd2$KDORES04) & !str_detect(kd2$KDORES05,"Check here if result was not obtained.") |
+# pH Test Result (pH units) Check here if result was not obtained (pH)
+is.na(kd2$KDORES06) & !str_detect(kd2$KDORES07,"Check here if result was not obtained.") | 
+# Potassium Test Result (mmol/L) Check here if result was not obtained (Potassium)
+is.na(kd2$KDORES08) & !str_detect(kd2$KDORES09,"Check here if result was not obtained.") |
+# Symptoms
+!str_detect(kd2$KDORES10,regex("Yes|No",ignore_case = T))
+,] %>% 
+  select(Subject,`__ITEMGROUPREPEATKEY`:last_col()) %>%
+  # {if (params$label) (sjlabelled::label_to_colnames(.)) else .} %>%
+  reactable(paginationType = "jump", striped = TRUE, highlight = TRUE, searchable = TRUE, defaultPageSize = 6, resizable = TRUE, filterable = TRUE,elementId = "kd2",
+     defaultColDef = colDef(align = "center",minWidth = 115),
+     columns = list(Subject = colDef(sticky = "left"))
+     )
+   )
+)
+```
+
+`r if(is_empty(kd2$Subject)){knitr::asis_output(colorize("KD2 is empty","red"))}`
+
+`r knitr::asis_output("KDID01(Sample ID) should not be blank")` `r colorize(kd2[is.na(kd2$KDID01),]$Subject,"red")`
+
+`r knitr::asis_output("KDORES02(Ketone Test Result (mmol/L)) and KDORES03(Check here if result was not obtained (Ketone)) should not be blank at the same time")` `r colorize(kd2[is.na(kd2$KDORES02) & !str_detect(kd2$KDORES03,"Check here if result was not obtained."),]$Subject,"red")`
+
+`r knitr::asis_output("KDORES04(Glucose Test Result (mmol/L)) and KDORES05(Check here if result was not obtained (Glucose)) should not be blank at the same time")` `r colorize(kd2[is.na(kd2$KDORES04) & !str_detect(kd2$KDORES05,"Check here if result was not obtained."),]$Subject,"red")`
+
+`r knitr::asis_output("KDORES06(pH Test Result (pH units)) and KDORES07(Check here if result was not obtained (pH)) should not be blank at the same time")` `r colorize(kd2[is.na(kd2$KDORES06) & !str_detect(kd2$KDORES07,"Check here if result was not obtained."),]$Subject,"red")`
+
+`r knitr::asis_output("KDORES08(Potassium Test Result (mmol/L)) and KDORES09(Check here if result was not obtained (Potassium)) should not be blank at the same time")` `r colorize(kd2[is.na(kd2$KDORES08) & !str_detect(kd2$KDORES09,"Check here if result was not obtained."),]$Subject,"red")`
+
+`r knitr::asis_output("KDORES10(Symptoms) should be either Yes or No")` `r colorize(kd2[!str_detect(kd2$KDORES10,regex("Yes|No",ignore_case = T)),]$Subject,"red")`
+
+```{r}
+#| label: KD2 Sample ID
+kd2 |> 
+    mutate(`__ITEMGROUPREPEATKEY` = case_when(
+       str_length(`__ITEMGROUPREPEATKEY`) == 1 ~ str_c("0" ,`__ITEMGROUPREPEATKEY`),
+       .default = `__ITEMGROUPREPEATKEY`
+                                              ),
+           KDID01 = as.character(KDID01),
+       ID = case_when(
+         str_starts(Subject,"133") ~ str_c("1",str_sub(Subject,-2,-1),`__ITEMGROUPREPEATKEY`),
+         str_starts(Subject,"9") ~ str_c("2",str_sub(Subject,-2,-1),`__ITEMGROUPREPEATKEY`))
+       ,.keep = "used") |> 
+    filter(ID != KDID01) |> 
+    reactable(paginationType = "jump", striped = TRUE, highlight = TRUE, searchable = TRUE, defaultPageSize = 6, resizable = TRUE, filterable = TRUE,
+     defaultColDef = colDef(align = "center",minWidth = 115),
+     columns = list(Subject = colDef(sticky = "left"))
+     ) |> 
+    add_title("Safety Parameter Log Sample ID",align = "center")
+```
 
 <!-- # MH1 Review -->
 
