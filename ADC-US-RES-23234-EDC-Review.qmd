@@ -541,7 +541,7 @@ str_length(du2$UPDTC02) != median(str_length(du2$UPDTC02),na.rm = T),] %>%
 
 # **IE Review**
 
-`r htmltools::a("Eligibility",href = gsub("\\\\", "/", r"(\\oneabbott.com\dept\ADC\Technical_OPS\Clinical_Affairs\Clinical Study Files\Apollo\ADC-US-RES-23234_IDE Pump Suspension Study\Case Report Forms\Version B\Approved\pdf\Informed_Consent.pdf)"))`
+`r htmltools::a("Informed Consent",href = gsub("\\\\", "/", r"(\\oneabbott.com\dept\ADC\Technical_OPS\Clinical_Affairs\Clinical Study Files\Apollo\ADC-US-RES-23234_IDE Pump Suspension Study\Case Report Forms\Version B\Approved\pdf\Informed_Consent.pdf)"))`
 
 ```{r}
 #| label: SAS IE
@@ -717,8 +717,6 @@ htmltools::browsable(
 iv2[
 # Sample number (N)
 is.na(iv2$IVID01) |
-# Length of Sample Number
-str_length(iv2$IVID01) != median(str_length(iv2$IVID01),na.rm = T) | 
 # IV sample draw time (C)
 (str_detect(iv2$IVTM01,"^$|pattern") | is.na(iv2$IVTM01))   |
 # Length of IV sample draw time
@@ -751,7 +749,7 @@ str_detect(iv2$IVVAL01,"^$|pattern"),] %>%
 
 `r if(is_empty(iv2$Subject)){knitr::asis_output(colorize("IV2 is empty","red"))}`
 
-`r knitr::asis_output("IVID01(Sample Number) should not be blank")` `r colorize(iv2[is.na(iv2$IVID01),]$Subject,"red")` `r knitr::asis_output("and length of IVID01(Sample Number) should be")` `r colorize(median(str_length(iv2$IVID01),na.rm = T),"red")` `r colorize(iv2[str_length(iv2$IVID01) != median(str_length(iv2$IVID01),na.rm = T) | is.na(iv2$IVID01),]$Subject,"red")` 
+`r knitr::asis_output("IVID01(Sample Number) should not be blank")` `r colorize(iv2[is.na(iv2$IVID01),]$Subject,"red")`
 
 `r knitr::asis_output("IVTM01(IV sample draw time) should not be blank")` `r colorize(iv2[(str_detect(iv2$IVTM01,"^$|pattern") | is.na(iv2$IVTM01)),]$Subject,"red")`
 
@@ -773,10 +771,29 @@ str_detect(iv2$IVVAL01,"^$|pattern"),] %>%
 
 `r knitr::asis_output("IVVAL01(IV Sample Viability) should not be blank")` `r colorize(iv2[str_detect(iv2$IVVAL01,"^$|pattern"),]$Subject,"red")`
 
+```{r}
+#| label: IV2 Sample ID
+iv2 |> 
+    mutate(`__ITEMGROUPREPEATKEY` = case_when(
+       str_length(`__ITEMGROUPREPEATKEY`) == 1 ~ str_c("0" ,`__ITEMGROUPREPEATKEY`),
+       .default = `__ITEMGROUPREPEATKEY`
+                                              ),
+           IVID01 = as.character(IVID01),
+       ID = case_when(
+         str_starts(Subject,"133") ~ str_c("1",str_sub(Subject,-2,-1),`__ITEMGROUPREPEATKEY`),
+         str_starts(Subject,"9") ~ str_c("2",str_sub(Subject,-2,-1),`__ITEMGROUPREPEATKEY`))
+       ,.keep = "used") |> 
+    filter(ID != IVID01) |> 
+    reactable(paginationType = "jump", striped = TRUE, highlight = TRUE, searchable = TRUE, defaultPageSize = 6, resizable = TRUE, filterable = TRUE,
+     defaultColDef = colDef(align = "center",minWidth = 115),
+     columns = list(Subject = colDef(sticky = "left"))
+     ) |> 
+    add_title("IV Sample Collection Sample ID",align = "center")
+```
 
 # **KD1 Review**
 
-`r htmltools::a("IV Sample Collection",href = gsub("\\\\", "/", r"(\\oneabbott.com\dept\ADC\Technical_OPS\Clinical_Affairs\Clinical Study Files\Apollo\ADC-US-RES-23234_IDE Pump Suspension Study\Case Report Forms\Version B\Approved\pdf\Safety_Parameter_Log.pdf)"))`
+`r htmltools::a("Safety Parameter Log",href = gsub("\\\\", "/", r"(\\oneabbott.com\dept\ADC\Technical_OPS\Clinical_Affairs\Clinical Study Files\Apollo\ADC-US-RES-23234_IDE Pump Suspension Study\Case Report Forms\Version B\Approved\pdf\Safety_Parameter_Log.pdf)"))`
 
 ```{r}
 #| label: SAS KD1
@@ -819,7 +836,7 @@ str_length(kd1$KDDTC01) != median(str_length(kd1$KDDTC01),na.rm = T)
 
 # **KD2 Review**
 
-`r htmltools::a("IV Sample Collection",href = gsub("\\\\", "/", r"(\\oneabbott.com\dept\ADC\Technical_OPS\Clinical_Affairs\Clinical Study Files\Apollo\ADC-US-RES-23234_IDE Pump Suspension Study\Case Report Forms\Version B\Approved\pdf\Safety_Parameter_Log.pdf)"))`
+`r htmltools::a("Safety Parameter Log",href = gsub("\\\\", "/", r"(\\oneabbott.com\dept\ADC\Technical_OPS\Clinical_Affairs\Clinical Study Files\Apollo\ADC-US-RES-23234_IDE Pump Suspension Study\Case Report Forms\Version B\Approved\pdf\Safety_Parameter_Log.pdf)"))`
 
 ```{r}
 #| label: SAS KD2
@@ -894,6 +911,309 @@ kd2 |>
      ) |> 
     add_title("Safety Parameter Log Sample ID",align = "center")
 ```
+
+# **KGR1 Review**
+
+`r htmltools::a("Ketone and Glucose Results",href = gsub("\\\\", "/", r"(\\oneabbott.com\dept\ADC\Technical_OPS\Clinical_Affairs\Clinical Study Files\Apollo\ADC-US-RES-23234_IDE Pump Suspension Study\Case Report Forms\Version B\Approved\pdf\Ketone_Glucose_Results.pdf)"))`
+
+```{r}
+#| label: SAS KGR1
+kgr1 <- read_sas(gsub("\\\\", "/", r"(\\wf00168p.oneabbott.com\data1\CDM\ADC-US-RES-23234\OpenClinica\Current\kgr1.sas7bdat)"))
+kgr1 <- kgr1 |>  
+        filter(!str_detect(KRYN01,regex("CHECK HERE IF NO DATA RECORDED|no_data_recorded",ignore_case = T))) |>
+        mutate(Subject = as.character(Subject)) |>  
+        arrange(Subject)
+```
+
+```{r}
+#| label: KGR1
+htmltools::browsable(
+   tagList(
+    tags$button(
+      tagList(fontawesome::fa("download"), "Download as CSV"),
+      onclick = "Reactable.downloadDataCSV('kgr1', 'kgr1.csv')"
+    ),
+kgr1[
+# Date
+(str_detect(kgr1$KRDTC01,"^$|pattern") | is.na(kgr1$KRDTC01))   |
+# Date
+str_length(kgr1$KRDTC01) != median(str_length(kgr1$KRDTC01),na.rm = T)
+,] %>% 
+  select(Subject,KRDTC01) %>%
+  # {if (params$label) (sjlabelled::label_to_colnames(.)) else .} %>%
+  reactable(paginationType = "jump", striped = TRUE, highlight = TRUE, searchable = TRUE, defaultPageSize = 6, resizable = TRUE, filterable = TRUE,elementId = "kgr1",
+     defaultColDef = colDef(align = "center",minWidth = 115),
+     columns = list(Subject = colDef(sticky = "left"))
+     )
+   )
+)
+```
+
+`r if(is_empty(kgr1$Subject)){knitr::asis_output(colorize("kGR1 is empty","red"))}`
+
+`r knitr::asis_output("KRDTC01(Date) should not be blank")` `r colorize(kgr1[(str_detect(kgr1$KRDTC01,"^$|pattern") | is.na(kgr1$KRDTC01)),]$Subject,"red")`
+
+`r knitr::asis_output("Length of KRDTC01(Date) should be")` `r colorize(median(str_length(kgr1$KRDTC01),na.rm = T),"red")` `r colorize(kgr1[str_length(kgr1$KRDTC01) != median(str_length(kgr1$KRDTC01),na.rm = T),]$Subject,"red")`
+
+# **KGR2 Review**
+
+`r htmltools::a("Ketone and Glucose Results",href = gsub("\\\\", "/", r"(\\oneabbott.com\dept\ADC\Technical_OPS\Clinical_Affairs\Clinical Study Files\Apollo\ADC-US-RES-23234_IDE Pump Suspension Study\Case Report Forms\Version B\Approved\pdf\Ketone_Glucose_Results.pdf)"))`
+
+```{r}
+#| label: SAS KGR2
+kgr2 <- read_sas(gsub("\\\\", "/", r"(\\wf00168p.oneabbott.com\data1\CDM\ADC-US-RES-23234\OpenClinica\Current\kgr2.sas7bdat)"))
+kgr2 <- kgr2 |>
+        mutate(Subject = as.character(Subject)) |>
+        arrange(Subject)
+```
+
+```{r}
+#| label: KGR2
+htmltools::browsable(
+   tagList(
+    tags$button(
+      tagList(fontawesome::fa("download"), "Download as CSV"),
+      onclick = "Reactable.downloadDataCSV('kgr2', 'kgr2.csv')"
+    ),
+kgr2[
+# Sample number (N)
+is.na(kgr2$KRSEQ02) |
+# Ketone Results (mmol/L)
+is.na(kgr2$KRSEQ01) |
+# Ketone Time (24-hr)
+(str_detect(kgr2$KRDTC02,"^$|pattern") | is.na(kgr2$KRDTC02))   |
+# Length of Ketone Time (24-hr)
+str_length(kgr2$KRDTC02) != median(str_length(kgr2$KRDTC02),na.rm = T) |
+# The delimiter between Hours and mins
+!str_detect(kgr2$KRDTC02,":")       |
+# Glucose Results (mg/dL)
+is.na(kgr2$KRSEQ03)    |
+# Glucose Time (24-hr)
+(str_detect(kgr2$KRDTC03,"^$|pattern") | is.na(kgr2$KRDTC03))   |
+# Length of Glucose Time (24-hr)
+str_length(kgr2$KRDTC03) != median(str_length(kgr2$KRDTC03),na.rm = T) |
+# The delimiter between Hours and mins
+!str_detect(kgr2$KRDTC03,":") 
+ ,] %>% 
+  select(Subject,`__ITEMGROUPREPEATKEY`:last_col()) %>%
+  # {if (params$label) (sjlabelled::label_to_colnames(.)) else .} %>%
+  reactable(paginationType = "jump", striped = TRUE, highlight = TRUE, searchable = TRUE, defaultPageSize = 6, resizable = TRUE, filterable = TRUE,elementId = "kgr2",
+     defaultColDef = colDef(align = "center",minWidth = 115),
+     columns = list(Subject = colDef(sticky = "left"))
+     )
+   )
+)
+```
+
+`r if(is_empty(kgr2$Subject)){knitr::asis_output(colorize("KGR2 is empty","red"))}`
+
+`r knitr::asis_output("KRSEQ02(Sample Number) should not be blank")` `r colorize(kgr2[is.na(kgr2$KRSEQ02),]$Subject,"red")` 
+
+`r knitr::asis_output("KRSEQ01(Ketone Results (mmol/L)) should not be blank")` `r colorize(kgr2[is.na(kgr2$KRSEQ01),]$Subject,"red")` 
+
+`r knitr::asis_output("KRDTC02(Ketone Time (24-hr)) should not be blank")` `r colorize(kgr2[(str_detect(kgr2$KRDTC02,"^$|pattern") | is.na(kgr2$KRDTC02)),]$Subject,"red")`
+
+`r knitr::asis_output("Length of KRDTC02(Ketone Time (24-hr)) should be")` `r colorize(median(str_length(kgr2$KRDTC02),na.rm = T),"red")` `r colorize(kgr2[str_length(kgr2$KRDTC02) != median(str_length(kgr2$KRDTC02),na.rm = T),]$Subject,"red")`
+
+`r knitr::asis_output("The delimiter of KRDTC02(Ketone Time (24-hr)) should be colon")` `r colorize(kgr2[!str_detect(kgr2$KRDTC02,":"),]$Subject,"red")`
+
+`r knitr::asis_output("KRSEQ03(Glucose Results (mg/dL)) should not be blank")` `r colorize(kgr2[is.na(kgr2$KRSEQ03),]$Subject,"red")`
+
+`r knitr::asis_output("KRDTC03(Glucose Time (24-hr)) should not be blank")` `r colorize(kgr2[(str_detect(kgr2$KRDTC03,"^$|pattern") | is.na(kgr2$KRDTC03)),]$Subject,"red")`
+
+`r knitr::asis_output("Length of KRDTC03(Glucose Time (24-hr)) should be")` `r colorize(median(str_length(kgr2$KRDTC03),na.rm = T),"red")` `r colorize(kgr2[str_length(kgr2$KRDTC03) != median(str_length(kgr2$KRDTC03),na.rm = T),]$Subject,"red")`
+
+`r knitr::asis_output("The delimiter of KRDTC03(Glucose Time (24-hr)) should be colon")` `r colorize(kgr2[!str_detect(kgr2$KRDTC03,":"),]$Subject,"red")`
+
+```{r}
+#| label: KGR2 Sample ID
+kgr2 |> 
+    mutate(`__ITEMGROUPREPEATKEY` = case_when(
+       str_length(`__ITEMGROUPREPEATKEY`) == 1 ~ str_c("0" ,`__ITEMGROUPREPEATKEY`),
+       .default = `__ITEMGROUPREPEATKEY`
+                                              ),
+           KRSEQ02 = as.character(KRSEQ02),
+       ID = case_when(
+         str_starts(Subject,"133") ~ str_c("1",str_sub(Subject,-2,-1),`__ITEMGROUPREPEATKEY`),
+         str_starts(Subject,"9") ~ str_c("2",str_sub(Subject,-2,-1),`__ITEMGROUPREPEATKEY`))
+       ,.keep = "used") |> 
+    filter(ID != KRSEQ02) |> 
+    reactable(paginationType = "jump", striped = TRUE, highlight = TRUE, searchable = TRUE, defaultPageSize = 6, resizable = TRUE, filterable = TRUE,
+     defaultColDef = colDef(align = "center",minWidth = 115),
+     columns = list(Subject = colDef(sticky = "left"))
+     ) |> 
+    add_title("Ketone Glucose Results Sample ID",align = "center")
+```
+
+# **LB1 Review**
+
+`r htmltools::a("Lab Data",href = gsub("\\\\", "/", r"(\\oneabbott.com\dept\ADC\Technical_OPS\Clinical_Affairs\Clinical Study Files\Apollo\ADC-US-RES-23234_IDE Pump Suspension Study\Case Report Forms\Version B\Approved\pdf\Lab_Data.pdf)"))`
+
+```{r}
+#| label: SAS LB1
+lb1 <- read_sas(gsub("\\\\", "/", r"(\\wf00168p.oneabbott.com\data1\CDM\ADC-US-RES-23234\OpenClinica\Current\lb1.sas7bdat)"))
+lb1 <- lb1 |>
+        filter(!str_detect(LBYN01,regex("CHECK HERE IF NO DATA RECORDED|no_data_recorded",ignore_case = T))) |>
+        mutate(Subject = as.character(Subject)) |>
+        arrange(Subject)
+```
+
+```{r}
+#| label: LB1
+htmltools::browsable(
+   tagList(
+    tags$button(
+      tagList(fontawesome::fa("download"), "Download as CSV"),
+      onclick = "Reactable.downloadDataCSV('lb1', 'lb1.csv')"
+    ),
+lb1[
+# Date samples taken
+(str_detect(lb1$LBDTC01,"^$|pattern") | is.na(lb1$LBDTC01))   |
+# Date samples taken
+str_length(lb1$LBDTC01) != median(str_length(lb1$LBDTC01),na.rm = T)
+,] %>% 
+  select(Subject,LBDTC01) %>%
+  # {if (params$label) (sjlabelled::label_to_colnames(.)) else .} %>%
+  reactable(paginationType = "jump", striped = TRUE, highlight = TRUE, searchable = TRUE, defaultPageSize = 6, resizable = TRUE, filterable = TRUE,elementId = "lb1",
+     defaultColDef = colDef(align = "center",minWidth = 115),
+     columns = list(Subject = colDef(sticky = "left"))
+     )
+   )
+)
+```
+
+`r if(is_empty(lb1$Subject)){knitr::asis_output(colorize("LB1 is empty","red"))}`
+
+`r knitr::asis_output("LBDTC01(Date samples taken) should not be blank")` `r colorize(lb1[(str_detect(lb1$LBDTC01,"^$|pattern") | is.na(lb1$LBDTC01)),]$Subject,"red")`
+
+`r knitr::asis_output("Length of LBDTC01(Date samples taken) should be")` `r colorize(median(str_length(lb1$LBDTC01),na.rm = T),"red")` `r colorize(lb1[str_length(lb1$LBDTC01) != median(str_length(lb1$LBDTC01),na.rm = T),]$Subject,"red")`
+
+# **LB2 Review**
+
+`r htmltools::a("Lab Data",href = gsub("\\\\", "/", r"(\\oneabbott.com\dept\ADC\Technical_OPS\Clinical_Affairs\Clinical Study Files\Apollo\ADC-US-RES-23234_IDE Pump Suspension Study\Case Report Forms\Version B\Approved\pdf\Lab_Data.pdf)"))`
+
+```{r}
+#| label: SAS LB2
+lb2 <- read_sas(gsub("\\\\", "/", r"(\\wf00168p.oneabbott.com\data1\CDM\ADC-US-RES-23234\OpenClinica\Current\lb2.sas7bdat)"))
+lb2 <- lb2 |>
+       mutate(Subject = as.character(Subject)) |>
+       arrange(Subject)
+```
+
+```{r}
+#| label: LB2
+htmltools::browsable(
+   tagList(
+    tags$button(
+      tagList(fontawesome::fa("download"), "Download as CSV"),
+      onclick = "Reactable.downloadDataCSV('lb2', 'lb2.csv')"
+    ),
+lb2[
+# Analyte
+!str_detect(lb2$LBID01,"HbA1c")   | 
+# Test Result
+is.na(lb2$LBORES01) | str_detect(lb2$LBORES01,"^$|pattern") |
+# UOM
+!str_detect(lb2$LBORES02,"%")
+,] %>% 
+  select(Subject,`__ITEMGROUPREPEATKEY`:last_col()) %>%
+  # {if (params$label) (sjlabelled::label_to_colnames(.)) else .} %>%
+  reactable(paginationType = "jump", striped = TRUE, highlight = TRUE, searchable = TRUE, defaultPageSize = 6, resizable = TRUE, filterable = TRUE,elementId = "lb2",
+     defaultColDef = colDef(align = "center",minWidth = 115),
+     columns = list(Subject = colDef(sticky = "left"))
+     )
+   )
+)
+```
+
+`r if(is_empty(lb2$Subject)){knitr::asis_output(colorize("LB2 is empty","red"))}`
+
+`r knitr::asis_output("LBID01(Analyte) should be HbA1c")` `r colorize(lb2[!str_detect(lb2$LBID01,"HbA1c"),]$Subject,"red")`
+
+`r knitr::asis_output("LBORES01(Test Result) should not be blank")` `r colorize(lb2[is.na(lb2$LBORES01) | str_detect(lb2$LBORES01,"^$|pattern"),]$Subject,"red")`
+
+`r knitr::asis_output("LBORES02(UOM) should be %")` `r colorize(lb2[!str_detect(lb2$LBORES02,"%"),]$Subject,"red")`
+
+# **MA Review**
+
+`r htmltools::a("SGLT Medication Assessment Form",href = gsub("\\\\", "/", r"(\\oneabbott.com\dept\ADC\Technical_OPS\Clinical_Affairs\Clinical Study Files\Apollo\ADC-US-RES-23234_IDE Pump Suspension Study\Case Report Forms\Version B\Approved\pdf\SGLT_Medication_Assessment.pdf)"))`
+
+```{r}
+#| label: SAS MA
+ma <- read_sas(gsub("\\\\", "/", r"(\\wf00168p.oneabbott.com\data1\CDM\ADC-US-RES-23234\OpenClinica\Current\ma.sas7bdat)"))
+ma <- ma |>
+      filter(!str_detect(QSYN01,regex("CHECK HERE IF NO DATA RECORDED|no_data_recorded",ignore_case = T))) |>
+      mutate(Subject = as.character(Subject)) |>
+      arrange(Subject)
+```
+
+```{r}
+#| label: MA
+htmltools::browsable(
+   tagList(
+    tags$button(
+      tagList(fontawesome::fa("download"), "Download as CSV"),
+      onclick = "Reactable.downloadDataCSV('ma', 'ma.csv')"
+    ),
+ma[
+# Visit Date
+(str_detect(ma$QSDTC01,"^$|pattern") | is.na(ma$QSDTC01))   |
+# Length of Visit Date
+str_length(ma$QSDTC01) != median(str_length(ma$QSDTC01),na.rm = T) | 
+# Is subject currently using Invokana (canagliflozin)?
+!str_detect(ma$QSORES01,regex("Yes|No",ignore_case = T)) |
+# Is subject currently using Farxiga (dapagliflozin)?
+!str_detect(ma$QSORES02,regex("Yes|No",ignore_case = T)) |
+# Is subject currently using Jardiance (empagliflozin)?
+!str_detect(ma$QSORES03,regex("Yes|No",ignore_case = T)) |
+# Is subject currently using Steglatro (ertugliflozin)?
+!str_detect(ma$QSORES04,regex("Yes|No",ignore_case = T)) |
+# Is subject currently using Xigduo XR (dapagliflozin/metformin)?
+!str_detect(ma$QSORES05,regex("Yes|No",ignore_case = T)) |
+# Is subject currently using Glyxambi (empagliflozin/linagliptin)?
+!str_detect(ma$QSORES06,regex("Yes|No",ignore_case = T)) |
+# Is subject currently using Synjardy (empagliflozin/metformin)?
+!str_detect(ma$QSORES07,regex("Yes|No",ignore_case = T)) |
+# Is subject currently using Zynquista (sotagliflozin)?
+!str_detect(ma$QSORES08,regex("Yes|No",ignore_case = T)) |
+# Is the subject currently using any type of SGLT-2 inhibitor not listed above?
+!str_detect(ma$QSORES09,regex("Yes|No",ignore_case = T)) |
+# If yes, please specify the SGLT-2 inhibitor name
+str_detect(ma$QSORES09,regex("Yes",ignore_case = T)) & str_detect(ma$QSTXT01,"^$|pattern")
+,] %>% 
+  select(Subject,QSDTC01:last_col()) %>%
+  # {if (params$label) (sjlabelled::label_to_colnames(.)) else .} %>%
+  reactable(paginationType = "jump", striped = TRUE, highlight = TRUE, searchable = TRUE, defaultPageSize = 6, resizable = TRUE, filterable = TRUE,elementId = "ma",
+     defaultColDef = colDef(align = "center",minWidth = 115),
+     columns = list(Subject = colDef(sticky = "left"))
+     )
+   )
+)
+```
+
+`r if(is_empty(ma$Subject)){knitr::asis_output(colorize("MA is empty","red"))}`
+
+`r knitr::asis_output("QSDTC01(Visit Date) should not be blank")` `r colorize(ma[(str_detect(ma$QSDTC01,"^$|pattern") | is.na(ma$QSDTC01)),]$Subject,"red")`
+
+`r knitr::asis_output("Length of QSDTC01(Visit Date) should be")` `r colorize(median(str_length(ma$QSDTC01),na.rm = T),"red")` `r colorize(ma[str_length(ma$QSDTC01) != median(str_length(ma$QSDTC01),na.rm = T),]$Subject,"red")`
+
+`r knitr::asis_output("QSORES01(Is subject currently using Invokana (canagliflozin)?) should be either Yes or No")` `r colorize(ma[!str_detect(ma$QSORES01,regex("Yes|No",ignore_case = T)),]$Subject,"red")`
+
+`r knitr::asis_output("QSORES02(Is subject currently using Farxiga (dapagliflozin)?) should be either Yes or No")` `r colorize(ma[!str_detect(ma$QSORES02,regex("Yes|No",ignore_case = T)),]$Subject,"red")`
+
+`r knitr::asis_output("QSORES03(Is subject currently using Jardiance (empagliflozin)?) should be either Yes or No")` `r colorize(ma[!str_detect(ma$QSORES03,regex("Yes|No",ignore_case = T)),]$Subject,"red")`
+
+`r knitr::asis_output("QSORES04(Is subject currently using Steglatro (ertugliflozin)?) should be either Yes or No")` `r colorize(ma[!str_detect(ma$QSORES04,regex("Yes|No",ignore_case = T)),]$Subject,"red")`
+
+`r knitr::asis_output("QSORES05(Is subject currently using Xigduo XR (dapagliflozin/metformin)?) should be either Yes or No")` `r colorize(ma[!str_detect(ma$QSORES05,regex("Yes|No",ignore_case = T)),]$Subject,"red")`
+
+`r knitr::asis_output("QSORES06(Is subject currently using Glyxambi (empagliflozin/linagliptin)?) should be either Yes or No")` `r colorize(ma[!str_detect(ma$QSORES06,regex("Yes|No",ignore_case = T)),]$Subject,"red")`
+
+`r knitr::asis_output("QSORES07(Is subject currently using Synjardy (empagliflozin/metformin)?) should be either Yes or No")` `r colorize(ma[!str_detect(ma$QSORES07,regex("Yes|No",ignore_case = T)),]$Subject,"red")`
+
+`r knitr::asis_output("QSORES08(Is subject currently using Zynquista (sotagliflozin)?) should be either Yes or No")` `r colorize(ma[!str_detect(ma$QSORES08,regex("Yes|No",ignore_case = T)),]$Subject,"red")`
+
+`r knitr::asis_output("QSORES09(Is the subject currently using any type of SGLT-2 inhibitor not listed above?) should be either Yes or No")` `r colorize(ma[!str_detect(ma$QSORES09,regex("Yes|No",ignore_case = T)),]$Subject,"red")` `r knitr::asis_output("If QSORES09(Is the subject currently using any type of SGLT-2 inhibitor not listed above?) is Yes, QSTXT01(If yes, please specify the SGLT-2 inhibitor name) should not be blank")` `r colorize(ma[str_detect(ma$QSORES09,regex("Yes",ignore_case = T)) & str_detect(ma$QSTXT01,"^$|pattern"),]$Subject,"red")`
 
 <!-- # MH1 Review -->
 
