@@ -1215,29 +1215,21 @@ str_detect(ma$QSORES09,regex("Yes",ignore_case = T)) & str_detect(ma$QSTXT01,"^$
 
 `r knitr::asis_output("QSORES09(Is the subject currently using any type of SGLT-2 inhibitor not listed above?) should be either Yes or No")` `r colorize(ma[!str_detect(ma$QSORES09,regex("Yes|No",ignore_case = T)),]$Subject,"red")` `r knitr::asis_output("If QSORES09(Is the subject currently using any type of SGLT-2 inhibitor not listed above?) is Yes, QSTXT01(If yes, please specify the SGLT-2 inhibitor name) should not be blank")` `r colorize(ma[str_detect(ma$QSORES09,regex("Yes",ignore_case = T)) & str_detect(ma$QSTXT01,"^$|pattern"),]$Subject,"red")`
 
-<!-- # MH1 Review -->
+# **MH1 Review**`
 
-<!-- [Diabetes History](//oneabbott.com/dept/ADC/Technical_OPS/Clinical_Affairs/Clinical Study Files/Apollo/ADC-US-RES-21217 Vitamin C Events/Case Report Forms/Version A/Approved/PDF_file/Diabetes History.pdf) -->
-
-`r if(is.character(params$data15)){knitr::asis_output("# **MH1 Review**")}`
-
-`r if(is.character(params$data15)){htmltools::a("Diabetes History",href = "//oneabbott.com/dept/ADC/Technical_OPS/Clinical_Affairs/Clinical Study Files/Apollo/ADC-US-RES-22225 Multi-Analyte Studies/Case Report Forms/Version_G/PDF/Diabetes_History.pdf")}`
+`r htmltools::a("Diabetes History",href = gsub("\\\\", "/", r"(\\oneabbott.com\dept\ADC\Technical_OPS\Clinical_Affairs\Clinical Study Files\Apollo\ADC-US-RES-23234_IDE Pump Suspension Study\Case Report Forms\Version B\Approved\pdf\Diabetes_History.pdf)"))`
 
 ```{r}
-# mh1 <- read_sas(gsub("\\\\", "/", r"(\\wf00168p.oneabbott.com\data1\CDM\ADC-US-RES-21217\SE01\Openclinica\Current\mh1.sas7bdat)"))
-# mh1 <- read_sas(gsub("\\\\", "/", r"(\\wf00168p.oneabbott.com\data1\CDM\ADC-US-VAL-21216\Openclinica\Current\mh1.sas7bdat)"))
-# mh1 <- read_sas(gsub("\\\\", "/", r"(\\wf00168p.oneabbott.com\data1\CDM\ADC-US-RES-22225\SE23_24_Glu\OpenClinica\Current\mh1.sas7bdat)"))
-```
-
-```{r Load mh1, eval=is.character(params$data15)}
-mh1 <- read_sas(params$data15)
-mh1 <- mh1 %>%
-       # filter(!str_detect(MHYN02,regex("CHECK HERE IF NO DATA RECORDED|no_data_recorded",ignore_case = T))) %>%
-       mutate(Subject = as.character(Subject)) %>% 
+#| label: SAS MH1
+mh1 <- read_sas(gsub("\\\\", "/", r"(\\wf00168p.oneabbott.com\data1\CDM\ADC-US-RES-23234\OpenClinica\Current\mh1.sas7bdat)"))
+mh1 <- mh1 |> 
+       filter(!str_detect(MHYN01,regex("CHECK HERE IF NO DATA RECORDED|no_data_recorded",ignore_case = T))) |>
+       mutate(Subject = as.character(Subject)) |> 
        arrange(Subject)
 ```
 
-```{r mh1, eval=is.character(params$data15)}
+```{r}
+#| label: MH1
 htmltools::browsable(
    tagList(
     tags$button(
@@ -1255,26 +1247,25 @@ str_length(mh1$MHDTC01) != median(str_length(mh1$MHDTC01),na.rm = T) |
 (is.na(mh1$MHDTC02) | str_detect(mh1$MHDTC02,"^$|pattern"))    |
 # Length of Date of diabetes diagnosis (C)
 str_length(mh1$MHDTC02) != median(str_length(mh1$MHDTC02),na.rm = T) |
-# Is insulin usage information required for the study event?
-!str_detect(mh1$MHORES02,regex("Yes|No",ignore_case = T)) |
-# If no,
-str_detect(mh1$MHORES02,regex("No",ignore_case = T)) & (!is.na(mh1$MHORES03) | !str_detect(mh1$MHORES04,"^$|pattern") | !str_detect(mh1$MHORES05,"^$|pattern") | !str_detect(mh1$MHORES06,"^$|pattern") | !is.na(mh1$MHDTC03) | !is.na(mh1$MHORES07) | !is.na(mh1$MHORES08) | !str_detect(mh1$HOW_LONG,"^$|pattern") | !is.na(mh1$MHORES09)) | 
-# if MHORES02 yes, How long has the subject been using insulin?
-str_detect(mh1$MHORES02,regex("Yes",ignore_case = T)) & (is.na(mh1$MHORES03) | str_detect(mh1$MHORES04,"^$|pattern")) | 
-# if MHORES02 yes, Does the subject use a pump for insulin administration?
-str_detect(mh1$MHORES02,regex("Yes",ignore_case = T)) & !str_detect(mh1$MHORES05,regex("Yes|No",ignore_case = T)) |
-# if MHORES02 yes, Does the subject require multiple daily insulin injections?
-str_detect(mh1$MHORES02,regex("Yes",ignore_case = T)) & !str_detect(mh1$MHORES06,regex("Yes|No",ignore_case = T)) |
-# if MHORES02 yes and MHORES06 yes 
-str_detect(mh1$MHORES02,regex("Yes",ignore_case = T)) & str_detect(mh1$MHORES06,regex("Yes",ignore_case = T)) & (is.na(mh1$MHDTC03) | is.na(mh1$MHORES07)) |   
-# if MHORES02 yes and MHORES06 No 
-str_detect(mh1$MHORES02,regex("Yes",ignore_case = T)) & str_detect(mh1$MHORES06,regex("No",ignore_case = T)) & (!is.na(mh1$MHDTC03) | !is.na(mh1$MHORES07)) |   
-# if MHORES02 yes How long has the subject been using the current method of insulin administration?
-str_detect(mh1$MHORES02,regex("Yes",ignore_case = T)) & (is.na(mh1$MHORES08)) |
-# if MHORES02 yes Total daily insulin dose (approximate)
-str_detect(mh1$MHORES02,regex("Yes",ignore_case = T)) & (is.na(mh1$MHORES09)),] %>%
-  select(Subject,`__STUDYEVENTREPEATKEY`,MHYN01:last_col()) %>%
-  {if (params$label) (sjlabelled::label_to_colnames(.)) else .} %>%
+# How long has the subject been using insulin?
+is.na(mh1$MHORES02) |
+# How long has the subject been using insulin?
+!str_detect(mh1$MHORES03,regex("Years|Months",ignore_case = T)) |
+# Does the subject use a pump for insulin administration?
+!str_detect(mh1$MHORES04,regex("Yes|No",ignore_case = T)) |
+# Does the subject require multiple daily insulin injections?
+!str_detect(mh1$MHORES05,regex("Yes|No",ignore_case = T)) |
+# If yes, Start date of insulin injections and Number of injections per day
+str_detect(mh1$MHORES05,regex("Yes",ignore_case = T)) & (is.na(mh1$MHDTC03) | is.na(mh1$MHORES06)) |
+# How long has the subject been using the the current method of insulin administration?
+is.na(mh1$MHORES07) |
+# How long has the subject been using the the current method of insulin administration?
+!str_detect(mh1$HOW_LONG,regex("Years|Months",ignore_case = T)) |
+# Total daily insulin dose (approximate)
+is.na(mh1$MHORES09)
+ ,] %>%
+  select(Subject,`__STUDYEVENTREPEATKEY`,MHDTC01:last_col()) %>%
+  # {if (params$label) (sjlabelled::label_to_colnames(.)) else .} %>%
   reactable(paginationType = "jump", striped = TRUE, highlight = TRUE, searchable = TRUE, defaultPageSize = 6, resizable = TRUE, filterable = TRUE,elementId = "mh1",
      defaultColDef = colDef(align = "center",minWidth = 115),
      columns = list(Subject = colDef(sticky = "left"))
@@ -1283,59 +1274,50 @@ str_detect(mh1$MHORES02,regex("Yes",ignore_case = T)) & (is.na(mh1$MHORES09)),] 
 )
 ```
 
-`r if(is.character(params$data15) && is_empty(mh1$Subject)){knitr::asis_output(colorize("MH1 is empty","red"))}`
+`r if(is_empty(mh1$Subject)){knitr::asis_output(colorize("MH1 is empty","red"))}`
 
-`r if(is.character(params$data15)){knitr::asis_output("MHDTC01(Visit Date) should not be blank")}` `r if(is.character(params$data15)){colorize(mh1[(is.na(mh1$MHDTC01) | str_detect(mh1$MHDTC01,"^$|pattern")),]$Subject,"red")}`
+`r knitr::asis_output("MHDTC01(Visit Date) should not be blank")` `r colorize(mh1[(is.na(mh1$MHDTC01) | str_detect(mh1$MHDTC01,"^$|pattern")),]$Subject,"red")`
 
-`r if(is.character(params$data15)){knitr::asis_output("Length of MHDTC01(Visit Date) should be")}` `r if(is.character(params$data15)){colorize(median(str_length(mh1$MHDTC01),na.rm = T),"red")}``r if(is.character(params$data15)){colorize(mh1[str_length(mh1$MHDTC01) != median(str_length(mh1$MHDTC01),na.rm = T),]$Subject,"red")}`
+`r knitr::asis_output("Length of MHDTC01(Visit Date) should be")` `r colorize(median(str_length(mh1$MHDTC01),na.rm = T),"red")` `r colorize(mh1[str_length(mh1$MHDTC01) != median(str_length(mh1$MHDTC01),na.rm = T),]$Subject,"red")`
 
-`r if(is.character(params$data15)){knitr::asis_output("MHORES01(Type of Diabetes) should be either Type 1 or Type 2")}` `r if(is.character(params$data15)){colorize(mh1[!str_detect(mh1$MHORES01,"Type 1|Type1|Type 2|Type2"),]$Subject,"red")}`
+`r knitr::asis_output("MHORES01(Type of Diabetes) should be either Type 1 or Type 2")` `r colorize(mh1[!str_detect(mh1$MHORES01,"Type 1|Type1|Type 2|Type2"),]$Subject,"red")`
 
-`r if(is.character(params$data15)){knitr::asis_output("MHDTC02(Date of diabetes diagnosis) should not be blank")}` `r if(is.character(params$data15)){colorize(mh1[(is.na(mh1$MHDTC02) | str_detect(mh1$MHDTC02,"^$|pattern")),]$Subject,"red")}`
+`r knitr::asis_output("MHDTC02(Date of diabetes diagnosis) should not be blank")` `r colorize(mh1[(is.na(mh1$MHDTC02) | str_detect(mh1$MHDTC02,"^$|pattern")),]$Subject,"red")`
 
-`r if(is.character(params$data15)){knitr::asis_output("Length of MHDTC02(Date of diabetes diagnosis) should be")}` `r if(is.character(params$data15)){colorize(median(str_length(mh1$MHDTC02),na.rm = T),"red")}``r if(is.character(params$data15)){colorize(mh1[str_length(mh1$MHDTC02) != median(str_length(mh1$MHDTC02),na.rm = T),]$Subject,"red")}`
+`r knitr::asis_output("Length of MHDTC02(Date of diabetes diagnosis) should be")` `r colorize(median(str_length(mh1$MHDTC02),na.rm = T),"red")` `r colorize(mh1[str_length(mh1$MHDTC02) != median(str_length(mh1$MHDTC02),na.rm = T),]$Subject,"red")`
 
-`r if(is.character(params$data15)){knitr::asis_output("MHORES02(Is insulin usage information required for the study event?) should be either Yes or No")}` `r if(is.character(params$data15)){colorize(mh1[!str_detect(mh1$MHORES02,regex("Yes|No",ignore_case = T)),]$Subject,"red")}`
+`r knitr::asis_output("MHORES02(How long has the subject been using insulin?) should not be blank")` `r colorize(mh1[is.na(mh1$MHORES02) ,]$Subject,"red")`
 
-`r if(is.character(params$data15)){knitr::asis_output("If MHORES02(Is insulin usage information required for the study event?) is No, so the rest columns should be blank")}` `r if(is.character(params$data15)){colorize(mh1[str_detect(mh1$MHORES02,regex("No",ignore_case = T)) & (!is.na(mh1$MHORES03) | !str_detect(mh1$MHORES04,"^$|pattern") | !str_detect(mh1$MHORES05,"^$|pattern") | !str_detect(mh1$MHORES06,"^$|pattern") | !is.na(mh1$MHDTC03) | !is.na(mh1$MHORES07) | !is.na(mh1$MHORES08) | !str_detect(mh1$HOW_LONG,"^$|pattern") | !is.na(mh1$MHORES09)),]$Subject,"red")}`
+`r knitr::asis_output("MHORES03(How long has the subject been using insulin?) should be either Years or Months")` `r colorize(mh1[!str_detect(mh1$MHORES03,regex("Years|Months",ignore_case = T)) ,]$Subject,"red")`
 
-`r if(is.character(params$data15)){knitr::asis_output("If MHORES02(Is insulin usage information required for the study event?) is Yes, so MHORES03 and MHORES04(How long has the subject been using insulin?) should not be blank")}` `r if(is.character(params$data15)){colorize(mh1[str_detect(mh1$MHORES02,regex("Yes",ignore_case = T)) & (is.na(mh1$MHORES03) | str_detect(mh1$MHORES04,"^$|pattern")),]$Subject,"red")}`
+`r knitr::asis_output("MHORES04(Does the subject use a pump for insulin administration?) should be either Yes or No")` `r colorize(mh1[!str_detect(mh1$MHORES04,regex("Yes|No",ignore_case = T)) ,]$Subject,"red")`
 
-`r if(is.character(params$data15)){knitr::asis_output("If MHORES02(Is insulin usage information required for the study event?) is Yes, so MHORES05(Does the subject use a pump for insulin administration?) should be either Yes or No")}` `r if(is.character(params$data15)){colorize(mh1[str_detect(mh1$MHORES02,regex("Yes",ignore_case = T)) & !str_detect(mh1$MHORES05,regex("Yes|No",ignore_case = T)),]$Subject,"red")}`
+`r knitr::asis_output("MHORES05(Does the subject require multiple daily insulin injections?) should be either Yes or No")` `r colorize(mh1[!str_detect(mh1$MHORES05,regex("Yes|No",ignore_case = T)) ,]$Subject,"red")`
 
-`r if(is.character(params$data15)){knitr::asis_output("If MHORES02(Is insulin usage information required for the study event?) is Yes, so MHORES06(Does the subject require multiple daily insulin injections?) should be either Yes or No")}` `r if(is.character(params$data15)){colorize(mh1[str_detect(mh1$MHORES02,regex("Yes",ignore_case = T)) & !str_detect(mh1$MHORES06,regex("Yes|No",ignore_case = T)),]$Subject,"red")}`
+`r knitr::asis_output("If MHORES05(Does the subject require multiple daily insulin injections?) is Yes, MHDTC03(Start date of insulin injections) and MHORES06(Number of injections per day) should not be blank at the same time")` `r colorize(mh1[str_detect(mh1$MHORES05,regex("Yes",ignore_case = T)) & (is.na(mh1$MHDTC03) | is.na(mh1$MHORES06)),]$Subject,"red")`
 
-`r if(is.character(params$data15)){knitr::asis_output("If MHORES02(Is insulin usage information required for the study event?) and MHORES06(Does the subject require multiple daily insulin injections?) are both Yes, so MHDTC03(Start date of insulin injections:) and MHORES07(Number of injections per day) should not be blank at the same time")}` `r if(is.character(params$data15)){colorize(mh1[str_detect(mh1$MHORES02,regex("Yes",ignore_case = T)) & str_detect(mh1$MHORES06,regex("Yes",ignore_case = T)) & (is.na(mh1$MHDTC03) | is.na(mh1$MHORES07)),]$Subject,"red")}`
+`r knitr::asis_output("MHORES07(How long has the subject been using the the current method of insulin administration?) should not be blank")` `r colorize(mh1[is.na(mh1$MHORES07) ,]$Subject,"red")`
 
-`r if(is.character(params$data15)){knitr::asis_output("If MHORES02(Is insulin usage information required for the study event?) is Yes but MHORES06(Does the subject require multiple daily insulin injections?) is No, so MHDTC03(Start date of insulin injections:) and MHORES07(Number of injections per day) should be blank at the same time")}` `r if(is.character(params$data15)){colorize(mh1[str_detect(mh1$MHORES02,regex("Yes",ignore_case = T)) & str_detect(mh1$MHORES06,regex("No",ignore_case = T)) & (!is.na(mh1$MHDTC03) | !is.na(mh1$MHORES07)),]$Subject,"red")}`
+`r knitr::asis_output("HOW_LONG(How long has the subject been using the the current method of insulin administration?) should be either Years or Months")` `r colorize(mh1[!str_detect(mh1$HOW_LONG,regex("Years|Months",ignore_case = T)),]$Subject,"red")`
 
-`r if(is.character(params$data15)){knitr::asis_output("If MHORES02(Is insulin usage information required for the study event?) is Yes, so MHORES08(How long has the subject been using the current method of insulin administration?) should not be blank")}` `r if(is.character(params$data15)){colorize(mh1[str_detect(mh1$MHORES02,regex("Yes",ignore_case = T)) & (is.na(mh1$MHORES08)),]$Subject,"red")}`
+`r knitr::asis_output("MHORES09(Total daily insulin dose (approximate)) should not be blank")` `r colorize(mh1[is.na(mh1$MHORES09),]$Subject,"red")`
 
-`r if(is.character(params$data15)){knitr::asis_output("If MHORES02(Is insulin usage information required for the study event?) is Yes, so MHORES09(Total daily insulin dose (approximate)) should not be blank")}` `r if(is.character(params$data15)){colorize(mh1[str_detect(mh1$MHORES02,regex("Yes",ignore_case = T)) & (is.na(mh1$MHORES09)),]$Subject,"red")}`
 
-<!-- # PD Review -->
+# **PD Review**
 
-<!-- [Protocol Deviation Report](//oneabbott.com/dept/ADC/Technical_OPS/Clinical_Affairs/Clinical Study Files/Apollo/ADC-US-RES-21217 Vitamin C Events/Case Report Forms/Version A/Approved/PDF_file/Protocol_Deviation_Report.pdf) -->
-
-`r if(is.character(params$data16)){knitr::asis_output("# **PD Review**")}`
-
-`r if(is.character(params$data16)){htmltools::a("Protocol Deviation Report",href = "//oneabbott.com/dept/ADC/Technical_OPS/Clinical_Affairs/Clinical Study Files/Apollo/ADC-US-RES-22225 Multi-Analyte Studies/Case Report Forms/Version_G/PDF/Protocol_Deviation.pdf")}`
+`r htmltools::a("Protocol Deviation Report",href = gsub("\\\\", "/", r"(\\oneabbott.com\dept\ADC\Technical_OPS\Clinical_Affairs\Clinical Study Files\Apollo\ADC-US-RES-23234_IDE Pump Suspension Study\Case Report Forms\Version B\Approved\pdf\Protocol_Deviation_Report.pdf)"))`
 
 ```{r}
-# pd <- read_sas(gsub("\\\\", "/", r"(\\wf00168p.oneabbott.com\data1\CDM\ADC-US-RES-21217\SE01\Openclinica\Current\pd.sas7bdat)"))
-# pd <- read_sas(gsub("\\\\", "/", r"(\\wf00168p.oneabbott.com\data1\CDM\ADC-US-VAL-21216\Openclinica\Current\pd.sas7bdat)"))
-# pd <- read_sas(gsub("\\\\", "/", r"(\\wf00168p.oneabbott.com\data1\CDM\ADC-US-RES-22225\SE23_24_Glu\OpenClinica\Current\pd.sas7bdat)"))
-```
-
-```{r Load pd, eval=is.character(params$data16)}
-pd <- read_sas(params$data16)
-pd <- pd %>% 
-      filter(!str_detect(DVYN,regex("CHECK HERE IF NO DATA RECORDED|no_data_recorded",ignore_case = T))) %>%
-      mutate(Subject = as.character(Subject)) %>% 
+#| label: SAS PD
+pd <- read_sas(gsub("\\\\", "/", r"(\\wf00168p.oneabbott.com\data1\CDM\ADC-US-RES-23234\OpenClinica\Current\pd.sas7bdat)"))
+pd <- pd |> 
+      filter(!str_detect(DVYN,regex("CHECK HERE IF NO DATA RECORDED|no_data_recorded",ignore_case = T))) |>
+      mutate(Subject = as.character(Subject)) |> 
       arrange(Subject)
 ```
 
-```{r pd, eval=is.character(params$data16)}
+```{r}
+#| label: PD
 htmltools::browsable(
    tagList(
     tags$button(
@@ -1378,7 +1360,7 @@ str_detect(pd$DVACT4,regex("Yes",ignore_case = T)) & str_detect(pd$DVCOM2,"^$|pa
 # Length of Principal Investigator Acknowledgement: Date
 str_length(pd$DVDTC3) != median(str_length(pd$DVDTC3), na.rm = T),] %>%
   select(Subject,`__STUDYEVENTREPEATKEY`,DVDTC1:last_col()) %>%
-  {if (params$label) (sjlabelled::label_to_colnames(.)) else .} %>%
+  # {if (params$label) (sjlabelled::label_to_colnames(.)) else .} %>%
   reactable(paginationType = "jump", striped = TRUE, highlight = TRUE, searchable = TRUE, defaultPageSize = 6, resizable = TRUE, filterable = TRUE,elementId = "pd",
      defaultColDef = colDef(align = "center",minWidth = 115),
      columns = list(Subject = colDef(sticky = "left"))
@@ -1387,268 +1369,175 @@ str_length(pd$DVDTC3) != median(str_length(pd$DVDTC3), na.rm = T),] %>%
 )
 ```
 
-`r if(is.character(params$data16) && is_empty(pd$Subject)){knitr::asis_output(colorize("PD is empty","red"))}`
+`r if(is_empty(pd$Subject)){knitr::asis_output(colorize("PD is empty","red"))}`
 
-`r if(is.character(params$data16)){knitr::asis_output("DVDTC1(Date of Deviation) should not be blank")}` `r if(is.character(params$data16)){colorize(pd[(is.na(pd$DVDTC1) | str_detect(pd$DVDTC1,"^$|pattern")),]$Subject,"red")}`
+`r knitr::asis_output("DVDTC1(Date of Deviation) should not be blank")` `r colorize(pd[(is.na(pd$DVDTC1) | str_detect(pd$DVDTC1,"^$|pattern")),]$Subject,"red")`
 
-`r if(is.character(params$data16)){knitr::asis_output("Length of DVDTC1(Date of Deviation) should be")}` `r if(is.character(params$data16)){colorize(median(str_length(pd$DVDTC1),na.rm = T),"red")}` `r if(is.character(params$data16)){colorize(pd[str_length(pd$DVDTC1) != median(str_length(pd$DVDTC1),na.rm = T),]$Subject,"red")}`
+`r knitr::asis_output("Length of DVDTC1(Date of Deviation) should be")` `r colorize(median(str_length(pd$DVDTC1),na.rm = T),"red")` `r colorize(pd[str_length(pd$DVDTC1) != median(str_length(pd$DVDTC1),na.rm = T),]$Subject,"red")`
 
-`r if(is.character(params$data16)){knitr::asis_output("DVSEQ01(Protocol Deviation Report Number) should not be blank")}` `r if(is.character(params$data16)){colorize(pd[(is.na(pd$DVSEQ01)  | str_detect(pd$DVSEQ01,"^$|pattern")),]$Subject,"red")}`
+`r knitr::asis_output("DVSEQ01(Protocol Deviation Report Number) should not be blank")` `r colorize(pd[(is.na(pd$DVSEQ01)  | str_detect(pd$DVSEQ01,"^$|pattern")),]$Subject,"red")`
 
-`r if(is.character(params$data16)){knitr::asis_output("DVDTC2(Date of Reported) should not be blank")}` `r if(is.character(params$data16)){colorize(pd[(is.na(pd$DVDTC2) | str_detect(pd$DVDTC2,"^$|pattern")),]$Subject,"red")}`
+`r knitr::asis_output("DVDTC2(Date of Reported) should not be blank")` `r colorize(pd[(is.na(pd$DVDTC2) | str_detect(pd$DVDTC2,"^$|pattern")),]$Subject,"red")`
 
-`r if(is.character(params$data16)){knitr::asis_output("Length of DVDTC2(Date of Deviation) should be")}` `r if(is.character(params$data16)){colorize(median(str_length(pd$DVDTC2),na.rm = T),"red")}``r if(is.character(params$data16)){colorize(pd[str_length(pd$DVDTC2) != median(str_length(pd$DVDTC2),na.rm = T),]$Subject,"red")}`
+`r knitr::asis_output("Length of DVDTC2(Date of Deviation) should be")` `r colorize(median(str_length(pd$DVDTC2),na.rm = T),"red")` `r colorize(pd[str_length(pd$DVDTC2) != median(str_length(pd$DVDTC2),na.rm = T),]$Subject,"red")`
 
-`r if(is.character(params$data16)){knitr::asis_output("DVTERM(TYPE OF DEVIATION) should not be blank")}` `r if(is.character(params$data16)){colorize(pd[str_detect(pd$DVTERM,"^$|pattern"),]$Subject,"red")}`
+`r knitr::asis_output("DVTERM(TYPE OF DEVIATION) should not be blank")` `r colorize(pd[str_detect(pd$DVTERM,"^$|pattern"),]$Subject,"red")`
 
-`r if(is.character(params$data16)){knitr::asis_output("If DVTERM(TYPE OF DEVIATION) is other, DVCOM1(OTHER SPECIFY) should not be blank")}` `r if(is.character(params$data16)){colorize(pd[str_detect(pd$DVTERM,regex("Other Protocol Deviation Specify",ignore_case = T)) & str_detect(pd$DVCOM1,"^$|pattern"),]$Subject,"red")}`
+`r knitr::asis_output("If DVTERM(TYPE OF DEVIATION) is other, DVCOM1(OTHER SPECIFY) should not be blank")` `r colorize(pd[str_detect(pd$DVTERM,regex("Other Protocol Deviation Specify",ignore_case = T)) & str_detect(pd$DVCOM1,"^$|pattern"),]$Subject,"red")`
 
-`r if(is.character(params$data16)){knitr::asis_output("DVDESC1~3(Description of Deviation) should not be blank at the same time")}` `r if(is.character(params$data16)){colorize(pd[str_detect(pd$DVDESC1,"^$|pattern")  & str_detect(pd$DVDESC2,"^$|pattern") & str_detect(pd$DVDESC3,"^$|pattern"),]$Subject,"red")}`
+`r knitr::asis_output("DVDESC1~3(Description of Deviation) should not be blank at the same time")` `r colorize(pd[str_detect(pd$DVDESC1,"^$|pattern") & str_detect(pd$DVDESC2,"^$|pattern") & str_detect(pd$DVDESC3,"^$|pattern"),]$Subject,"red")`
 
-`r if(is.character(params$data16)){knitr::asis_output("DVDESC1~3(Description of Deviation) should not be blank at the same time")}` `r if(is.character(params$data16)){colorize(pd[str_detect(pd$DVDESC1,"^$|pattern")  & str_detect(pd$DVDESC2,"^$|pattern") & str_detect(pd$DVDESC3,"^$|pattern"),]$Subject,"red")}`
+`r knitr::asis_output("DVDESC1~3(Description of Deviation) should not be blank at the same time")` `r colorize(pd[str_detect(pd$DVDESC1,"^$|pattern") & str_detect(pd$DVDESC2,"^$|pattern") & str_detect(pd$DVDESC3,"^$|pattern"),]$Subject,"red")`
 
-`r if(is.character(params$data16)){knitr::asis_output("DVACT1(Subject withdrawn from study) should be Yes or No")}` `r if(is.character(params$data16)){colorize(pd[!str_detect(pd$DVACT1,regex("Yes|No",ignore_case = T)),]$Subject,"red")}`
+`r knitr::asis_output("DVACT1(Subject withdrawn from study) should be Yes or No")` `r colorize(pd[!str_detect(pd$DVACT1,regex("Yes|No",ignore_case = T)),]$Subject,"red")`
 
-`r if(is.character(params$data16)){knitr::asis_output("DVACT2(Inform Ethics Committee/IRB) should be Yes or No")}` `r if(is.character(params$data16)){colorize(pd[!str_detect(pd$DVACT2,regex("Yes|No",ignore_case = T)),]$Subject,"red")}`
+`r knitr::asis_output("DVACT2(Inform Ethics Committee/IRB) should be Yes or No")` `r colorize(pd[!str_detect(pd$DVACT2,regex("Yes|No",ignore_case = T)),]$Subject,"red")`
 
-`r if(is.character(params$data16)){knitr::asis_output("DVACT3(Protocol amendment required) should be Yes or No")}` `r if(is.character(params$data16)){colorize(pd[!str_detect(pd$DVACT3,regex("Yes|No",ignore_case = T)),]$Subject,"red")}`
+`r knitr::asis_output("DVACT3(Protocol amendment required) should be Yes or No")` `r colorize(pd[!str_detect(pd$DVACT3,regex("Yes|No",ignore_case = T)),]$Subject,"red")`
 
-`r if(is.character(params$data16)){knitr::asis_output("DVACT4(Other (please specify)) should be Yes or No")}` `r if(is.character(params$data16)){colorize(pd[!str_detect(pd$DVACT4,regex("Yes|No",ignore_case = T)),]$Subject,"red")}` `r if(is.character(params$data16)){knitr::asis_output("and DVACT4(Other (please specify)) if yes (DVCOM2) should not be blank")}` `r if(is.character(params$data16)){colorize(pd[str_detect(pd$DVACT4,regex("Yes",ignore_case = T)) & str_detect(pd$DVCOM2,"^$|pattern"),]$Subject,"red")}`
+`r knitr::asis_output("DVACT4(Other (please specify)) should be Yes or No")` `r colorize(pd[!str_detect(pd$DVACT4,regex("Yes|No",ignore_case = T)),]$Subject,"red")` `r knitr::asis_output("and DVACT4(Other (please specify)) if yes (DVCOM2) should not be blank")` `r colorize(pd[str_detect(pd$DVACT4,regex("Yes",ignore_case = T)) & str_detect(pd$DVCOM2,"^$|pattern"),]$Subject,"red")`
 
-`r if(is.character(params$data16)){knitr::asis_output("DVDESC4~6(Action taken to prevent similar future deviation) should not be blank at the same time")}` `r if(is.character(params$data16)){colorize(pd[str_detect(pd$DVDESC4,"^$|pattern")  & str_detect(pd$DVDESC5,"^$|pattern") & str_detect(pd$DVDESC6,"^$|pattern"),]$Subject,"red")}`
+`r knitr::asis_output("DVDESC4~6(Action taken to prevent similar future deviation) should not be blank at the same time")` `r colorize(pd[str_detect(pd$DVDESC4,"^$|pattern")  & str_detect(pd$DVDESC5,"^$|pattern") & str_detect(pd$DVDESC6,"^$|pattern"),]$Subject,"red")`
 
-`r if(is.character(params$data16)){knitr::asis_output("DVDTC3(Principal Investigator Acknowledgement: Date) should not be blank")}` `r if(is.character(params$data16)){colorize(pd[(is.na(pd$DVDTC3) | str_detect(pd$DVDTC3,"^$|pattern")),]$Subject,"red")}`
+`r knitr::asis_output("DVDTC3(Principal Investigator Acknowledgement: Date) should not be blank")` `r colorize(pd[(is.na(pd$DVDTC3) | str_detect(pd$DVDTC3,"^$|pattern")),]$Subject,"red")`
 
-`r if(is.character(params$data16)){knitr::asis_output("Length of DVDTC3(Principal Investigator Acknowledgement: Date) should be")}` `r if(is.character(params$data16)){colorize(median(str_length(pd$DVDTC3), na.rm = T),"red")}``r if(is.character(params$data16)){colorize(pd[str_length(pd$DVDTC3) != median(str_length(pd$DVDTC3), na.rm = T),]$Subject,"red")}`
+`r knitr::asis_output("Length of DVDTC3(Principal Investigator Acknowledgement: Date) should be")` `r colorize(median(str_length(pd$DVDTC3), na.rm = T),"red")` `r colorize(pd[str_length(pd$DVDTC3) != median(str_length(pd$DVDTC3), na.rm = T),]$Subject,"red")`
 
-<!-- # QCRG1 Review -->
+# **PS Review**
 
-<!-- [Quality Control Check – YSI](//oneabbott.com/dept/ADC/Technical_OPS/Clinical_Affairs/Clinical Study Files/Apollo/ADC-US-RES-21217 Vitamin C Events/Case Report Forms/Version A/Approved/PDF_file/QC_CheckYSI.pdf) -->
-
-`r if(is.character(params$data17)){knitr::asis_output("# **QCRG1 Review**")}`
-
-`r if(is.character(params$data17)){htmltools::a("Quality Control Check – YSI",href = "//oneabbott.com/dept/ADC/Technical_OPS/Clinical_Affairs/Clinical Study Files/Apollo/ADC-US-RES-22225 Multi-Analyte Studies/Case Report Forms/Version_G/PDF/QC_CheckYSI.pdf")}`
+`r htmltools::a("Pump Suspension",href = gsub("\\\\", "/", r"(\\oneabbott.com\dept\ADC\Technical_OPS\Clinical_Affairs\Clinical Study Files\Apollo\ADC-US-RES-23234_IDE Pump Suspension Study\Case Report Forms\Version B\Approved\pdf\Pump_Suspension.pdf)"))`
 
 ```{r}
-# qcrg1 <- read_sas(gsub("\\\\", "/", r"(\\wf00168p.oneabbott.com\data1\CDM\ADC-US-RES-21217\SE01\Openclinica\Current\qcrg1.sas7bdat)"))
-# qcrg1 <- read_sas(gsub("\\\\", "/", r"(\\wf00168p.oneabbott.com\data1\CDM\ADC-US-VAL-21216\Openclinica\Current\qcrg1.sas7bdat)"))
-```
-
-```{r Load qcrg1, eval=is.character(params$data17)}
-qcrg1 <- read_sas(params$data17)
-qcrg1 <- qcrg1 %>% 
-         filter(!str_detect(DQYN01,regex("CHECK HERE IF NO DATA RECORDED|no_data_recorded",ignore_case = T))) %>%
-         mutate(Subject = as.character(Subject)) %>% 
-         arrange(Subject)
-```
-
-```{r qcrg1, eval=is.character(params$data17)}
-htmltools::browsable(
-   tagList(
-    tags$button(
-      tagList(fontawesome::fa("download"), "Download as CSV"),
-      onclick = "Reactable.downloadDataCSV('qcrg1', 'qcrg1.csv')"
-    ),
-qcrg1[
-# YSI Number (C)
-(is.na(qcrg1$DQID01) | str_detect(qcrg1$DQID01,"^$|pattern")),] %>% 
-  select(-c(`StudyStatus`,`SubjectID`:`__ITEMGROUPREPEATKEY`)) %>%
-  {if (params$label) (sjlabelled::label_to_colnames(.)) else .} %>%
-  reactable(paginationType = "jump", striped = TRUE, highlight = TRUE, searchable = TRUE, defaultPageSize = 6, resizable = TRUE, filterable = TRUE,elementId = "qcrg1",
-     defaultColDef = colDef(align = "center",minWidth = 115),
-     columns = list(Subject = colDef(sticky = "left"))
-     )
-  )
-)
-```
-
-`r if(is.character(params$data17) && is_empty(qcrg1$Subject)){knitr::asis_output(colorize("QCRG1 is empty","red"))}`
-
-`r if(is.character(params$data17)){knitr::asis_output("DQID01(YSI Number) should not be blank")}` `r if(is.character(params$data17)){colorize(qcrg1[(is.na(qcrg1$DQID01) | str_detect(qcrg1$DQID01,"^$|pattern")),]$Subject,"red")}`
-
-<!-- # QCRG2 Review -->
-
-<!-- [Quality Control Check – YSI](//oneabbott.com/dept/ADC/Technical_OPS/Clinical_Affairs/Clinical Study Files/Apollo/ADC-US-RES-21217 Vitamin C Events/Case Report Forms/Version A/Approved/PDF_file/QC_CheckYSI.pdf) -->
-
-`r if(is.character(params$data18)){knitr::asis_output("# **QCRG2 Review**")}`
-
-`r if(is.character(params$data18)){htmltools::a("Quality Control Check – YSI",href = "//oneabbott.com/dept/ADC/Technical_OPS/Clinical_Affairs/Clinical Study Files/Apollo/ADC-US-RES-22225 Multi-Analyte Studies/Case Report Forms/Version_G/PDF/QC_CheckYSI.pdf")}`
-
-```{r}
-# qcrg2 <- read_sas(gsub("\\\\", "/", r"(\\wf00168p.oneabbott.com\data1\CDM\ADC-US-RES-21217\SE01\Openclinica\Current\qcrg2.sas7bdat)"))
-# qcrg2 <- read_sas(gsub("\\\\", "/", r"(\\wf00168p.oneabbott.com\data1\CDM\ADC-US-VAL-21216\Openclinica\Current\qcrg2.sas7bdat)"))
-```
-
-```{r Load qcrg2, eval=is.character(params$data18)}
-qcrg2 <- read_sas(params$data18)
-qcrg2 <- qcrg2 %>% 
-         mutate(Subject = as.character(Subject)) %>% 
-         arrange(Subject)
-```
-
-```{r qcrg2, eval=is.character(params$data18)}
-htmltools::browsable(
-   tagList(
-    tags$button(
-      tagList(fontawesome::fa("download"), "Download as CSV"),
-      onclick = "Reactable.downloadDataCSV('qcrg2', 'qcrg2.csv')"
-    ),
-qcrg2[
-# Date (C)
-(is.na(qcrg2$DQDTC01) | str_detect(qcrg2$DQDTC01,"^$|pattern"))  |
-# Length of Date
-str_length(qcrg2$DQDTC01) != median(str_length(qcrg2$DQDTC01),na.rm = T)  |
-# 50 Standard Black Range: (N)
-is.na(qcrg2$DQORES01) |
-# 50 Standard White Range: (N)
-is.na(qcrg2$DQORES02) |
-# 50 Standard Time (C)
-is.na(qcrg2$DQTM01) | str_detect(qcrg2$DQTM01,"^$|pattern") |
-# Length of 50 Standard Time (C)
-str_length(qcrg2$DQTM01) != median(str_length(qcrg2$DQTM01),na.rm = T) |
-# 100 Standard Black Range: (N)
-is.na(qcrg2$DQORES03) |
-# 100 Standard White Range: (N)
-is.na(qcrg2$DQORES04) |
-# 100 Standard Time (C)
-is.na(qcrg2$DQTM02) | str_detect(qcrg2$DQTM02,"^$|pattern") |
-# Length of 100 Standard Time
-str_length(qcrg2$DQTM02) != median(str_length(qcrg2$DQTM02),na.rm = T) |
-# 180 Standard Black Range: (N)
-is.na(qcrg2$DQORES05) |
-# 180 Standard White Range: (N)
-is.na(qcrg2$DQORES06) |
-# 180 Standard Time (C)
-is.na(qcrg2$DQTM03) | str_detect(qcrg2$DQTM03,"^$|pattern") |
-# Length of 180 Standard Time
-str_length(qcrg2$DQTM03) != median(str_length(qcrg2$DQTM03),na.rm = T) |
-# 400 Standard Black Range: (N)
-is.na(qcrg2$DQORES07) |
-# 400 Standard White Range: (N)
-is.na(qcrg2$DQORES08) |
-# 400 Standard Time (C)
-is.na(qcrg2$DQTM04) | str_detect(qcrg2$DQTM04,"^$|pattern")         |
-# Length of 400 Standard Time
-str_length(qcrg2$DQTM04) != median(str_length(qcrg2$DQTM04),na.rm = T),] %>%
-  select(-c(`StudyStatus`,`SubjectID`:`__ITEMGROUPREPEATKEY`)) %>%
-  {if (params$label) (sjlabelled::label_to_colnames(.)) else .} %>%
-  reactable(paginationType = "jump", striped = TRUE, highlight = TRUE, searchable = TRUE, defaultPageSize = 6, resizable = TRUE, filterable = TRUE,elementId = "qcrg2",
-     defaultColDef = colDef(align = "center",minWidth = 115),
-     columns = list(Subject = colDef(sticky = "left"))
-     )
-  )
-)
-```
-
-`r if(is.character(params$data18) && is_empty(qcrg2$Subject)){knitr::asis_output(colorize("QCRG2 is empty","red"))}`
-
-`r if(is.character(params$data18)){knitr::asis_output("DQDTC01(Date) should not be blank")}` `r if(is.character(params$data18)){colorize(qcrg2[(is.na(qcrg2$DQDTC01) | str_detect(qcrg2$DQDTC01,"^$|pattern")),]$Subject,"red")}`
-
-`r if(is.character(params$data18)){knitr::asis_output("Length of DQDTC01(Date) should be")}` `r if(is.character(params$data18)){colorize(median(str_length(qcrg2$DQDTC01),na.rm = T),"red")}``r if(is.character(params$data18)){colorize(qcrg2[str_length(qcrg2$DQDTC01) != median(str_length(qcrg2$DQDTC01),na.rm = T),]$Subject,"red")}`
-
-`r if(is.character(params$data18)){knitr::asis_output("DQORES01(50 Standard Black Range:) should not be blank")}` `r if(is.character(params$data18)){colorize(qcrg2[is.na(qcrg2$DQORES01),]$Subject,"red")}`
-
-`r if(is.character(params$data18)){knitr::asis_output("DQORES02(50 Standard White Range:) should not be blank")}` `r if(is.character(params$data18)){colorize(qcrg2[is.na(qcrg2$DQORES02),]$Subject,"red")}`
-
-`r if(is.character(params$data18)){knitr::asis_output("DQTM01(50 Standard Time) should not be blank")}` `r if(is.character(params$data18)){colorize(qcrg2[is.na(qcrg2$DQTM01) | str_detect(qcrg2$DQTM01,"^$|pattern"),]$Subject,"red")}`
-
-`r if(is.character(params$data18)){knitr::asis_output("Length of DQTM01(50 Standard Time) should be")}` `r if(is.character(params$data18)){colorize(median(str_length(qcrg2$DQTM01),na.rm = T),"red")}``r if(is.character(params$data18)){colorize(qcrg2[str_length(qcrg2$DQTM01) != median(str_length(qcrg2$DQTM01),na.rm = T),]$Subject,"red")}`
-
-`r if(is.character(params$data18)){knitr::asis_output("DQORES03(100 Standard Black Range:) should not be blank")}``r if(is.character(params$data18)){colorize(qcrg2[is.na(qcrg2$DQORES03),]$Subject,"red")}`
-
-`r if(is.character(params$data18)){knitr::asis_output("DQORES04(100 Standard White Range:) should not be blank")}` `r if(is.character(params$data18)){colorize(qcrg2[is.na(qcrg2$DQORES04),]$Subject,"red")}`
-
-`r if(is.character(params$data18)){knitr::asis_output("DQTM02(100 Standard Time) should not be blank")}` `r if(is.character(params$data18)){colorize(qcrg2[is.na(qcrg2$DQTM02) | str_detect(qcrg2$DQTM02,"^$|pattern"),]$Subject,"red")}`
-
-`r if(is.character(params$data18)){knitr::asis_output("Length of DQTM02(100 Standard Time) should be")}` `r if(is.character(params$data18)){colorize(median(str_length(qcrg2$DQTM02),na.rm = T),"red")}``r if(is.character(params$data18)){colorize(qcrg2[str_length(qcrg2$DQTM02) != median(str_length(qcrg2$DQTM02),na.rm = T),]$Subject,"red")}`
-
-`r if(is.character(params$data18)){knitr::asis_output("DQORES05(180 Standard Black Range:) should not be blank")}` `r if(is.character(params$data18)){colorize(qcrg2[is.na(qcrg2$DQORES05),]$Subject,"red")}`
-
-`r if(is.character(params$data18)){knitr::asis_output("DQORES06(180 Standard White Range:) should not be blank")}` `r if(is.character(params$data18)){colorize(qcrg2[is.na(qcrg2$DQORES06),]$Subject,"red")}`
-
-`r if(is.character(params$data18)){knitr::asis_output("DQTM03(180 Standard Time) should not be blank")}` `r if(is.character(params$data18)){colorize(qcrg2[is.na(qcrg2$DQTM03) | str_detect(qcrg2$DQTM03,"^$|pattern"),]$Subject,"red")}`
-
-`r if(is.character(params$data18)){knitr::asis_output("Length of DQTM03(180 Standard Time) should be")}` `r if(is.character(params$data18)){colorize(median(str_length(qcrg2$DQTM03),na.rm = T),"red")}``r if(is.character(params$data18)){colorize(qcrg2[str_length(qcrg2$DQTM03) != median(str_length(qcrg2$DQTM03),na.rm = T),]$Subject,"red")}`
-
-`r if(is.character(params$data18)){knitr::asis_output("DQORES07(400 Standard Black Range:) should not be blank")}` `r if(is.character(params$data18)){colorize(qcrg2[is.na(qcrg2$DQORES07),]$Subject,"red")}`
-
-`r if(is.character(params$data18)){knitr::asis_output("DQORES08(400 Standard White Range:) should not be blank")}` `r if(is.character(params$data18)){colorize(qcrg2[is.na(qcrg2$DQORES08),]$Subject,"red")}`
-
-`r if(is.character(params$data18)){knitr::asis_output("DQTM04(400 Standard Time) should not be blank")}` `r if(is.character(params$data18)){colorize(qcrg2[is.na(qcrg2$DQTM04) | str_detect(qcrg2$DQTM04,"^$|pattern"),]$Subject,"red")}`
-
-`r if(is.character(params$data18)){knitr::asis_output("Length of DQTM04(400 Standard Time) should be")}` `r if(is.character(params$data18)){colorize(median(str_length(qcrg2$DQTM04),na.rm = T),"red")}``r if(is.character(params$data18)){colorize(qcrg2[str_length(qcrg2$DQTM04) != median(str_length(qcrg2$DQTM04),na.rm = T),]$Subject,"red")}`
-
-<!-- # SA1 Review -->
-
-<!-- [Sensor Application](//oneabbott.com/dept/ADC/Technical_OPS/Clinical_Affairs/Clinical Study Files/Apollo/ADC-US-RES-21217 Vitamin C Events/Case Report Forms/Version A/Approved/PDF_file/SensorApplication_Site.pdf) -->
-
-<!-- `r if(is.character(params$data19)){knitr::asis_output("# **SA1 Review**")}` -->
-
-<!-- `r if(is.character(params$data19)){htmltools::a("Sensor Application",href = "//oneabbott.com/dept/ADC/Technical_OPS/Clinical_Affairs/Clinical Study Files/Apollo/ADC-US-RES-21217 Vitamin C Events/Case Report Forms/Version A/Approved/PDF_file/SensorApplication_Site.pdf")}` -->
-
-```{r}
-# sa1 <- read_sas(gsub("\\\\", "/", r"(\\wf00168p.oneabbott.com\data1\CDM\ADC-US-RES-21217\SE01\Openclinica\Current\sa1.sas7bdat)"))
-# sa1 <- read_sas(gsub("\\\\", "/", r"(\\wf00168p.oneabbott.com\data1\CDM\ADC-US-VAL-21216\Openclinica\Current\sa1.sas7bdat)"))
-```
-
-```{r Load sa1, eval=is.character(params$data19)}
-# sa1 <- read_sas(params$data19)
-# sa1 <- sa1 %>% 
-#        filter(!str_detect(DUYN1,regex("CHECK HERE IF NO DATA RECORDED|no_data_recorded",ignore_case = T))) %>%
-#        mutate(Subject = as.character(Subject)) %>% 
-#        arrange(Subject)
-```
-
-```{r sa1, eval=is.character(params$data19)}
-# htmltools::browsable(
-#    tagList(
-#     tags$button(
-#       tagList(fontawesome::fa("download"), "Download as CSV"),
-#       onclick = "Reactable.downloadDataCSV('sa1', 'sa1.csv')"
-#     ),
-# sa1[
-# # Visit Date
-# (is.na(sa1$DUDTTC1) | str_detect(sa1$DUDTTC1,"^$|pattern")) | 
-# # Length of Visit Date
-# str_length(sa1$DUDTTC1) != median(str_length(sa1$DUDTTC1),na.rm = T),] %>% 
-#   select(-c(`StudyStatus`,`SubjectID`:`__ITEMGROUPREPEATKEY`)) %>%
-#   reactable(paginationType = "jump", striped = TRUE, highlight = TRUE, searchable = TRUE, defaultPageSize = 6, resizable = TRUE, filterable = TRUE,elementId = "sa1",
-#      defaultColDef = colDef(align = "center",minWidth = 115),
-#      columns = list(Subject = colDef(sticky = "left"))
-#      )
-#   )
-# )
-```
-
-<!-- `r if(is.character(params$data19) && is_empty(sa1$Subject)){knitr::asis_output(colorize("SA1 is empty","red"))}` -->
-
-<!-- `r if(is.character(params$data19)){knitr::asis_output("DUDTTC1(Visit Date) should not be blank")}` `r if(is.character(params$data19)){colorize(sa1[is.na(sa1$DUDTTC1),]$Subject,"red")}` -->
-
-<!-- `r if(is.character(params$data19)){knitr::asis_output("Length of DUDTTC1(Visit Date) should be")}` `r if(is.character(params$data19)){colorize(median(str_length(sa1$DUDTTC1),na.rm = T),"red")}``r if(is.character(params$data19)){colorize(sa1[str_length(sa1$DUDTTC1) != median(str_length(sa1$DUDTTC1),na.rm = T),]$Subject,"red")}` -->
-
-<!-- # sa Review -->
-
-<!-- [Sensor Application](//oneabbott.com/dept/ADC/Technical_OPS/Clinical_Affairs/Clinical Study Files/Apollo/ADC-US-RES-21217 Vitamin C Events/Case Report Forms/Version A/Approved/PDF_file/SensorApplication_Site.pdf) -->
-
-`r if(is.character(params$data20)){knitr::asis_output("# **SA Review**")}`
-
-`r if(is.character(params$data20)){htmltools::a("Sensor Application",href = "//oneabbott.com/dept/ADC/Technical_OPS/Clinical_Affairs/Clinical Study Files/Apollo/ADC-US-RES-22225 Multi-Analyte Studies/Case Report Forms/Version_G/PDF/Sensor_Application.pdf")}`
-
-```{r}
-# sa <- read_sas(gsub("\\\\", "/", r"(\\wf00168p.oneabbott.com\data1\CDM\ADC-US-RES-21217\SE01\Openclinica\Current\sa.sas7bdat)"))
-# sa <- read_sas(gsub("\\\\", "/", r"(\\wf00168p.oneabbott.com\data1\CDM\ADC-US-VAL-21216\Openclinica\Current\sa.sas7bdat)"))
-# sa <- read_sas(gsub("\\\\", "/", r"(\\wf00168p.oneabbott.com\data1\CDM\ADC-US-RES-22225\SE23_24_Glu\OpenClinica\Current\sa.sas7bdat)"))
-```
-
-```{r Load sa, eval=is.character(params$data20)}
-sa <- read_sas(params$data20)
-sa <- sa %>% 
-      filter(!str_detect(DUYN01,regex("CHECK HERE IF NO DATA RECORDED|no_data_recorded",ignore_case = T))) %>%
-      mutate(Subject = as.character(Subject)) %>% 
+#| label: SAS PS
+ps <- read_sas(gsub("\\\\", "/", r"(\\wf00168p.oneabbott.com\data1\CDM\ADC-US-RES-23234\OpenClinica\Current\ps.sas7bdat)"))
+ps <- ps |> 
+      filter(!str_detect(PSYN01,regex("CHECK HERE IF NO DATA RECORDED|no_data_recorded",ignore_case = T))) |>
+      mutate(Subject = as.character(Subject)) |> 
       arrange(Subject)
 ```
 
-```{r sa, eval=is.character(params$data20)}
+```{r}
+#| label: PS
+htmltools::browsable(
+   tagList(
+    tags$button(
+      tagList(fontawesome::fa("download"), "Download as CSV"),
+      onclick = "Reactable.downloadDataCSV('ps', 'ps.csv')"
+    ),
+ps[
+# Visit Date
+(is.na(ps$PSDTC01) | str_detect(ps$PSDTC01,"^$|pattern")) |
+# Length of Date of Deviation 
+str_length(ps$PSDTC01) != median(str_length(ps$PSDTC01),na.rm = T) |
+# Starting Glucose Level (mg/dL)
+is.na(ps$PSORES01) |
+# Starting Ketone Level (mmol/L)
+is.na(ps$PSORES02) |
+# Time Ketone Level Obtained (24-hr)
+(str_detect(ps$PSTM01,"^$|pattern") | is.na(ps$PSTM01))   |
+# Length of Time Ketone Level Obtained (24-hr)
+str_length(ps$PSTM01) != median(str_length(ps$PSTM01),na.rm = T) |
+# The delimiter between Hours and mins
+!str_detect(ps$PSTM01,":")       |
+# Start of insulin pump suspension time: (24-hr)
+(str_detect(ps$PSTM02,"^$|pattern") | is.na(ps$PSTM02))   |
+# Length of Start of insulin pump suspension time: (24-hr)
+str_length(ps$PSTM02) != median(str_length(ps$PSTM02),na.rm = T) |
+# The delimiter between Hours and mins
+!str_detect(ps$PSTM02,":")       |
+# Enter blood glucose level (mg/dL): Enter blood ketone level (mmol/L): Enter blood potassium level (mmol/L): Enter blood pH level:
+(is.na(ps$PSORES03) | is.na(ps$PSORES04) | is.na(ps$PSORES05) | is.na(ps$PSORES06)) | 
+# End of insulin pump suspension time: (24-hr)
+(str_detect(ps$PSTM03,"^$|pattern") | is.na(ps$PSTM03))   |
+# Length of End of insulin pump suspension time: (24-hr)
+str_length(ps$PSTM03) != median(str_length(ps$PSTM03),na.rm = T) |
+# The delimiter between Hours and mins
+!str_detect(ps$PSTM03,":") |
+# Enter blood glucose level (mg/dL): Enter blood ketone level (mmol/L): Enter blood potassium level (mmol/L): Enter blood pH level:
+(is.na(ps$PSORES07) | is.na(ps$PSORES08) | is.na(ps$PSORES09) | is.na(ps$PSORES10))  |
+# Extreme values for PSORES07
+ps$PSORES07 < quantile(ps$PSORES07,probs = 0.25) - 1.5*(quantile(ps$PSORES07,probs = 0.75) - quantile(ps$PSORES07,probs = 0.25)) |
+# Is the subject stable and is it safe to discharge the subject?
+!str_detect(ps$PSYN02,regex("Yes|No",ignore_case = T)) |
+# If no, provide reason:
+str_detect(ps$PSYN02,regex("No",ignore_case = T)) & str_detect(ps$PSORES11,"^$|pattern") |
+# Induction End Time (24-hr)
+(str_detect(ps$PSTM04,"^$|pattern") | is.na(ps$PSTM04))   |
+# Length of Induction End Time (24-hr)
+str_length(ps$PSTM04) != median(str_length(ps$PSTM04),na.rm = T) |
+# The delimiter between Hours and mins
+!str_detect(ps$PSTM04,":") 
+ ,] %>% 
+  select(Subject,PSDTC01:last_col()) %>%
+  # {if (params$label) (sjlabelled::label_to_colnames(.)) else .} %>%
+  reactable(paginationType = "jump", striped = TRUE, highlight = TRUE, searchable = TRUE, defaultPageSize = 6, resizable = TRUE, filterable = TRUE,elementId = "ps",
+     defaultColDef = colDef(align = "center",minWidth = 115),
+     columns = list(Subject = colDef(sticky = "left"))
+     )
+   )
+)
+```
+
+`r if(is_empty(ps$Subject)){knitr::asis_output(colorize("PS is empty","red"))}`
+
+`r knitr::asis_output("PSDTC01(Visit Date) should not be blank")` `r colorize(ps[(is.na(ps$PSDTC01) | str_detect(ps$PSDTC01,"^$|pattern")),]$Subject,"red")`
+
+`r knitr::asis_output("Length of PSDTC01(Visit Date) should be")` `r colorize(median(str_length(ps$PSDTC01),na.rm = T),"red")` `r colorize(ps[str_length(ps$PSDTC01) != median(str_length(ps$PSDTC01),na.rm = T),]$Subject,"red")`
+
+`r knitr::asis_output("PSORES01(Starting Glucose Level (mg/dL)) should not be blank")` `r colorize(ps[is.na(ps$PSORES01),]$Subject,"red")`
+
+`r knitr::asis_output("PSORES02(Starting Ketone Level (mmol/L)) should not be blank")` `r colorize(ps[is.na(ps$PSORES02),]$Subject,"red")`
+
+`r knitr::asis_output("PSTM01(Time Ketone Level Obtained (24-hr)) should not be blank")` `r colorize(ps[(str_detect(ps$PSTM01,"^$|pattern") | is.na(ps$PSTM01)),]$Subject,"red")`
+
+`r knitr::asis_output("Length of PSTM01(Time Ketone Level Obtained (24-hr)) should be")` `r colorize(median(str_length(ps$PSTM01),na.rm = T),"red")` `r colorize(ps[str_length(ps$PSTM01) != median(str_length(ps$PSTM01),na.rm = T),]$Subject,"red")`
+
+`r knitr::asis_output("The delimiter of PSTM01(Time Ketone Level Obtained (24-hr)) should be colon")` `r colorize(ps[!str_detect(ps$PSTM01,":"),]$Subject,"red")`
+
+`r knitr::asis_output("PSTM02(Start of insulin pump suspension time: (24-hr)) should not be blank")` `r colorize(ps[(str_detect(ps$PSTM02,"^$|pattern") | is.na(ps$PSTM02)),]$Subject,"red")`
+
+`r knitr::asis_output("Length of PSTM02(Start of insulin pump suspension time: (24-hr)) should be")` `r colorize(median(str_length(ps$PSTM02),na.rm = T),"red")` `r colorize(ps[str_length(ps$PSTM02) != median(str_length(ps$PSTM02),na.rm = T),]$Subject,"red")`
+
+`r knitr::asis_output("The delimiter of PSTM02(Start of insulin pump suspension time: (24-hr)) should be colon")` `r colorize(ps[!str_detect(ps$PSTM02,":"),]$Subject,"red")`
+
+`r knitr::asis_output("PSORES03(Enter blood glucose level (mg/dL):) and PSORES04(Enter blood ketone level (mmol/L):) and PSORES05(Enter blood potassium level (mmol/L):) and PSORES06(Enter blood pH level:) should not be blank")` `r colorize(ps[is.na(ps$PSORES03) | is.na(ps$PSORES04) | is.na(ps$PSORES05) | is.na(ps$PSORES06),]$Subject,"red")`
+
+`r knitr::asis_output("PSTM03(End of insulin pump suspension time: (24-hr)) should not be blank")` `r colorize(ps[(str_detect(ps$PSTM03,"^$|pattern") | is.na(ps$PSTM03)),]$Subject,"red")`
+
+`r knitr::asis_output("Length of PSTM03(End of insulin pump suspension time: (24-hr)) should be")` `r colorize(median(str_length(ps$PSTM03),na.rm = T),"red")` `r colorize(ps[str_length(ps$PSTM03) != median(str_length(ps$PSTM03),na.rm = T),]$Subject,"red")`
+
+`r knitr::asis_output("The delimiter of PSTM03(End of insulin pump suspension time: (24-hr)) should be colon")` `r colorize(ps[!str_detect(ps$PSTM03,":"),]$Subject,"red")`
+
+`r knitr::asis_output("PSORES07(Enter blood glucose level (mg/dL):) and PSORES08(Enter blood ketone level (mmol/L):) and PSORES09(Enter blood potassium level (mmol/L):) and PSORES10(Enter blood pH level:) should not be blank")` `r colorize(ps[is.na(ps$PSORES07) | is.na(ps$PSORES08) | is.na(ps$PSORES09) | is.na(ps$PSORES10),]$Subject,"red")`
+
+`r knitr::asis_output("Extreme PSORES07(Enter blood glucose level (mg/dL):)")` `r colorize(ps[ps$PSORES07 < quantile(ps$PSORES07,probs = 0.25) - 1.5*(quantile(ps$PSORES07,probs = 0.75) - quantile(ps$PSORES07,probs = 0.25)),]$Subject,"red")`
+
+`r knitr::asis_output("PSYN02(Is the subject stable and is it safe to discharge the subject?) should be either Yes or No")` `r colorize(ps[!str_detect(ps$PSYN02,regex("Yes|No",ignore_case = T)),]$Subject,"red")`
+
+`r knitr::asis_output("If PSYN02(Is the subject stable and is it safe to discharge the subject?) should is No, so PSYN02(If no, provide reason:) should not be blank")` `r colorize(ps[str_detect(ps$PSYN02,regex("No",ignore_case = T)) & str_detect(ps$PSORES11,"^$|pattern"),]$Subject,"red")`
+
+`r knitr::asis_output("PSTM04(Induction End Time (24-hr)) should not be blank")` `r colorize(ps[(str_detect(ps$PSTM04,"^$|pattern") | is.na(ps$PSTM04)),]$Subject,"red")`
+
+`r knitr::asis_output("Length of PSTM04(Induction End Time (24-hr)) should be")` `r colorize(median(str_length(ps$PSTM04),na.rm = T),"red")` `r colorize(ps[str_length(ps$PSTM04) != median(str_length(ps$PSTM04),na.rm = T),]$Subject,"red")`
+
+`r knitr::asis_output("The delimiter of PSTM04(Induction End Time (24-hr)) should be colon")` `r colorize(ps[!str_detect(ps$PSTM04,":"),]$Subject,"red")`
+
+
+# **SA Review**
+
+`r htmltools::a("Sensor Application",href = gsub("\\\\", "/", r"(\\oneabbott.com\dept\ADC\Technical_OPS\Clinical_Affairs\Clinical Study Files\Apollo\ADC-US-RES-23234_IDE Pump Suspension Study\Case Report Forms\Version B\Approved\pdf\Sensor_Application.pdf)"))`
+
+```{r}
+#| label: SAS SA
+sa <- read_sas(gsub("\\\\", "/", r"(\\wf00168p.oneabbott.com\data1\CDM\ADC-US-RES-23234\OpenClinica\Current\sa.sas7bdat)"))
+sa <- sa |>  
+      filter(!str_detect(DUYN01,regex("CHECK HERE IF NO DATA RECORDED|no_data_recorded",ignore_case = T))) |>
+      mutate(Subject = as.character(Subject)) |> 
+      arrange(Subject)
+```
+
+```{r}
+#| label: SA
 htmltools::browsable(
    tagList(
     tags$button(
@@ -1703,7 +1592,7 @@ is.na(sa$DUORES03) | str_detect(sa$DUORES03,"^$|pattern")   |
 # Was the sensor functional? (C)
 !str_detect(sa$DUORES06,regex("Yes|No",ignore_case = T)),] %>%
   select(Subject,`__STUDYEVENTREPEATKEY`,DUDTC01:last_col()) %>%
-  {if (params$label) (sjlabelled::label_to_colnames(.)) else .} %>%
+  # {if (params$label) (sjlabelled::label_to_colnames(.)) else .} %>%
   reactable(paginationType = "jump", striped = TRUE, highlight = TRUE, searchable = TRUE, defaultPageSize = 6, resizable = TRUE, filterable = TRUE,elementId = "sa",
      defaultColDef = colDef(align = "center",minWidth = 115),
      columns = list(Subject = colDef(sticky = "left"))
@@ -1712,68 +1601,61 @@ is.na(sa$DUORES03) | str_detect(sa$DUORES03,"^$|pattern")   |
 )
 ```
 
-`r if(is.character(params$data20) && is_empty(sa$Subject)){knitr::asis_output(colorize("sa is empty","red"))}`
+`r if(is_empty(sa$Subject)){knitr::asis_output(colorize("SA2 is empty","red"))}`
 
-`r if(is.character(params$data20)){knitr::asis_output("DUDTC01(Visit Date) should not be blank")}` `r if(is.character(params$data20)){colorize(sa[is.na(sa$DUDTC01),]$Subject,"red")}`
+`r knitr::asis_output("DUDTC01(Visit Date) should not be blank")` `r colorize(sa[is.na(sa$DUDTC01),]$Subject,"red")`
 
-`r if(is.character(params$data20)){knitr::asis_output("Length of DUDTC01(Visit Date) should be")}` `r if(is.character(params$data20)){colorize(median(str_length(sa$DUDTC01),na.rm = T),"red")}``r if(is.character(params$data20)){colorize(sa[str_length(sa$DUDTC01) != median(str_length(sa$DUDTC01),na.rm = T),]$Subject,"red")}`
+`r knitr::asis_output("Length of DUDTC01(Visit Date) should be")` `r colorize(median(str_length(sa$DUDTC01),na.rm = T),"red")` `r colorize(sa[str_length(sa$DUDTC01) != median(str_length(sa$DUDTC01),na.rm = T),]$Subject,"red")`
 
-`r if(is.character(params$data20)){knitr::asis_output("DUSEQ01(Sensor number) should not be blank")}` `r if(is.character(params$data20)){colorize(sa[is.na(sa$DUSEQ01),]$Subject,"red")}`
+`r knitr::asis_output("DUSEQ01(Sensor number) should not be blank")` `r colorize(sa[is.na(sa$DUSEQ01),]$Subject,"red")`
 
-`r if(is.character(params$data20)){knitr::asis_output("DUCOD01(Condition code:) should not be blank")}` `r if(is.character(params$data20)){colorize(sa[is.na(sa$DUCOD01) | str_detect(sa$DUCOD01,"^$|pattern"),]$Subject,"red")}` `r if(is.character(params$data20)){knitr::asis_output("and the length of DUCOD01(Condition code:) should be")}` `r if(is.character(params$data20)){colorize(median(str_length(sa$DUCOD01),na.rm = T),"red")}` `r if(is.character(params$data20)){colorize(sa[str_length(sa$DUCOD01) != median(str_length(sa$DUCOD01),na.rm = T),]$Subject,"red")}`
+`r knitr::asis_output("DUCOD01(Condition code:) should not be blank")` `r colorize(sa[is.na(sa$DUCOD01) | str_detect(sa$DUCOD01,"^$|pattern"),]$Subject,"red")` `r knitr::asis_output("and the length of DUCOD01(Condition code:) should be")` `r colorize(median(str_length(sa$DUCOD01),na.rm = T),"red")` `r colorize(sa[str_length(sa$DUCOD01) != median(str_length(sa$DUCOD01),na.rm = T),]$Subject,"red")`
 
-`r if(is.character(params$data20)){knitr::asis_output("DUSPID01(Reading Device serial number) should not be blank")}` `r if(is.character(params$data20)){colorize(sa[is.na(sa$DUSPID01) | str_detect(sa$DUSPID01,"^$|pattern") | str_detect(sa$DUSPID01,"n/a"),]$Subject,"red")}` `r if(is.character(params$data20)){knitr::asis_output("and the length of DUSPID01(Reading Device serial number) should be")}` `r if(is.character(params$data20)){colorize(median(str_length(sa$DUSPID01),na.rm = T),"red")}` `r if(is.character(params$data20)){colorize(sa[str_length(sa$DUSPID01) != median(str_length(sa$DUSPID01),na.rm = T),]$Subject,"red")}`
+`r knitr::asis_output("DUSPID01(Reading Device serial number) should not be blank")` `r colorize(sa[is.na(sa$DUSPID01) | str_detect(sa$DUSPID01,"^$|pattern") | str_detect(sa$DUSPID01,"n/a"),]$Subject,"red")` `r knitr::asis_output("and the length of DUSPID01(Reading Device serial number) should be")` `r colorize(median(str_length(sa$DUSPID01),na.rm = T),"red")` `r colorize(sa[str_length(sa$DUSPID01) != median(str_length(sa$DUSPID01),na.rm = T),]$Subject,"red")`
 
-`r if(is.character(params$data20)){knitr::asis_output("DUSPID02(Sensor Kit Lot Number) should not be blank")}` `r if(is.character(params$data20)){colorize(sa[is.na(sa$DUSPID02) | str_detect(sa$DUSPID02,"^$|pattern"),]$Subject,"red")}` `r if(is.character(params$data20)){knitr::asis_output("and the length of DUSPID02(Sensor Kit Lot Number) should be")}` `r if(is.character(params$data20)){colorize(median(str_length(sa$DUSPID02),na.rm = T),"red")}` `r if(is.character(params$data20)){colorize(sa[str_length(sa$DUSPID02) != median(str_length(sa$DUSPID02),na.rm = T),]$Subject,"red")}`
+`r knitr::asis_output("DUSPID02(Sensor Kit Lot Number) should not be blank")` `r colorize(sa[is.na(sa$DUSPID02) | str_detect(sa$DUSPID02,"^$|pattern"),]$Subject,"red")` `r knitr::asis_output("and the length of DUSPID02(Sensor Kit Lot Number) should be")` `r colorize(median(str_length(sa$DUSPID02),na.rm = T),"red")` `r colorize(sa[str_length(sa$DUSPID02) != median(str_length(sa$DUSPID02),na.rm = T),]$Subject,"red")`
 
-`r if(is.character(params$data20)){knitr::asis_output("DUSPID03(Sensor Serial Number) should not be blank")}` `r if(is.character(params$data20)){colorize(sa[is.na(sa$DUSPID03) | str_detect(sa$DUSPID03,"^$|pattern"),]$Subject,"red")}` `r if(is.character(params$data20)){knitr::asis_output("and the length of DUSPID03(Sensor Serial Number) should be")}` `r if(is.character(params$data20)){colorize(median(str_length(sa$DUSPID03),na.rm = T),"red")}` `r if(is.character(params$data20)){colorize(sa[str_length(sa$DUSPID03) != median(str_length(sa$DUSPID03),na.rm = T),]$Subject,"red")}`
+`r knitr::asis_output("DUSPID03(Sensor Serial Number) should not be blank")` `r colorize(sa[is.na(sa$DUSPID03) | str_detect(sa$DUSPID03,"^$|pattern"),]$Subject,"red")` `r knitr::asis_output("and the length of DUSPID03(Sensor Serial Number) should be")` `r colorize(median(str_length(sa$DUSPID03),na.rm = T),"red")` `r colorize(sa[str_length(sa$DUSPID03) != median(str_length(sa$DUSPID03),na.rm = T),]$Subject,"red")`
 
-`r if(is.character(params$data20)){knitr::asis_output("DUDTC02(Application Date) should not be blank")}` `r if(is.character(params$data20)){colorize(sa[is.na(sa$DUDTC02) | str_detect(sa$DUDTC02,"^$|pattern"),]$Subject,"red")}`
+`r knitr::asis_output("DUDTC02(Application Date) should not be blank")` `r colorize(sa[is.na(sa$DUDTC02) | str_detect(sa$DUDTC02,"^$|pattern"),]$Subject,"red")`
 
-`r if(is.character(params$data20)){knitr::asis_output("Length of DUDTC02(Application Date) should be")}` `r if(is.character(params$data20)){colorize(median(str_length(sa$DUDTC02),na.rm = T),"red")}` `r if(is.character(params$data20)){colorize(sa[str_length(sa$DUDTC02) != median(str_length(sa$DUDTC02),na.rm = T) | is.na(sa$DUDTC02),]$Subject,"red")}`
+`r knitr::asis_output("Length of DUDTC02(Application Date) should be")` `r colorize(median(str_length(sa$DUDTC02),na.rm = T),"red")` `r colorize(sa[str_length(sa$DUDTC02) != median(str_length(sa$DUDTC02),na.rm = T) | is.na(sa$DUDTC02),]$Subject,"red")`
 
-`r if(is.character(params$data20)){knitr::asis_output("DUTM01(Application Time) should not be blank")}` `r if(is.character(params$data20)){colorize(sa[is.na(sa$DUTM01) | str_detect(sa$DUTM01,"^$|pattern"),]$Subject,"red")}`
+`r knitr::asis_output("DUTM01(Application Time) should not be blank")` `r colorize(sa[is.na(sa$DUTM01) | str_detect(sa$DUTM01,"^$|pattern"),]$Subject,"red")`
 
-`r if(is.character(params$data20)){knitr::asis_output("Length of DUTM01(Application Time) should be")}` `r if(is.character(params$data20)){colorize(median(str_length(sa$DUTM01),na.rm = T),"red")}` `r if(is.character(params$data20)){colorize(sa[str_length(sa$DUTM01) != median(str_length(sa$DUTM01),na.rm = T),]$Subject,"red")}`
+`r knitr::asis_output("Length of DUTM01(Application Time) should be")` `r colorize(median(str_length(sa$DUTM01),na.rm = T),"red")` `r colorize(sa[str_length(sa$DUTM01) != median(str_length(sa$DUTM01),na.rm = T),]$Subject,"red")`
 
-`r if(is.character(params$data20)){knitr::asis_output("DULOC01(Application Location) should be either Left Arm or Right Arm")}` `r if(is.character(params$data20)){colorize(sa[!str_detect(sa$DULOC01,regex("Left Arm|Right Arm|Left Abdomen|Right Abdomen",ignore_case = T)),]$Subject,"red")}`
+`r knitr::asis_output("DULOC01(Application Location) should be either Left Arm or Right Arm")` `r colorize(sa[!str_detect(sa$DULOC01,regex("Left Arm|Right Arm|Left Abdomen|Right Abdomen",ignore_case = T)),]$Subject,"red")`
 
-`r if(is.character(params$data20)){knitr::asis_output("DUORES01(Was Sensor application successful?) should be either Yes or No")}` `r if(is.character(params$data20)){colorize(sa[!str_detect(sa$DUORES01,regex("Yes|No",ignore_case = T)),]$Subject,"red")}`
+`r knitr::asis_output("DUORES01(Was Sensor application successful?) should be either Yes or No")` `r colorize(sa[!str_detect(sa$DUORES01,regex("Yes|No",ignore_case = T)),]$Subject,"red")`
 
-`r if(is.character(params$data20)){knitr::asis_output("DUOTH02(Who performed the application of the sensor?) should be either Site Staff, Subject, Parent or Guardian")}` `r if(is.character(params$data20)){colorize(sa[!str_detect(sa$DUOTH02,regex("Site Staff|Subject|Parent or Guardian",ignore_case = T)),]$Subject,"red")}`
+`r knitr::asis_output("DUOTH02(Who performed the application of the sensor?) should be either Site Staff, Subject, Parent or Guardian")` `r colorize(sa[!str_detect(sa$DUOTH02,regex("Site Staff|Subject|Parent or Guardian",ignore_case = T)),]$Subject,"red")`
 
-`r if(is.character(params$data20)){knitr::asis_output("DUORES02(Were you able to Start New Sensor?) should be either Yes or No")}` `r if(is.character(params$data20)){colorize(sa[!str_detect(sa$DUORES02,regex("Yes|No",ignore_case = T)),]$Subject,"red")}`
+`r knitr::asis_output("DUORES02(Were you able to Start New Sensor?) should be either Yes or No")` `r colorize(sa[!str_detect(sa$DUORES02,regex("Yes|No",ignore_case = T)),]$Subject,"red")`
 
-`r if(is.character(params$data20)){knitr::asis_output("DUORES03(How many Scan attempts were required?) should not be blank")}` `r if(is.character(params$data20)){colorize(sa[is.na(sa$DUORES03) | str_detect(sa$DUORES03,"^$|pattern"),]$Subject,"red")}`
+`r knitr::asis_output("DUORES03(How many Scan attempts were required?) should not be blank")` `r colorize(sa[is.na(sa$DUORES03) | str_detect(sa$DUORES03,"^$|pattern"),]$Subject,"red")`
 
-`r if(is.character(params$data20)){knitr::asis_output("DUORES04(Subject's assessment of pain) should be either No Pain,Slight Pain,Mild Pain,Moderate Pain,Extreme Pain")}` `r if(is.character(params$data20)){colorize(sa[!str_detect(sa$DUORES04,regex("No Pain|Slight Pain|Mild Pain|Moderate Pain|Extreme Pain",ignore_case = T)),]$Subject,"red")}`
+`r knitr::asis_output("DUORES04(Subject's assessment of pain) should be either No Pain,Slight Pain,Mild Pain,Moderate Pain,Extreme Pain")` `r colorize(sa[!str_detect(sa$DUORES04,regex("No Pain|Slight Pain|Mild Pain|Moderate Pain|Extreme Pain",ignore_case = T)),]$Subject,"red")`
 
-`r if(is.character(params$data20)){knitr::asis_output("DUORES05(Subject's assessment of bleeding) should be either No Bleeding,Slight Bleeding,Mild Bleeding,Moderate Bleeding,Extreme Bleeding,Unacceptable Bleeding")}` `r if(is.character(params$data20)){colorize(sa[!str_detect(sa$DUORES05,regex("No Bleeding|Slight Bleeding|Mild Bleeding|Moderate Bleeding|Extreme Bleeding|Unacceptable Bleeding",ignore_case = T)),]$Subject,"red")}`
+`r knitr::asis_output("DUORES05(Subject's assessment of bleeding) should be either No Bleeding,Slight Bleeding,Mild Bleeding,Moderate Bleeding,Extreme Bleeding,Unacceptable Bleeding")` `r colorize(sa[!str_detect(sa$DUORES05,regex("No Bleeding|Slight Bleeding|Mild Bleeding|Moderate Bleeding|Extreme Bleeding|Unacceptable Bleeding",ignore_case = T)),]$Subject,"red")`
 
-`r if(is.character(params$data20)){knitr::asis_output("DUORES06(Was the sensor functional?) should be either Yes or No")}` `r if(is.character(params$data20)){colorize(sa[!str_detect(sa$DUORES06,regex("Yes|No",ignore_case = T)),]$Subject,"red")}`
+`r knitr::asis_output("DUORES06(Was the sensor functional?) should be either Yes or No")` `r colorize(sa[!str_detect(sa$DUORES06,regex("Yes|No",ignore_case = T)),]$Subject,"red")`
 
-<!-- # SE Review -->
 
-<!-- [Study Exit](//oneabbott.com/dept/ADC/Technical_OPS/Clinical_Affairs/Clinical Study Files/Apollo/ADC-US-RES-21217 Vitamin C Events/Case Report Forms/Version A/Approved/PDF_file/Study_Exit.pdf) -->
+# **SE Review**
 
-`r if(is.character(params$data21)){knitr::asis_output("# **SE Review**")}`
-
-`r if(is.character(params$data21)){htmltools::a("Study Exit",href = "//oneabbott.com/dept/ADC/Technical_OPS/Clinical_Affairs/Clinical Study Files/Apollo/ADC-US-RES-22225 Multi-Analyte Studies/Case Report Forms/Version_G/PDF/Study_Exit.pdf")}`
+`r htmltools::a("Study Exit",href = gsub("\\\\", "/", r"(\\oneabbott.com\dept\ADC\Technical_OPS\Clinical_Affairs\Clinical Study Files\Apollo\ADC-US-RES-23234_IDE Pump Suspension Study\Case Report Forms\Version B\Approved\pdf\Study_Exit.pdf)"))`
 
 ```{r}
-# se <- read_sas(gsub("\\\\", "/", r"(\\wf00168p.oneabbott.com\data1\CDM\ADC-US-RES-21217\SE01\Openclinica\Current\se.sas7bdat)"))
-# se <- read_sas(gsub("\\\\", "/", r"(\\wf00168p.oneabbott.com\data1\CDM\ADC-US-VAL-21216\Openclinica\Current\se.sas7bdat)"))
-# se <- read_sas(gsub("\\\\", "/", r"(\\wf00168p.oneabbott.com\data1\CDM\ADC-US-RES-22225\SE23_24_Glu\OpenClinica\Current\se.sas7bdat)"))
-```
-
-```{r Load se, eval=is.character(params$data21)}
-se <- read_sas(params$data21)
-se <- se %>% 
-      mutate(Subject = as.character(Subject)) %>% 
+#| label: SAS SE
+se <- read_sas(gsub("\\\\", "/", r"(\\wf00168p.oneabbott.com\data1\CDM\ADC-US-RES-23234\OpenClinica\Current\se.sas7bdat)"))
+se <- se |> 
+      mutate(Subject = as.character(Subject)) |>  
       arrange(Subject)
 ```
 
-```{r se, eval=is.character(params$data21)}
+```{r}
+#| label: SE
 htmltools::browsable(
    tagList(
     tags$button(
@@ -1790,7 +1672,7 @@ str_length(se$DSDTC01) != median(str_length(se$DSDTC01),na.rm = T)        |
 # If no, Did the subject complete the study per protocol? Select one reason below for withdrawal
 str_detect(se$DSCPYN,regex("No",ignore_case = T)) & (is.na(se$DSDTC02) | str_detect(se$DSDTC02,"^$|pattern") |  str_detect(se$DSDECD01,"^$|pattern")),] %>% 
   select(Subject,`__STUDYEVENTREPEATKEY`,DSDTC01:last_col()) %>%
-  {if (params$label) (sjlabelled::label_to_colnames(.)) else .} %>%
+  # {if (params$label) (sjlabelled::label_to_colnames(.)) else .} %>%
   reactable(paginationType = "jump", striped = TRUE, highlight = TRUE, searchable = TRUE, defaultPageSize = 6, resizable = TRUE, filterable = TRUE,elementId = "se",
      defaultColDef = colDef(align = "center",minWidth = 115),
      columns = list(Subject = colDef(sticky = "left"))
@@ -1799,39 +1681,32 @@ str_detect(se$DSCPYN,regex("No",ignore_case = T)) & (is.na(se$DSDTC02) | str_det
 )
 ```
 
-`r if(is.character(params$data21) && is_empty(se$Subject)){knitr::asis_output(colorize("SE is empty","red"))}`
+`r if(is_empty(se$Subject)){knitr::asis_output(colorize("SE is empty","red"))}`
 
-`r if(is.character(params$data21)){knitr::asis_output("DSDTC01(Exit Date) should not be blank")}` `r if(is.character(params$data21)){colorize(se[(is.na(se$DSDTC01) | str_detect(se$DSDTC01,"^$|pattern")),]$Subject,"red")}`
+`r knitr::asis_output("DSDTC01(Exit Date) should not be blank")` `r colorize(se[(is.na(se$DSDTC01) | str_detect(se$DSDTC01,"^$|pattern")),]$Subject,"red")`
 
-`r if(is.character(params$data21)){knitr::asis_output("Length of DSDTC01(Exit Date) should be")}` `r if(is.character(params$data21)){colorize(median(str_length(se$DSDTC01),na.rm = T),"red")}``r if(is.character(params$data21)){colorize(se[str_length(se$DSDTC01) != median(str_length(se$DSDTC01),na.rm = T),]$Subject,"red")}`
+`r knitr::asis_output("Length of DSDTC01(Exit Date) should be")` `r colorize(median(str_length(se$DSDTC01),na.rm = T),"red")` `r colorize(se[str_length(se$DSDTC01) != median(str_length(se$DSDTC01),na.rm = T),]$Subject,"red")`
 
-`r if(is.character(params$data21)){knitr::asis_output("DSCPYN(Did the subject complete the study per protocol?) should be either Yes or No")}` `r if(is.character(params$data21)){colorize(se[!str_detect(se$DSCPYN,regex("Yes|No",ignore_case = T)),]$Subject,"red")}`
+`r knitr::asis_output("DSCPYN(Did the subject complete the study per protocol?) should be either Yes or No")` `r colorize(se[!str_detect(se$DSCPYN,regex("Yes|No",ignore_case = T)),]$Subject,"red")`
 
-`r if(is.character(params$data21)){knitr::asis_output("If DSCPYN(Did the subject complete the study per protocol?) is No, DSDTC02(Date of Withdrawl) and DSDECD01(Select one reason below for withdrawal) should not be blank")}` `r if(is.character(params$data21)){colorize(se[str_detect(se$DSCPYN,regex("No",ignore_case = T)) & (is.na(se$DSDTC02) | str_detect(se$DSDTC02,"^$|pattern") |  str_detect(se$DSDECD01,"^$|pattern")),]$Subject,"red")}`
+`r knitr::asis_output("If DSCPYN(Did the subject complete the study per protocol?) is No, DSDTC02(Date of Withdrawl) and DSDECD01(Select one reason below for withdrawal) should not be blank")` `r colorize(se[str_detect(se$DSCPYN,regex("No",ignore_case = T)) & (is.na(se$DSDTC02) | str_detect(se$DSDTC02,"^$|pattern") |  str_detect(se$DSDECD01,"^$|pattern")),]$Subject,"red")`
 
-<!-- # SK1 Review -->
 
-<!-- [Skin Assessment](//oneabbott.com/dept/ADC/Technical_OPS/Clinical_Affairs/Clinical Study Files/Apollo/ADC-US-RES-21217 Vitamin C Events/Case Report Forms/Version A/Approved/PDF_file/Skin_Assessment.pdf) -->
+# **SK1 Review**
 
-`r if(is.character(params$data22)){knitr::asis_output("# **SK1 Review**")}`
-
-`r if(is.character(params$data22)){htmltools::a("Skin Assessment",href = "//oneabbott.com/dept/ADC/Technical_OPS/Clinical_Affairs/Clinical Study Files/Apollo/ADC-US-RES-22225 Multi-Analyte Studies/Case Report Forms/Version_G/PDF/Skin_Assessment.pdf")}`
+`r htmltools::a("Skin Assessment",href = gsub("\\\\", "/", r"(\\oneabbott.com\dept\ADC\Technical_OPS\Clinical_Affairs\Clinical Study Files\Apollo\ADC-US-RES-23234_IDE Pump Suspension Study\Case Report Forms\Version B\Approved\pdf\Skin_Assessment.pdf)"))`
 
 ```{r}
-# sk1 <- read_sas(gsub("\\\\", "/", r"(\\wf00168p.oneabbott.com\data1\CDM\ADC-US-RES-21217\SE01\Openclinica\Current\sk1.sas7bdat)"))
-# sk1 <- read_sas(gsub("\\\\", "/", r"(\\wf00168p.oneabbott.com\data1\CDM\ADC-US-VAL-21216\Openclinica\Current\sk1.sas7bdat)"))
-# sk1 <- read_sas(gsub("\\\\", "/", r"(\\wf00168p.oneabbott.com\data1\CDM\ADC-US-RES-22225\SE23_24_Glu\OpenClinica\Current\sk1.sas7bdat)"))
-```
-
-```{r Load sk1, eval=is.character(params$data22)}
-sk1 <- read_sas(params$data22)
-sk1 <- sk1 %>% 
-       filter(!str_detect(PEYN01,regex("CHECK HERE IF NO DATA RECORDED|no_data_recorded",ignore_case = T))) %>%
-       mutate(Subject = as.character(Subject)) %>% 
+#| label: SAS SK1
+sk1 <- read_sas(gsub("\\\\", "/", r"(\\wf00168p.oneabbott.com\data1\CDM\ADC-US-RES-23234\OpenClinica\Current\sk1.sas7bdat)"))
+sk1 <- sk1 |>  
+       filter(!str_detect(PEYN01,regex("CHECK HERE IF NO DATA RECORDED|no_data_recorded",ignore_case = T))) |> 
+       mutate(Subject = as.character(Subject)) |>  
        arrange(Subject)
 ```
 
-```{r sk1, eval=is.character(params$data22)}
+```{r}
+#| label: SK1
 htmltools::browsable(
    tagList(
     tags$button(
@@ -1844,7 +1719,7 @@ sk1[
 # Length of Visit Date
 str_length(sk1$PEDTC01) != median(str_length(sk1$PEDTC01),na.rm = T),] %>%
   select(Subject,`__STUDYEVENTREPEATKEY`,PEDTC01) %>%
-  {if (params$label) (sjlabelled::label_to_colnames(.)) else .} %>%
+  # {if (params$label) (sjlabelled::label_to_colnames(.)) else .} %>%
   reactable(paginationType = "jump", striped = TRUE, highlight = TRUE, searchable = TRUE, defaultPageSize = 6, resizable = TRUE, filterable = TRUE,elementId = "sk1",
      defaultColDef = colDef(align = "center",minWidth = 115),
      columns = list(Subject = colDef(sticky = "left"))
@@ -1853,35 +1728,27 @@ str_length(sk1$PEDTC01) != median(str_length(sk1$PEDTC01),na.rm = T),] %>%
 )
 ```
 
-`r if(is.character(params$data22) && is_empty(sk1$Subject)){knitr::asis_output(colorize("SK1 is empty","red"))}`
+`r if(is_empty(sk1$Subject)){knitr::asis_output(colorize("SK1 is empty","red"))}`
 
-`r if(is.character(params$data22)){knitr::asis_output("PEDTC01(Visit Date) should not be blank")}` `r if(is.character(params$data22)){colorize(sk1[is.na(sk1$PEDTC01),]$Subject,"red")}`
+`r knitr::asis_output("PEDTC01(Visit Date) should not be blank")` `r colorize(sk1[is.na(sk1$PEDTC01),]$Subject,"red")`
 
-`r if(is.character(params$data22)){knitr::asis_output("Length of PEDTC01(Visit Date) should be")}` `r if(is.character(params$data22)){colorize(median(str_length(sk1$PEDTC01),na.rm = T),"red")}`
-`r if(is.character(params$data22)){colorize(sk1[str_length(sk1$PEDTC01) != median(str_length(sk1$PEDTC01),na.rm = T),]$Subject,"red")}`
+`r knitr::asis_output("Length of PEDTC01(Visit Date) should be")` `r colorize(median(str_length(sk1$PEDTC01),na.rm = T),"red")`
+`r colorize(sk1[str_length(sk1$PEDTC01) != median(str_length(sk1$PEDTC01),na.rm = T),]$Subject,"red")`
 
-<!-- # SK2 Review -->
+# **SK2 Review**
 
-<!-- [Skin Assessment](//oneabbott.com/dept/ADC/Technical_OPS/Clinical_Affairs/Clinical Study Files/Apollo/ADC-US-RES-21217 Vitamin C Events/Case Report Forms/Version A/Approved/PDF_file/Skin_Assessment.pdf) -->
-
-`r if(is.character(params$data23)){knitr::asis_output("# **SK2 Review**")}`
-
-`r if(is.character(params$data23)){htmltools::a("Skin Assessment",href = "//oneabbott.com/dept/ADC/Technical_OPS/Clinical_Affairs/Clinical Study Files/Apollo/ADC-US-RES-22225 Multi-Analyte Studies/Case Report Forms/Version_G/PDF/Skin_Assessment.pdf")}`
+`r htmltools::a("Skin Assessment",href = gsub("\\\\", "/", r"(\\oneabbott.com\dept\ADC\Technical_OPS\Clinical_Affairs\Clinical Study Files\Apollo\ADC-US-RES-23234_IDE Pump Suspension Study\Case Report Forms\Version B\Approved\pdf\Skin_Assessment.pdf)"))`
 
 ```{r}
-# sk2 <- read_sas(gsub("\\\\", "/", r"(\\wf00168p.oneabbott.com\data1\CDM\ADC-US-RES-21217\SE01\Openclinica\Current\sk2.sas7bdat)"))
-# sk2 <- read_sas(gsub("\\\\", "/", r"(\\wf00168p.oneabbott.com\data1\CDM\ADC-US-VAL-21216\Openclinica\Current\sk2.sas7bdat)"))
-# sk2 <- read_sas(gsub("\\\\", "/", r"(\\wf00168p.oneabbott.com\data1\CDM\ADC-US-RES-22225\SE23_24_Glu\OpenClinica\Current\sk2.sas7bdat)"))
-```
-
-```{r Load sk2, eval=is.character(params$data23)}
-sk2 <- read_sas(params$data23)
-sk2 <- sk2 %>% 
-       mutate(Subject = as.character(Subject)) %>% 
+#| label: SAS SK2
+sk2 <- read_sas(gsub("\\\\", "/", r"(\\wf00168p.oneabbott.com\data1\CDM\ADC-US-RES-23234\OpenClinica\Current\sk2.sas7bdat)"))
+sk2 <- sk2 |>  
+       mutate(Subject = as.character(Subject)) |>  
        arrange(Subject)
 ```
 
-```{r sk2, eval=is.character(params$data23)}
+```{r}
+#| label: SK2
 htmltools::browsable(
    tagList(
     tags$button(
@@ -1914,7 +1781,7 @@ str_detect(sk2$PEORES08,regex("Yes",ignore_case = T)) & is.na(sk2$PEORES09)     
 # If yes, Hypo/Hyperpigmentation Area (cm2) (N)
 str_detect(sk2$PEORES10,regex("Yes",ignore_case = T)) & is.na(sk2$PEORES11),] %>%
   select(Subject,`__STUDYEVENTREPEATKEY`,PELOC01:last_col()) %>%
-  {if (params$label) (sjlabelled::label_to_colnames(.)) else .} %>%
+  # {if (params$label) (sjlabelled::label_to_colnames(.)) else .} %>%
   reactable(paginationType = "jump", striped = TRUE, highlight = TRUE, searchable = TRUE, defaultPageSize = 6, resizable = TRUE, filterable = TRUE,elementId = "sk2",
      defaultColDef = colDef(align = "center",minWidth = 115),
      columns = list(Subject = colDef(sticky = "left"))
@@ -1923,56 +1790,49 @@ str_detect(sk2$PEORES10,regex("Yes",ignore_case = T)) & is.na(sk2$PEORES11),] %>
 )
 ```
 
-`r if(is.character(params$data23) && is_empty(sk2$Subject)){knitr::asis_output(colorize("SK2 is empty","red"))}`
+`r if(is_empty(sk2$Subject)){knitr::asis_output(colorize("SK2 is empty","red"))}`
 
-`r if(is.character(params$data23)){knitr::asis_output("PELOC01(Assessment) should be either Left Arm or Right Arm or Left Abdomen or Right Abdomen")}` `r if(is.character(params$data23)){colorize(sk2[!str_detect(sk2$PELOC01,regex("Left Arm|Right Arm|Left Abdomen|Right Abdomen",ignore_case = T)),]$Subject,"red")}`
+`r knitr::asis_output("PELOC01(Assessment) should be either Left Arm or Right Arm or Left Abdomen or Right Abdomen")` `r colorize(sk2[!str_detect(sk2$PELOC01,regex("Left Arm|Right Arm|Left Abdomen|Right Abdomen",ignore_case = T)),]$Subject,"red")`
 
-`r if(is.character(params$data23)){knitr::asis_output("PEORES01(General skin tone score) should be 1=Poor,2=Average,3=Good")}` `r if(is.character(params$data23)){colorize(sk2[!str_detect(sk2$PEORES01,regex("1=Poor|2=Average|3=Good",ignore_case = T)),]$Subject,"red")}`
+`r knitr::asis_output("PEORES01(General skin tone score) should be 1=Poor,2=Average,3=Good")` `r colorize(sk2[!str_detect(sk2$PEORES01,regex("1=Poor|2=Average|3=Good",ignore_case = T)),]$Subject,"red")`
 
-`r if(is.character(params$data23)){knitr::asis_output("PEORES02(Cellulite score) should be 1=Significant, 2=Average, 3=Minor")}` `r if(is.character(params$data23)){colorize(sk2[!str_detect(sk2$PEORES02,regex("1=Significant|2=Average|3=Minor",ignore_case = T)),]$Subject,"red")}`
+`r knitr::asis_output("PEORES02(Cellulite score) should be 1=Significant, 2=Average, 3=Minor")` `r colorize(sk2[!str_detect(sk2$PEORES02,regex("1=Significant|2=Average|3=Minor",ignore_case = T)),]$Subject,"red")`
 
-`r if(is.character(params$data23)){knitr::asis_output("PEORES03(Fine Lines Wrinkles score) should be 1=Significant, 2=Average, 3=Minor")}` `r if(is.character(params$data23)){colorize(sk2[!str_detect(sk2$PEORES03,regex("1=Significant|2=Average|3=Minor",ignore_case = T)),]$Subject,"red")}`
+`r knitr::asis_output("PEORES03(Fine Lines Wrinkles score) should be 1=Significant, 2=Average, 3=Minor")` `r colorize(sk2[!str_detect(sk2$PEORES03,regex("1=Significant|2=Average|3=Minor",ignore_case = T)),]$Subject,"red")`
 
-`r if(is.character(params$data23)){knitr::asis_output("PEORES04(Hair Coverage score) should be 1=Significant(shaving required), 2=Non-significant")}` `r if(is.character(params$data23)){colorize(sk2[!str_detect(sk2$PEORES04,"1=Significant\\(shaving required\\)|2=Non-significant"),]$Subject,"red")}`
+`r knitr::asis_output("PEORES04(Hair Coverage score) should be 1=Significant(shaving required), 2=Non-significant")` `r colorize(sk2[!str_detect(sk2$PEORES04,"1=Significant\\(shaving required\\)|2=Non-significant"),]$Subject,"red")`
 
-`r if(is.character(params$data23)){knitr::asis_output("PEORES05(Dry Skin score) should be 1=Significant(Flaky),2=Non-significant")}` `r if(is.character(params$data23)){colorize(sk2[!str_detect(sk2$PEORES05,regex("1=Significant\\(Flaky\\)|1=Significant \\(Flaky\\)|2=Non-significant",ignore_case = T)),]$Subject,"red")}`
+`r knitr::asis_output("PEORES05(Dry Skin score) should be 1=Significant(Flaky),2=Non-significant")` `r colorize(sk2[!str_detect(sk2$PEORES05,regex("1=Significant\\(Flaky\\)|1=Significant \\(Flaky\\)|2=Non-significant",ignore_case = T)),]$Subject,"red")`
 
-`r if(is.character(params$data23)){knitr::asis_output("PEORES06(Scabbing score) should be Yes or No")}` `r if(is.character(params$data23)){colorize(sk2[!str_detect(sk2$PEORES06,regex("Yes|No",ignore_case = T)),]$Subject,"red")}`
+`r knitr::asis_output("PEORES06(Scabbing score) should be Yes or No")` `r colorize(sk2[!str_detect(sk2$PEORES06,regex("Yes|No",ignore_case = T)),]$Subject,"red")`
 
-`r if(is.character(params$data23)){knitr::asis_output("If PEORES06(Scabbing score) is Yes, PEORES07(Scabbing Area (cm2)) should not be blank")}` `r if(is.character(params$data23)){colorize(sk2[str_detect(sk2$PEORES06,regex("Yes",ignore_case = T)) & is.na(sk2$PEORES07),]$Subject,"red")}`
+`r knitr::asis_output("If PEORES06(Scabbing score) is Yes, PEORES07(Scabbing Area (cm2)) should not be blank")` `r colorize(sk2[str_detect(sk2$PEORES06,regex("Yes",ignore_case = T)) & is.na(sk2$PEORES07),]$Subject,"red")`
 
-`r if(is.character(params$data23)){knitr::asis_output("PEORES08(Scarring score) should be Yes or No")}` `r if(is.character(params$data23)){colorize(sk2[!str_detect(sk2$PEORES08,regex("Yes|No",ignore_case = T)),]$Subject,"red")}`
+`r knitr::asis_output("PEORES08(Scarring score) should be Yes or No")` `r colorize(sk2[!str_detect(sk2$PEORES08,regex("Yes|No",ignore_case = T)),]$Subject,"red")`
 
-`r if(is.character(params$data23)){knitr::asis_output("If PEORES08(Scabbing score) is Yes, PEORES09(Scarring Area (cm2)) should not be blank")}` `r if(is.character(params$data23)){colorize(sk2[str_detect(sk2$PEORES08,regex("Yes",ignore_case = T)) & is.na(sk2$PEORES09) ,]$Subject,"red")}`
+`r knitr::asis_output("If PEORES08(Scabbing score) is Yes, PEORES09(Scarring Area (cm2)) should not be blank")` `r colorize(sk2[str_detect(sk2$PEORES08,regex("Yes",ignore_case = T)) & is.na(sk2$PEORES09) ,]$Subject,"red")`
 
-`r if(is.character(params$data23)){knitr::asis_output("PEORES010(Hypo/Hyperpigmentation score) should be Yes or No")}` `r if(is.character(params$data23)){colorize(sk2[!str_detect(sk2$PEORES10,regex("Yes|No",ignore_case = T)),]$Subject,"red")}`
+`r knitr::asis_output("PEORES010(Hypo/Hyperpigmentation score) should be Yes or No")` `r colorize(sk2[!str_detect(sk2$PEORES10,regex("Yes|No",ignore_case = T)),]$Subject,"red")`
 
-`r if(is.character(params$data23)){knitr::asis_output("If PEORES010(Hypo/Hyperpigmentation score) is Yes, PEORES11(Hypo/Hyperpigmentation Area (cm2)) should not be blank")}` `r if(is.character(params$data23)){colorize(sk2[str_detect(sk2$PEORES10,regex("Yes",ignore_case = T)) & is.na(sk2$PEORES11) ,]$Subject,"red")}`
+`r knitr::asis_output("If PEORES010(Hypo/Hyperpigmentation score) is Yes, PEORES11(Hypo/Hyperpigmentation Area (cm2)) should not be blank")` `r colorize(sk2[str_detect(sk2$PEORES10,regex("Yes",ignore_case = T)) & is.na(sk2$PEORES11) ,]$Subject,"red")`
 
-<!-- # SL1 Review -->
 
-<!-- [Study Set-up](//oneabbott.com/dept/ADC/Technical_OPS/Clinical_Affairs/Clinical Study Files/Apollo/ADC-US-RES-21217 Vitamin C Events/Case Report Forms/Version A/Approved/PDF_file/Study_Setup.pdf) -->
+# **SSU1 Review**
 
-`r if(is.character(params$data24)){knitr::asis_output("# **SL1 Review**")}`
-
-`r if(is.character(params$data24)){htmltools::a("Study Set-up",href = "//oneabbott.com/dept/ADC/Technical_OPS/Clinical_Affairs/Clinical Study Files/Apollo/ADC-US-RES-22225 Multi-Analyte Studies/Case Report Forms/Version_G/PDF/Study_Setup.pdf")}`
+`r htmltools::a("Study Setup",href = gsub("\\\\", "/", r"(\\oneabbott.com\dept\ADC\Technical_OPS\Clinical_Affairs\Clinical Study Files\Apollo\ADC-US-RES-23234_IDE Pump Suspension Study\Case Report Forms\Version B\Approved\pdf\Study_Setup.pdf)"))`
 
 ```{r}
-# sl1 <- read_sas(gsub("\\\\", "/", r"(\\wf00168p.oneabbott.com\data1\CDM\ADC-US-RES-21217\SE01\Openclinica\Current\sl1.sas7bdat)"))
-# sl1 <- read_sas(gsub("\\\\", "/", r"(\\wf00168p.oneabbott.com\data1\CDM\ADC-US-VAL-21216\Openclinica\Current\sl1.sas7bdat)"))
-# sl1 <- read_sas(gsub("\\\\", "/", r"(\\wf00168p.oneabbott.com\data1\CDM\ADC-US-RES-22225\SE23_24_Glu\OpenClinica\Current\ssu1.sas7bdat)"))
-```
-
-```{r Load sl1, eval=is.character(params$data24)}
-sl1 <- read_sas(params$data24)
-sl1 <- sl1 %>% 
+#| label: SAS SSU1
+sl1 <- read_sas(gsub("\\\\", "/", r"(\\wf00168p.oneabbott.com\data1\CDM\ADC-US-RES-23234\OpenClinica\Current\ssu1.sas7bdat)"))
+sl1 <- sl1 |> 
        filter(!str_detect(SLYN01,regex("CHECK HERE IF NO DATA RECORDED|no_data_recorded|	
-check_here_if_no_data_recorded",ignore_case = T))) %>%
-       mutate(Subject = as.character(Subject)) %>% 
+check_here_if_no_data_recorded",ignore_case = T))) |>
+       mutate(Subject = as.character(Subject)) |> 
        arrange(Subject)
 ```
 
-```{r sl1, eval=is.character(params$data24)}
+```{r}
+#| label: SSU1
 htmltools::browsable(
    tagList(
     tags$button(
@@ -1985,7 +1845,7 @@ is.na(sl1$SLDTC01) | str_detect(sl1$SLDTC01,"^$|pattern")      |
 # Length of Study Set-up date
 str_length(sl1$SLDTC01) != median(str_length(sl1$SLDTC01),na.rm = T),] %>%
   select(Subject,`__STUDYEVENTREPEATKEY`,SLDTC01:last_col()) %>%
-  {if (params$label) (sjlabelled::label_to_colnames(.)) else .} %>%
+  # {if (params$label) (sjlabelled::label_to_colnames(.)) else .} %>%
   reactable(paginationType = "jump", striped = TRUE, highlight = TRUE, searchable = TRUE, defaultPageSize = 6, resizable = TRUE, filterable = TRUE,elementId = "sl1",
      defaultColDef = colDef(align = "center",minWidth = 115),
      columns = list(Subject = colDef(sticky = "left"))
@@ -1994,34 +1854,26 @@ str_length(sl1$SLDTC01) != median(str_length(sl1$SLDTC01),na.rm = T),] %>%
 )
 ```
 
-`r if(is.character(params$data24) && is_empty(sl1$Subject)){knitr::asis_output(colorize("SL1 is empty","red"))}`
+`r if(is_empty(sl1$Subject)){knitr::asis_output(colorize("SL1 is empty","red"))}`
 
-`r if(is.character(params$data24)){knitr::asis_output("SLDTC01(Study Set-up date) should not be blank")}` `r if(is.character(params$data24)){colorize(sl1[is.na(sl1$SLDTC01) | str_detect(sl1$SLDTC01,"^$|pattern"),]$Subject,"red")}`
+`r knitr::asis_output("SLDTC01(Study Set-up date) should not be blank")` `r colorize(sl1[is.na(sl1$SLDTC01) | str_detect(sl1$SLDTC01,"^$|pattern"),]$Subject,"red")`
 
-`r if(is.character(params$data24)){knitr::asis_output("Length of SLDTC01(Study Set-up date) should be")}` `r if(is.character(params$data24)){colorize(median(str_length(sl1$SLDTC01),na.rm = T),"red")}``r if(is.character(params$data24)){colorize(sl1[str_length(sl1$SLDTC01) != median(str_length(sl1$SLDTC01)),]$Subject,"red")}`
+`r knitr::asis_output("Length of SLDTC01(Study Set-up date) should be")` `r colorize(median(str_length(sl1$SLDTC01),na.rm = T),"red")` `r colorize(sl1[str_length(sl1$SLDTC01) != median(str_length(sl1$SLDTC01)),]$Subject,"red")`
 
-<!-- # SL2 Review -->
+# **SSU2 Review**
 
-<!-- [Skin Assessment](//oneabbott.com/dept/ADC/Technical_OPS/Clinical_Affairs/Clinical Study Files/Apollo/ADC-US-RES-21217 Vitamin C Events/Case Report Forms/Version A/Approved/PDF_file/Study_Setup.pdf) -->
-
-`r if(is.character(params$data25)){knitr::asis_output("# **SL2 Review**")}`
-
-`r if(is.character(params$data25)){htmltools::a("Study Set-up",href = "//oneabbott.com/dept/ADC/Technical_OPS/Clinical_Affairs/Clinical Study Files/Apollo/ADC-US-RES-22225 Multi-Analyte Studies/Case Report Forms/Version_G/PDF/Study_Setup.pdf")}`
+`r htmltools::a("Study Setup",href = gsub("\\\\", "/", r"(\\oneabbott.com\dept\ADC\Technical_OPS\Clinical_Affairs\Clinical Study Files\Apollo\ADC-US-RES-23234_IDE Pump Suspension Study\Case Report Forms\Version B\Approved\pdf\Study_Setup.pdf)"))`
 
 ```{r}
-# sl2 <- read_sas(gsub("\\\\", "/", r"(\\wf00168p.oneabbott.com\data1\CDM\ADC-US-RES-21217\SE01\Openclinica\Current\sl2.sas7bdat)"))
-# sl2 <- read_sas(gsub("\\\\", "/", r"(\\wf00168p.oneabbott.com\data1\CDM\ADC-US-VAL-21216\Openclinica\Current\sl2.sas7bdat)"))
-# sl2 <- read_sas(gsub("\\\\", "/", r"(\\wf00168p.oneabbott.com\data1\CDM\ADC-US-RES-22225\SE23_24_Glu\OpenClinica\Current\ssu2.sas7bdat)"))
-```
-
-```{r Load sl2, eval=is.character(params$data25)}
-sl2 <- read_sas(params$data25)
-sl2 <- sl2 %>% 
-       mutate(Subject = as.character(Subject)) %>% 
+#| label: SAS SSU2
+sl2 <- read_sas(gsub("\\\\", "/", r"(\\wf00168p.oneabbott.com\data1\CDM\ADC-US-RES-23234\OpenClinica\Current\ssu2.sas7bdat)"))
+sl2 <- sl2 |>  
+       mutate(Subject = as.character(Subject)) |>  
        arrange(Subject)
 ```
 
-```{r sl2, eval=is.character(params$data25)}
+```{r}
+#| label: SSU2
 htmltools::browsable(
    tagList(
     tags$button(
@@ -2030,9 +1882,12 @@ htmltools::browsable(
     ),
 sl2[
 # Test Strip Lot Number (C)
-is.na(sl2$SLID01) | str_detect(sl2$SLID01,"^$|pattern"),] %>%
+is.na(sl2$SLID01) | str_detect(sl2$SLID01,"^$|pattern") |
+# Expiration Date
+is.na(sl2$SLDTC02) | str_detect(sl2$SLDTC02,"^$|pattern") 
+  ,] %>%
   select(Subject,`__STUDYEVENTREPEATKEY`,SLID01:last_col()) %>%
-  {if (params$label) (sjlabelled::label_to_colnames(.)) else .} %>%
+  # {if (params$label) (sjlabelled::label_to_colnames(.)) else .} %>%
   reactable(paginationType = "jump", striped = TRUE, highlight = TRUE, searchable = TRUE, defaultPageSize = 6, resizable = TRUE, filterable = TRUE,elementId = "sl2",
      defaultColDef = colDef(align = "center",minWidth = 115),
      columns = list(Subject = colDef(sticky = "left"))
@@ -2041,32 +1896,26 @@ is.na(sl2$SLID01) | str_detect(sl2$SLID01,"^$|pattern"),] %>%
 )
 ```
 
-`r if(is.character(params$data25) && is_empty(sl2$Subject)){knitr::asis_output(colorize("SL2 is empty","red"))}`
+`r if(is_empty(sl2$Subject)){knitr::asis_output(colorize("SL2 is empty","red"))}`
 
-`r if(is.character(params$data25)){knitr::asis_output("SLID01(Test Strip Lot Number) should not be blank")}` `r if(is.character(params$data25)){colorize(sl2[is.na(sl2$SLID01) | str_detect(sl2$SLID01,"^$|pattern"),]$Subject,"red")}`
+`r knitr::asis_output("SLID01(Test Strip Lot Number) should not be blank")` `r colorize(sl2[is.na(sl2$SLID01) | str_detect(sl2$SLID01,"^$|pattern"),]$Subject,"red")`
 
-<!-- # SL3 Review -->
+`r knitr::asis_output("SLDTC02(Expiration Date) should not be blank")` `r colorize(sl2[is.na(sl2$SLDTC02) | str_detect(sl2$SLDTC02,"^$|pattern"),]$Subject,"red")`
 
-<!-- [Study Set-up](//oneabbott.com/dept/ADC/Technical_OPS/Clinical_Affairs/Clinical Study Files/Apollo/ADC-US-RES-21217 Vitamin C Events/Case Report Forms/Version A/Approved/PDF_file/Study_Setup.pdf) -->
+# **SSU3 Review**
 
-`r if(is.character(params$data26)){knitr::asis_output("# **SL3 Review**")}`
-
-`r if(is.character(params$data26)){htmltools::a("Study Set-up",href = "//oneabbott.com/dept/ADC/Technical_OPS/Clinical_Affairs/Clinical Study Files/Apollo/ADC-US-RES-22225 Multi-Analyte Studies/Case Report Forms/Version_G/PDF/Study_Setup.pdf")}`
+`r htmltools::a("Study Setup",href = gsub("\\\\", "/", r"(\\oneabbott.com\dept\ADC\Technical_OPS\Clinical_Affairs\Clinical Study Files\Apollo\ADC-US-RES-23234_IDE Pump Suspension Study\Case Report Forms\Version B\Approved\pdf\Study_Setup.pdf)"))`
 
 ```{r}
-# sl3 <- read_sas(gsub("\\\\", "/", r"(\\wf00168p.oneabbott.com\data1\CDM\ADC-US-RES-21217\SE01\Openclinica\Current\sl3.sas7bdat)"))
-# sl3 <- read_sas(gsub("\\\\", "/", r"(\\wf00168p.oneabbott.com\data1\CDM\ADC-US-VAL-21216\Openclinica\Current\sl3.sas7bdat)"))
-# sl3 <- read_sas(gsub("\\\\", "/", r"(\\wf00168p.oneabbott.com\data1\CDM\ADC-US-RES-22225\SE23_24_Glu\OpenClinica\Current\ssu3.sas7bdat)"))
-```
-
-```{r Load sl3, eval=is.character(params$data26)}
-sl3 <- read_sas(params$data26)
-sl3 <- sl3 %>% 
-       mutate(Subject = as.character(Subject)) %>% 
+#| label: SAS SSU3
+sl3 <- read_sas(gsub("\\\\", "/", r"(\\wf00168p.oneabbott.com\data1\CDM\ADC-US-RES-23234\OpenClinica\Current\ssu3.sas7bdat)"))
+sl3 <- sl3 |>  
+       mutate(Subject = as.character(Subject)) |>  
        arrange(Subject)
 ```
 
-```{r sl3, eval=is.character(params$data26)}
+```{r}
+#| label: SSU3
 htmltools::browsable(
    tagList(
     tags$button(
@@ -2074,12 +1923,17 @@ htmltools::browsable(
       onclick = "Reactable.downloadDataCSV('sl3', 'sl3.csv')"
     ),
 sl3[
-# YSI System Assignment Meter Number (N)
+# iSTAT Serial Number
 (is.na(sl3$SLID02) | str_detect(sl3$SLID02,"^$|pattern"))   |
-# YSI Serial Number (C)
-is.na(sl3$SLID03) | str_detect(sl3$SLID03,"^$|pattern"),] %>%
+# iSTAT Lot Number
+is.na(sl3$SLID03) | str_detect(sl3$SLID03,"^$|pattern") |
+# iSTAT Cartridge Lot Number
+is.na(sl3$SLID05) | str_detect(sl3$SLID03,"^$|pattern") |
+# Expiration Date
+is.na(sl3$SLDTC03) | str_detect(sl3$SLDTC03,"^$|pattern") 
+  ,] %>%
   select(Subject,`__STUDYEVENTREPEATKEY`,SLID02:last_col()) %>%
-  {if (params$label) (sjlabelled::label_to_colnames(.)) else .} %>%
+  # {if (params$label) (sjlabelled::label_to_colnames(.)) else .} %>%
   reactable(paginationType = "jump", striped = TRUE, highlight = TRUE, searchable = TRUE, defaultPageSize = 6, resizable = TRUE, filterable = TRUE,elementId = "sl3",
      defaultColDef = colDef(align = "center",minWidth = 115),
      columns = list(Subject = colDef(sticky = "left"))
@@ -2088,34 +1942,30 @@ is.na(sl3$SLID03) | str_detect(sl3$SLID03,"^$|pattern"),] %>%
 )
 ```
 
-`r if(is.character(params$data26) && is_empty(sl3$Subject)){knitr::asis_output(colorize("SL3 is empty","red"))}`
+`r if(is_empty(sl3$Subject)){knitr::asis_output(colorize("SL3 is empty","red"))}`
 
-`r if(is.character(params$data26)){knitr::asis_output("SLID02(YSI System Assignment Meter Number) should not be blank")}` `r if(is.character(params$data26)){colorize(sl3[(is.na(sl3$SLID02) | str_detect(sl3$SLID02,"^$|pattern")),]$Subject,"red")}`
+`r knitr::asis_output("SLID02(iSTAT Serial Number) should not be blank")` `r colorize(sl3[(is.na(sl3$SLID02) | str_detect(sl3$SLID02,"^$|pattern")),]$Subject,"red")`
 
-`r if(is.character(params$data26)){knitr::asis_output("SLID03(YSI Serial Number) should not be blank")}` `r if(is.character(params$data26)){colorize(sl3[is.na(sl3$SLID03) | str_detect(sl3$SLID03,"^$|pattern"),]$Subject,"red")}`
+`r knitr::asis_output("SLID03(iSTAT Lot Number) should not be blank")` `r colorize(sl3[is.na(sl3$SLID03) | str_detect(sl3$SLID03,"^$|pattern"),]$Subject,"red")`
 
-<!-- # SR2 Review -->
+`r knitr::asis_output("SLID05(iSTAT Cartridge Lot Number) should not be blank")` `r colorize(sl3[is.na(sl3$SLID05) | str_detect(sl3$SLID05,"^$|pattern"),]$Subject,"red")`
 
-<!-- [Sensor Removal](//oneabbott.com/dept/ADC/Technical_OPS/Clinical_Affairs/Clinical Study Files/Apollo/ADC-US-RES-21217 Vitamin C Events/Case Report Forms/Version A/Approved/PDF_file/Sensor_Removal.pdf) -->
+`r knitr::asis_output("SLDTC03(Expiration Date) should not be blank")` `r colorize(sl3[is.na(sl3$SLDTC03) | str_detect(sl3$SLDTC03,"^$|pattern") ,]$Subject,"red")`
 
-`r if(is.character(params$data27)){knitr::asis_output("# **SR2 Review**")}`
+# **SR2 Review**
 
-`r if(is.character(params$data27)){htmltools::a("Sensor Removal",href = "//oneabbott.com/dept/ADC/Technical_OPS/Clinical_Affairs/Clinical Study Files/Apollo/ADC-US-RES-22225 Multi-Analyte Studies/Case Report Forms/Version_G/PDF/Sensor_Removal.pdf")}`
+`r htmltools::a("Sensor Removal",href = gsub("\\\\", "/", r"(\\oneabbott.com\dept\ADC\Technical_OPS\Clinical_Affairs\Clinical Study Files\Apollo\ADC-US-RES-23234_IDE Pump Suspension Study\Case Report Forms\Version B\Approved\pdf\Sensor_Removal.pdf)"))`
 
 ```{r}
-# sr2 <- read_sas(gsub("\\\\", "/", r"(\\wf00168p.oneabbott.com\data1\CDM\ADC-US-RES-21217\SE01\Openclinica\Current\sr2.sas7bdat)"))
-# sr2 <- read_sas(gsub("\\\\", "/", r"(\\wf00168p.oneabbott.com\data1\CDM\ADC-US-VAL-21216\Openclinica\Current\sr2.sas7bdat)"))
-# sr2 <- read_sas(gsub("\\\\", "/", r"(\\wf00168p.oneabbott.com\data1\CDM\ADC-US-RES-22225\SE23_24_Glu\OpenClinica\Current\sr2.sas7bdat)"))
-```
-
-```{r Load sr2, eval=is.character(params$data27)}
-sr2 <- read_sas(params$data27)
-sr2 <- sr2 %>% 
-       mutate(Subject = as.character(Subject)) %>% 
+#| label: SAS SR2
+sr2 <- read_sas(gsub("\\\\", "/", r"(\\wf00168p.oneabbott.com\data1\CDM\ADC-US-RES-23234\OpenClinica\Current\sr2.sas7bdat)"))
+sr2 <- sr2 |> 
+       mutate(Subject = as.character(Subject)) |> 
        arrange(Subject)
 ```
 
-```{r sr2, eval=is.character(params$data27)}
+```{r}
+#| label: SR2
 htmltools::browsable(
    tagList(
     tags$button(
@@ -2124,7 +1974,7 @@ htmltools::browsable(
     ),
 sr2[
 # Sensor Number (C)
-is.na(sr2$DRID01) | str_detect(sr2$DRID01,"^$|pattern")     |
+is.na(sr2$DRID01) | str_detect(sr2$DRID01,"^$|pattern") | str_starts(sr2$DRID01,"0")  |
 # Removal Date  (C)
 is.na(sr2$DRDTC02) | str_detect(sr2$DRDTC02,"^$|pattern")   |
 # Length of Removal Date
@@ -2140,7 +1990,7 @@ str_length(sr2$DRTM01) != median(str_length(sr2$DRTM01),na.rm = T) |
 # Is the application site still suitable for sensor application? (C)
 !str_detect(sr2$DRORES03,regex("Yes|No|NA",ignore_case = T)),] %>%
   select(-c(`StudyStatus`,`SubjectID`:`__ITEMGROUPREPEATKEY`)) %>%
-  {if (params$label) (sjlabelled::label_to_colnames(.)) else .} %>%
+  # {if (params$label) (sjlabelled::label_to_colnames(.)) else .} %>%
   reactable(paginationType = "jump", striped = TRUE, highlight = TRUE, searchable = TRUE, defaultPageSize = 6, resizable = TRUE, filterable = TRUE,elementId = "sr2",
      defaultColDef = colDef(align = "center",minWidth = 115),
      columns = list(Subject = colDef(sticky = "left"))
@@ -2149,170 +1999,102 @@ str_length(sr2$DRTM01) != median(str_length(sr2$DRTM01),na.rm = T) |
 )
 ```
 
-`r if(is.character(params$data27) && is_empty(sr2$Subject)){knitr::asis_output(colorize("SR2 is empty","red"))}`
+`r if(is_empty(sr2$Subject)){knitr::asis_output(colorize("SR2 is empty","red"))}`
 
-`r if(is.character(params$data27)){knitr::asis_output("DRID01(Sensor Number) should not be blank")}` `r if(is.character(params$data27)){colorize(sr2[is.na(sr2$DRID01) | str_detect(sr2$DRID01,"^$|pattern"),]$Subject,"red")}`
+`r knitr::asis_output("DRID01(Sensor Number) should not be blank and should not start with 0")` `r colorize(sr2[is.na(sr2$DRID01) | str_detect(sr2$DRID01,"^$|pattern") | str_starts(sr2$DRID01,"0"),]$Subject,"red")`
 
-`r if(is.character(params$data27)){knitr::asis_output("DRID01(Removal Date) should not be blank")}` `r if(is.character(params$data27)){colorize(sr2[is.na(sr2$DRDTC02) | str_detect(sr2$DRDTC02,"^$|pattern"),]$Subject,"red")}` `r if(is.character(params$data27)){knitr::asis_output("and the length of DRID01(Removal Date) should be")}` `r if(is.character(params$data27)){colorize(median(str_length(sr2$DRDTC02),na.rm = T),"red")}``r if(is.character(params$data27)){colorize(sr2[str_length(sr2$DRDTC02) != median(str_length(sr2$DRDTC02),na.rm = T),]$Subject,"red")}`
+`r knitr::asis_output("DRID01(Removal Date) should not be blank")` `r colorize(sr2[is.na(sr2$DRDTC02) | str_detect(sr2$DRDTC02,"^$|pattern"),]$Subject,"red")` `r knitr::asis_output("and the length of DRID01(Removal Date) should be")` `r colorize(median(str_length(sr2$DRDTC02),na.rm = T),"red")` `r colorize(sr2[str_length(sr2$DRDTC02) != median(str_length(sr2$DRDTC02),na.rm = T),]$Subject,"red")`
 
-`r if(is.character(params$data27)){knitr::asis_output("DRTM01(Removal Time) should not be blank")}` `r if(is.character(params$data27)){colorize(sr2[is.na(sr2$DRTM01) | str_detect(sr2$DRTM01,"^$|pattern"),]$Subject,"red")}` `r if(is.character(params$data27)){knitr::asis_output("and the length of DRTM01(Removal Time) should be")}` `r if(is.character(params$data27)){colorize(median(str_length(sr2$DRTM01),na.rm = T),"red")}` `r if(is.character(params$data27)){colorize(sr2[str_length(sr2$DRTM01) != median(str_length(sr2$DRTM01),na.rm = T),]$Subject,"red")}`
+`r knitr::asis_output("DRTM01(Removal Time) should not be blank")` `r colorize(sr2[is.na(sr2$DRTM01) | str_detect(sr2$DRTM01,"^$|pattern"),]$Subject,"red")` `r knitr::asis_output("and the length of DRTM01(Removal Time) should be")` `r colorize(median(str_length(sr2$DRTM01),na.rm = T),"red")` `r colorize(sr2[str_length(sr2$DRTM01) != median(str_length(sr2$DRTM01),na.rm = T),]$Subject,"red")`
 
-`r if(is.character(params$data27)){knitr::asis_output("DRORES01(Was sensor removed or detached prematurely?) should be Yes or No")}` `r if(is.character(params$data27)){colorize(sr2[!str_detect(sr2$DRORES01,regex("Yes|No",ignore_case = T)),]$Subject,"red")}`
+`r knitr::asis_output("DRORES01(Was sensor removed or detached prematurely?) should be Yes or No")` `r colorize(sr2[!str_detect(sr2$DRORES01,regex("Yes|No",ignore_case = T)),]$Subject,"red")`
 
-`r if(is.character(params$data27)){knitr::asis_output("DRORES02(Was site insertion exam performed?) should be Yes or No")}` `r if(is.character(params$data27)){colorize(sr2[!str_detect(sr2$DRORES02,regex("Yes|No",ignore_case = T)),]$Subject,"red")}`
+`r knitr::asis_output("DRORES02(Was site insertion exam performed?) should be Yes or No")` `r colorize(sr2[!str_detect(sr2$DRORES02,regex("Yes|No",ignore_case = T)),]$Subject,"red")`
 
-`r if(is.character(params$data27)){knitr::asis_output("DRORES03(Is the application site still suitable for sensor application?) should be Yes, No , NA ")}` `r if(is.character(params$data27)){colorize(sr2[!str_detect(sr2$DRORES03,regex("Yes|No|NA",ignore_case = T)),]$Subject,"red")}`
+`r knitr::asis_output("DRORES03(Is the application site still suitable for sensor application?) should be Yes, No , NA ")` `r colorize(sr2[!str_detect(sr2$DRORES03,regex("Yes|No|NA",ignore_case = T)),]$Subject,"red")`
 
+<!-- # **UC Review** -->
 
-<!-- # VC1 Review -->
-
-<!-- [Ascorbic Acid Acetaminophen Dosing and Meal](//oneabbott.com/dept/ADC/Technical_OPS/Clinical_Affairs/Clinical Study Files/Apollo/ADC-US-RES-21217 Vitamin C Events/Case Report Forms/Version A/Approved/PDF_file/Ascorbic Acid_Acetaminophen Dosing and Meal.pdf) -->
-
-`r if(is.character(params$data29)){knitr::asis_output("# **VC1 Review**")}`
-
-`r if(is.character(params$data29)){htmltools::a("Ascorbic Acid Acetaminophen Dosing and Meal",href = "//oneabbott.com/dept/ADC/Technical_OPS/Clinical_Affairs/Clinical Study Files/Apollo/ADC-US-RES-21217 Vitamin C Events/Case Report Forms/Version A/Approved/PDF_file/Ascorbic Acid_Acetaminophen Dosing and Meal.pdf")}`
+<!-- `r htmltools::a("Unscheduled Contact",href = gsub("\\\\", "/", r"(\\oneabbott.com\dept\ADC\Technical_OPS\Clinical_Affairs\Clinical Study Files\Apollo\ADC-US-RES-23234_IDE Pump Suspension Study\Case Report Forms\Version B\Approved\pdf\Unscheduled_Contact.pdf)"))` -->
 
 ```{r}
-# vc1 <- read_sas(gsub("\\\\", "/", r"(\\wf00168p.oneabbott.com\data1\CDM\ADC-US-RES-21217\SE01\Openclinica\Current\vc1.sas7bdat)"))
+#| label: SAS UC
+# uc <- read_sas(gsub("\\\\", "/", r"(\\wf00168p.oneabbott.com\data1\CDM\ADC-US-RES-23234\OpenClinica\Current\uc.sas7bdat)"))
+# uc <- uc |>
+#       filter(!str_detect(UVYN01,regex("CHECK HERE IF NO DATA RECORDED|no_data_recorded|	
+# check_here_if_no_data_recorded",ignore_case = T))) |>
+#       mutate(Subject = as.character(Subject)) |>
+#       arrange(Subject)
 ```
-
-```{r Load vc1, eval=is.character(params$data29)}
-vc1 <- read_sas(params$data29)
-vc1 <- vc1 %>% 
-       filter(!str_detect(VCYN01,regex("CHECK HERE IF NO DATA RECORDED|no_data_recorded",ignore_case = T))) %>%
-       mutate(Subject = as.character(Subject)) %>% 
-       arrange(Subject)
-```
-
-```{r vc1, eval=is.character(params$data29)}
-htmltools::browsable(
-   tagList(
-    tags$button(
-      tagList(fontawesome::fa("download"), "Download as CSV"),
-      onclick = "Reactable.downloadDataCSV('vc1', 'vc1.csv')"
-    ),
-vc1[
-# Visit Date
-(is.na(vc1$VCDTC01) | str_detect(vc1$VCDTC01,"^$|pattern")) |
-# Length Of Visit Date
-str_length(vc1$VCDTC01) != median(str_length(vc1$VCDTC01),na.rm = T) |
-# Select Interferent Type
-!str_detect(vc1$VCORES06,regex("Ascorbic acid|Acetaminophen",ignore_case = T)),] %>%
-  select(-c(`StudyStatus`,`SubjectID`:`__ITEMGROUPREPEATKEY`)) %>% 
-  {if (params$label) (sjlabelled::label_to_colnames(.)) else .} %>%
-  reactable(paginationType = "jump", striped = TRUE, highlight = TRUE, searchable = TRUE, defaultPageSize = 6, resizable = TRUE, filterable = TRUE,elementId = "vc1",
-     defaultColDef = colDef(align = "center",minWidth = 115),
-     columns = list(Subject = colDef(sticky = "left"))
-     )
- )
-)
-```
-
-`r if(is.character(params$data29) && is_empty(vc1$Subject)){knitr::asis_output(colorize("VC1 is empty","red"))}`
-
-`r if(is.character(params$data29)){knitr::asis_output("VCDTC01(Visit Date) should not be blank")}` `r if(is.character(params$data29)){colorize(vc1[(is.na(vc1$VCDTC01) | str_detect(vc1$VCDTC01,"^$|pattern")),]$Subject,"red")}`
-
-`r if(is.character(params$data29)){knitr::asis_output("Length of VCDTC01(Visit Date) should be")}` `r if(is.character(params$data29)){colorize(median(str_length(vc1$VCDTC01),na.rm = T),"red")}` `r if(is.character(params$data29)){colorize(vc1[str_length(vc1$VCDTC01) != median(str_length(vc1$VCDTC01),na.rm = T),]$Subject,"red")}`
-
-`r if(is.character(params$data29)){knitr::asis_output("VCORES06(Select Interferent Type) should be either Ascorbic acid or Acetaminophen")}` `r if(is.character(params$data29)){colorize(vc1[!str_detect(vc1$VCORES06,regex("Ascorbic acid|Acetaminophen",ignore_case = T)),]$Subject,"red")}`
-
-<!-- # VC2 Review -->
-
-<!-- [Ascorbic Acid Acetaminophen Dosing and Meal](//oneabbott.com/dept/ADC/Technical_OPS/Clinical_Affairs/Clinical Study Files/Apollo/ADC-US-RES-21217 Vitamin C Events/Case Report Forms/Version A/Approved/PDF_file/Ascorbic Acid_Acetaminophen Dosing and Meal.pdf) -->
-
-`r if(is.character(params$data30)){knitr::asis_output("# **VC2 Review**")}`
-
-`r if(is.character(params$data30)){htmltools::a("Ascorbic Acid Acetaminophen Dosing and Meal",href = "//oneabbott.com/dept/ADC/Technical_OPS/Clinical_Affairs/Clinical Study Files/Apollo/ADC-US-RES-21217 Vitamin C Events/Case Report Forms/Version A/Approved/PDF_file/Ascorbic Acid_Acetaminophen Dosing and Meal.pdf")}`
 
 ```{r}
-# vc2 <- read_sas(gsub("\\\\", "/", r"(\\wf00168p.oneabbott.com\data1\CDM\ADC-US-RES-21217\SE01\Openclinica\Current\vc2.sas7bdat)"))
+#| label: UC
+# htmltools::browsable(
+#    tagList(
+#     tags$button(
+#       tagList(fontawesome::fa("download"), "Download as CSV"),
+#       onclick = "Reactable.downloadDataCSV('uc', 'uc.csv')"
+#     ),
+# uc[
+# # Date of Contact
+# (is.na(uc$UVDTC01) | str_detect(uc$UVDTC01,"^$|pattern")) |
+# # Length of Date of Contact
+# str_length(uc$UVDTC01) != median(str_length(uc$UVDTC01),na.rm = T) | 
+# # Contact Details
+# !str_detect(uc$UVORES01,regex("Telephone call/email from subject|Telephone call/email to subject|Subject visited clinic")) |
+# # General Questions on Study Device
+# str_detect(uc$UVORES02,"^$|pattern") | 
+# # Questions on study procedures
+# str_detect(uc$UVORES03,"^$|pattern") |
+# # Subject requested / required re-training
+# str_detect(uc$UVORES04,"^$|pattern") |
+# # Technical problem with study Device
+# str_detect(uc$UVORES05,"^$|pattern") |
+# # Subject requested more study supplies
+# str_detect(uc$UVORES06,"^$|pattern") |
+# # Adverse Event
+# str_detect(uc$UVORES07,"^$|pattern") |
+# # Change in Medication
+# str_detect(uc$UVORES08,"^$|pattern") |
+# # New sensor application
+# str_detect(uc$UVORES09,"^$|pattern")
+# ,] %>%
+#   select(Subject,UVDTC01:last_col()) %>%
+#   # {if (params$label) (sjlabelled::label_to_colnames(.)) else .} %>%
+#   reactable(paginationType = "jump", striped = TRUE, highlight = TRUE, searchable = TRUE, defaultPageSize = 6, resizable = TRUE, filterable = TRUE,elementId = "uc",
+#      defaultColDef = colDef(align = "center",minWidth = 115),
+#      columns = list(Subject = colDef(sticky = "left"))
+#      )
+#   )
+# )
+# <!-- `r if(is_empty(uc$Subject)){knitr::asis_output(colorize("UC is empty","red"))}` -->
+# 
+# <!-- `r knitr::asis_output("UVDTC01(Date of Contact) should not be blank")` `r colorize(uc[(is.na(uc$UVDTC01) | str_detect(uc$UVDTC01,"^$|pattern")),]$Subject,"red")` -->
+# 
+# <!-- `r knitr::asis_output("Length of UVDTC01(Date of Contact) should be")` `r colorize(median(str_length(uc$UVDTC01),na.rm = T),"red")` `r colorize(uc[str_length(uc$UVDTC01) != median(str_length(uc$UVDTC01),na.rm = T),]$Subject,"red")` -->
+# 
+# <!-- `r knitr::asis_output("UVORES01(Contact Details) should be either Telephone call/email from subject or Telephone call/email to subject or Subject visited clinic")` `r colorize(uc[!str_detect(uc$UVORES01,regex("Telephone call/email from subject|Telephone call/email to subject|Subject visited clinic")),]$Subject,"red")` -->
 ```
 
-```{r Load vc2, eval=is.character(params$data30)}
-vc2 <- read_sas(params$data30)
-vc2 <- vc2 %>% 
-       mutate(Subject = as.character(Subject)) %>% 
-       arrange(Subject)
-```
 
-```{r vc2, eval=is.character(params$data30)}
-htmltools::browsable(
-   tagList(
-    tags$button(
-      tagList(fontawesome::fa("download"), "Download as CSV"),
-      onclick = "Reactable.downloadDataCSV('vc2', 'vc2.csv')"
-    ),
-vc2[
-# Dosing Time
-(is.na(vc2$VCDTC02) | str_detect(vc2$VCDTC02,"^$|pattern")) |
-# Amount
-(is.na(vc2$VCORES01) | str_detect(vc2$VCORES01,"^$|pattern")) |
-# Did subject consume food or drink?
-! str_detect(vc2$VCYN03,regex("Yes|No",ignore_case = T)) |
-# If yes, what was provided?
-(str_detect(vc2$VCYN03,regex("Yes",ignore_case = T)) & !str_detect(vc2$VCORES02,regex("Meal|Snack|Drink|Other",ignore_case = T))) |
-# If other, please provide detail
-(str_detect(vc2$VCORES02,regex("Other",ignore_case = T)) 
-& str_detect(vc2$VCORES03,"^$|pattern")) |
-# Time Given
-(is.na(vc2$VCDTC03) | str_detect(vc2$VCDTC03,"^$|pattern")) |
-# Carbohydrates
-(is.na(vc2$VCORES04) | str_detect(vc2$VCORES04,"^$|pattern")) |
-# If No, Provide a reason
-(str_detect(vc2$VCYN03,regex("No",ignore_case = T)) 
- & str_detect(vc2$VCORES05,"^$|pattern")),] %>% 
-   select(-c(`StudyStatus`,`SubjectID`:`__ITEMGROUPREPEATKEY`)) %>% 
-  {if (params$label) (sjlabelled::label_to_colnames(.)) else .} %>%
-  reactable(paginationType = "jump", striped = TRUE, highlight = TRUE, searchable = TRUE, defaultPageSize = 6, resizable = TRUE, filterable = TRUE,elementId = "vc2",
-     defaultColDef = colDef(align = "center",minWidth = 115),
-     columns = list(Subject = colDef(sticky = "left"))
-     )
-  )
-)
-```
 
-`r if(is.character(params$data30) && is_empty(vc2$Subject)){knitr::asis_output(colorize("VC2 is empty","red"))}`
 
-`r if(is.character(params$data30)){knitr::asis_output("VCDTC02(Dosing Time) should not be blank")}` `r if(is.character(params$data30)){colorize(vc2[(is.na(vc2$VCDTC02) | str_detect(vc2$VCDTC02,"^$|pattern")),]$Subject,"red")}`
+# **VS Review**
 
-`r if(is.character(params$data30)){knitr::asis_output("VCORES01(Amount) should not be blank")}` `r if(is.character(params$data30)){colorize(vc2[(is.na(vc2$VCORES01) | str_detect(vc2$VCORES01,"^$|pattern")),]$Subject,"red")}`
-
-`r if(is.character(params$data30)){knitr::asis_output("VCYN03(Did subject consume food or drink?) should be either Yes or No")}` `r if(is.character(params$data30)){colorize(vc2[! str_detect(vc2$VCYN03,regex("Yes|No",ignore_case = T)),]$Subject,"red")}`
-
-`r if(is.character(params$data30)){knitr::asis_output("If VCYN03(Did subject consume food or drink?) is Yes, so VCORES02(what was provided?) should be Meal,Snack,Drink,Other")}` `r if(is.character(params$data30)){colorize(vc2[(str_detect(vc2$VCYN03,regex("Yes",ignore_case = T)) & !str_detect(vc2$VCORES02,regex("Meal|Snack|Drink|Other",ignore_case = T))),]$Subject,"red")}`
-
-`r if(is.character(params$data30)){knitr::asis_output("If VCORES02(what was provided?) is Other, so VCORES03(please provide detail (Other)) should not be blank")}` `r if(is.character(params$data30)){colorize(vc2[(str_detect(vc2$VCORES02,regex("Other",ignore_case = T)) & str_detect(vc2$VCORES03,"^$|pattern")),]$Subject,"red")}`
-
-`r if(is.character(params$data30)){knitr::asis_output("VCDTC03(Time Given) should not be blank")}` `r if(is.character(params$data30)){colorize(vc2[(is.na(vc2$VCDTC03) | str_detect(vc2$VCDTC03,"^$|pattern")),]$Subject,"red")}`
-
-`r if(is.character(params$data30)){knitr::asis_output("VCORES04(Carbohydrates) should not be blank")}` `r if(is.character(params$data30)){colorize(vc2[(is.na(vc2$VCORES04) | str_detect(vc2$VCORES04,"^$|pattern")),]$Subject,"red")}`
-
-`r if(is.character(params$data30)){knitr::asis_output("If VCYN03(Did subject consume food or drink?) is No, so VCORES05(Provide a reason) should not be blank")}` `r if(is.character(params$data30)){colorize(vc2[(str_detect(vc2$VCYN03,regex("No",ignore_case = T)) & str_detect(vc2$VCORES05,"^$|pattern")),]$Subject,"red")}`
-
-<!-- # VS Review -->
-
-<!-- [Height and Weight](//oneabbott.com/dept/ADC/Technical_OPS/Clinical_Affairs/Clinical Study Files/Apollo/ADC-US-RES-21217 Vitamin C Events/Case Report Forms/Version A/Approved/PDF_file/Height_Weight.pdf) -->
-
-`r if(is.character(params$data28)){knitr::asis_output("# **VS Review**")}`
-
-`r if(is.character(params$data28)){htmltools::a("Height and Weight",href = "//oneabbott.com/dept/ADC/Technical_OPS/Clinical_Affairs/Clinical Study Files/Apollo/ADC-US-RES-22225 Multi-Analyte Studies/Case Report Forms/Version_G/PDF/Height_Weight.pdf")}`
+`r htmltools::a("Height Weight",href = gsub("\\\\", "/", r"(\\oneabbott.com\dept\ADC\Technical_OPS\Clinical_Affairs\Clinical Study Files\Apollo\ADC-US-RES-23234_IDE Pump Suspension Study\Case Report Forms\Version B\Approved\pdf\Height_Weight.pdf)"))`
 
 ```{r}
-# vs <- read_sas(gsub("\\\\", "/", r"(\\wf00168p.oneabbott.com\data1\CDM\ADC-US-RES-21217\SE01\Openclinica\Current\vs.sas7bdat)"))
-# vs <- read_sas(gsub("\\\\", "/", r"(\\wf00168p.oneabbott.com\data1\CDM\ADC-US-VAL-21216\Openclinica\Current\vs.sas7bdat)"))
-# vs <- read_sas(gsub("\\\\", "/", r"(\\wf00168p.oneabbott.com\data1\CDM\ADC-US-RES-22225\SE23_24_Glu\OpenClinica\Current\vs.sas7bdat)"))
-```
-
-```{r Load vs, eval=is.character(params$data28)}
-vs <- read_sas(params$data28)
-vs <- vs %>% 
-      filter(!str_detect(VSYN01,regex("CHECK HERE IF NO DATA RECORDED|no_data_recorded",ignore_case = T))) %>%
+#| label: SAS VS
+vs <- read_sas(gsub("\\\\", "/", r"(\\wf00168p.oneabbott.com\data1\CDM\ADC-US-RES-23234\OpenClinica\Current\vs.sas7bdat)"))
+vs <- vs |>  
+      filter(!str_detect(VSYN01,regex("CHECK HERE IF NO DATA RECORDED|no_data_recorded",ignore_case = T))) |> 
       mutate(Subject = as.character(Subject),
-             across(starts_with("VSOR"),as.numeric)) %>% 
+             across(starts_with("VSOR"),as.numeric)) |>  
       arrange(Subject)
 ```
 
-```{r vs, eval=is.character(params$data28)}
+```{r}
+#| label: VS
 htmltools::browsable(
    tagList(
     tags$button(
@@ -2337,7 +2119,7 @@ str_length(vs$VSDTC01) != median(str_length(vs$VSDTC01),na.rm = T) |
 # Weight lb extreme value
 ((vs$VSORES03 < quantile(vs$VSORES03,probs = 0.25,names = F) -1.5*IQR(vs$VSORES03) | vs$VSORES03 > quantile(vs$VSORES03,probs = 0.75,names = F) + 1.5*IQR(vs$VSORES03)) & !str_length(vs$VSORES03) %in% c(3,5)),] %>%
   select(Subject,`__STUDYEVENTREPEATKEY`,VSDTC01:last_col()) %>%
-  {if (params$label) (sjlabelled::label_to_colnames(.)) else .} %>%
+  # {if (params$label) (sjlabelled::label_to_colnames(.)) else .} %>%
   reactable(paginationType = "jump", striped = TRUE, highlight = TRUE, searchable = TRUE, defaultPageSize = 6, resizable = TRUE, filterable = TRUE,elementId = "vs",
      defaultColDef = colDef(align = "center",minWidth = 115),
      columns = list(Subject = colDef(sticky = "left"))
@@ -2346,20 +2128,20 @@ str_length(vs$VSDTC01) != median(str_length(vs$VSDTC01),na.rm = T) |
 )
 ```
 
-`r if(is.character(params$data28) && is_empty(vs$Subject)){knitr::asis_output(colorize("VS is empty","red"))}`
+`r if(is_empty(vs$Subject)){knitr::asis_output(colorize("VS is empty","red"))}`
 
-`r if(is.character(params$data28)){knitr::asis_output("VSDTC01(Visit Date) should not be blank")}` `r if(is.character(params$data28)){colorize(vs[(is.na(vs$VSDTC01) | str_detect(vs$VSDTC01,"^$|pattern")),]$Subject,"red")}`
+`r knitr::asis_output("VSDTC01(Visit Date) should not be blank")` `r colorize(vs[(is.na(vs$VSDTC01) | str_detect(vs$VSDTC01,"^$|pattern")),]$Subject,"red")`
 
-`r if(is.character(params$data28)){knitr::asis_output("Length of VSDTC01(Visit Date) should be")}` `r if(is.character(params$data28)){colorize(median(str_length(vs$VSDTC01),na.rm = T),"red")}` `r if(is.character(params$data28)){colorize(vs[str_length(vs$VSDTC01) != median(str_length(vs$VSDTC01),na.rm = T),]$Subject,"red")}`
+`r knitr::asis_output("Length of VSDTC01(Visit Date) should be")` `r colorize(median(str_length(vs$VSDTC01),na.rm = T),"red")` `r colorize(vs[str_length(vs$VSDTC01) != median(str_length(vs$VSDTC01),na.rm = T),]$Subject,"red")`
 
-`r if(is.character(params$data28)){knitr::asis_output("VSORES01(Height ft) should not be blank")}` `r if(is.character(params$data28)){colorize(vs[(is.na(vs$VSORES01) | str_detect(vs$VSORES01,"^$|pattern")),]$Subject,"red")}`
+`r knitr::asis_output("VSORES01(Height ft) should not be blank")` `r colorize(vs[(is.na(vs$VSORES01) | str_detect(vs$VSORES01,"^$|pattern")),]$Subject,"red")`
 
-`r if(is.character(params$data28)){knitr::asis_output("VSORES01(Height ft) has extreme values")}` `r if(is.character(params$data28)){colorize(vs[((vs$VSORES01 < quantile(vs$VSORES01,probs = 0.25,names = F) -1.5*IQR(vs$VSORES01) | vs$VSORES01 > quantile(vs$VSORES01,probs = 0.75,names = F) + 1.5*IQR(vs$VSORES01)) & str_length(vs$VSORES01) != 1) ,]$Subject,"red")}`
+`r knitr::asis_output("VSORES01(Height ft) has extreme values")` `r colorize(vs[((vs$VSORES01 < quantile(vs$VSORES01,probs = 0.25,names = F) -1.5*IQR(vs$VSORES01) | vs$VSORES01 > quantile(vs$VSORES01,probs = 0.75,names = F) + 1.5*IQR(vs$VSORES01)) & str_length(vs$VSORES01) != 1) ,]$Subject,"red")`
 
-`r if(is.character(params$data28)){knitr::asis_output("VSORES02(Height in) should not be blank")}` `r if(is.character(params$data28)){colorize(vs[(is.na(vs$VSORES02) | str_detect(vs$VSORES02,"^$|pattern")),]$Subject,"red")}`
+`r knitr::asis_output("VSORES02(Height in) should not be blank")` `r colorize(vs[(is.na(vs$VSORES02) | str_detect(vs$VSORES02,"^$|pattern")),]$Subject,"red")`
 
-`r if(is.character(params$data28)){knitr::asis_output("VSORES02(Height in) has extreme values")}` `r if(is.character(params$data28)){colorize(vs[!(vs$VSORES02 %in% seq(0,11)),]$Subject,"red")}`
+`r knitr::asis_output("VSORES02(Height in) has extreme values")` `r colorize(vs[!(vs$VSORES02 %in% seq(0,11)),]$Subject,"red")`
 
-`r if(is.character(params$data28)){knitr::asis_output("VSORES03(Weight lb) should not be blank")}` `r if(is.character(params$data28)){colorize(vs[(is.na(vs$VSORES03) | str_detect(vs$VSORES03,"^$|pattern")),]$Subject,"red")}`
+`r knitr::asis_output("VSORES03(Weight lb) should not be blank")` `r colorize(vs[(is.na(vs$VSORES03) | str_detect(vs$VSORES03,"^$|pattern")),]$Subject,"red")`
 
-`r if(is.character(params$data28)){knitr::asis_output("VSORES03(Weight lb) has extreme values")}` `r if(is.character(params$data28)){colorize(vs[((vs$VSORES03 < quantile(vs$VSORES03,probs = 0.25,names = F) -1.5*IQR(vs$VSORES03) | vs$VSORES03 > quantile(vs$VSORES03,probs = 0.75,names = F) + 1.5*IQR(vs$VSORES03)) & !str_length(vs$VSORES03) %in% c(3,5)),]$Subject,"red")}`
+`r knitr::asis_output("VSORES03(Weight lb) has extreme values")` `r colorize(vs[((vs$VSORES03 < quantile(vs$VSORES03,probs = 0.25,names = F) -1.5*IQR(vs$VSORES03) | vs$VSORES03 > quantile(vs$VSORES03,probs = 0.75,names = F) + 1.5*IQR(vs$VSORES03)) & !str_length(vs$VSORES03) %in% c(3,5)),]$Subject,"red")`
