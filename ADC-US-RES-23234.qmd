@@ -26,6 +26,8 @@ execute:
 
 <!-- DMP \\oneabbott.com\dept\ADC\Technical_OPS\Clinical_Affairs\Clinical Study Files\Apollo\ADC-US-RES-23234_IDE Pump Suspension Study\CDM\Study_Binder\Data_Management_Plan\Version_1.0\Final -->
 
+<!-- Lori Rankin-Grundvig Site 133 Yale. Martin, Pamela Site 009 Rainier -->
+
 ```{r}
 #| label: Libaray Packages 
 #| message: false
@@ -255,7 +257,7 @@ ketone |>
 ```{r}
 #| label: Import ketone events, anaplus files csv
 #| eval: false
-file_list_ketone <- dir_ls(gsub("\\\\", "/", r"(C:\UDP\OutputFiles\Output_2023-10-16-09-55\outputs)"),recurse = T,glob = "*events.csv|*anaPlus.csv")
+file_list_ketone <- dir_ls(gsub("\\\\", "/", r"(C:\UDP\OutputFiles\Output_2023-11-02-13-54\outputs)"),recurse = T,glob = "*events.csv|*anaPlus.csv")
 ```
 
 ```{r}

@@ -186,8 +186,8 @@ if first.subject;
 run;
 
 /*Upload Data*/
-/*filename dir pipe "dir /b/l/s  ""C:\UDP\OutputFiles\Output_2023-10-16-09-55\outputs\*.csv""";*/
-
+/*filename dir pipe "dir /b/l/s  ""C:\UDP\OutputFiles\Output_2023-11-02-13-54\outputs\*.csv""";*/
+/**/
 /*data list;*/
 /*	infile dir truncover;*/
 /*	input path $256.;*/
@@ -239,7 +239,7 @@ run;
 /*		drop uid st--nonact;*/
 /*        output;*/
 /*	end;*/
-/*run;
+/*run;*/
 
 /*stack*/
 libname out "\\oneabbott.com\dept\ADC\Technical_OPS\Clinical_Affairs\Clinical Study Files\Apollo\ADC-US-RES-23234_IDE Pump Suspension Study\Statistics\Programs\Datasets\AL";
@@ -247,14 +247,14 @@ libname out "\\oneabbott.com\dept\ADC\Technical_OPS\Clinical_Affairs\Clinical St
 /*data auu;*/
 /*	set events_start anaplus;*/
 /*run;*/
-/*/*Remove Duplicated uploads*/*/
+/*Remove Duplicated uploads*/
 /*proc sort data = auu NODUP out = out.AUU; */
 /*by subject condition_id date time;*/
 /*run;*/
-/**/
-/*data out.auu;*/
-/*set auu;*/
-/*run;
+
+/*data auu;*/
+/*set out.auu;*/
+/*run;*/
 
 options papersize=a3 orientation=portrait;
 ods rtf file="C:\Project\ADC-US-RES-23234\ADC-US-RES-23234-Report-%trim(%sysfunc(today(),yymmddn8.)).rtf" startpage=no;
@@ -367,15 +367,15 @@ run;
 
 proc sgplot data=profile_data noautolegend cycleattrs;
 by Subject;
-where Subject = "90004" and dtm between '21aug23:05:30:00'dt and '21aug23:14:20:00'dt;
-/*title1 "Subject #byval(subject) - All Sensors";*/
+/*where Subject = "90004" and dtm between '21aug23:05:30:00'dt and '21aug23:15:20:00'dt;*/
+title1 "Subject #byval(subject) - All Sensors";
 styleattrs datacontrastcolors=(magenta green blue orange);
 	series x = dtm y = ana_100 / group=condition_id groupdisplay=overlay markers markerattrs=(size=3 symbol=dot) name="REAL";
     scatter x = dtm y = krseq01 / markerattrs = (symbol = StarFilled color = black size=5) name= "Ketone";
 	scatter x = dtm y = krseq03 /y2axis markerattrs = (symbol = trianglefilled color = lilac size=5) name= "Glucose";
-    yaxis label="Ketone Test Result (mmol/L)" values=(0 to 3.2 by 0.8);
-	y2axis label="Glucose Test Result(mg/dL)" values=(0 to 300 by 100);
-	xaxis label="Date" INTERVAL=HOUR VALUESROTATE=DIAGONAL2 ;
+    yaxis label="Ketone Test Result (mmol/L)";
+	y2axis label="Glucose Test Result(mg/dL)" values=(0 to 500 by 100);
+	xaxis label="Date";
 	keylegend / title="Condition ID" ;
 run;
 
