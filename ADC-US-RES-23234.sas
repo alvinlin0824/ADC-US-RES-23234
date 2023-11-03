@@ -239,7 +239,7 @@ run;
 /*		drop uid st--nonact;*/
 /*        output;*/
 /*	end;*/
-/*run;*/
+/*run;
 
 /*stack*/
 libname out "\\oneabbott.com\dept\ADC\Technical_OPS\Clinical_Affairs\Clinical Study Files\Apollo\ADC-US-RES-23234_IDE Pump Suspension Study\Statistics\Programs\Datasets\AL";
@@ -252,12 +252,12 @@ libname out "\\oneabbott.com\dept\ADC\Technical_OPS\Clinical_Affairs\Clinical St
 /*by subject condition_id date time;*/
 /*run;*/
 
-/*data auu;*/
-/*set out.auu;*/
-/*run;*/
+data auu;
+set out.auu;
+run;
 
-options papersize=a3 orientation=portrait;
-ods rtf file="C:\Project\ADC-US-RES-23234\ADC-US-RES-23234-Report-%trim(%sysfunc(today(),yymmddn8.)).rtf" startpage=no;
+/*options papersize=a3 orientation=portrait;*/
+/*ods rtf file="C:\Project\ADC-US-RES-23234\ADC-US-RES-23234-Report-%trim(%sysfunc(today(),yymmddn8.)).rtf" startpage=no;*/
 
 /*Summary Statistics on Ketone Result*/
 /*Proc means data = ketone maxdec=2 nonobs;*/
@@ -281,10 +281,10 @@ ods rtf file="C:\Project\ADC-US-RES-23234\ADC-US-RES-23234-Report-%trim(%sysfunc
 /*duration_to_last = "Time(Hours) From Peak Ketone Level to Ketone Level < 1 mmol/L"*(n mean stddev);*/
 /*run;*/
 
-goptions device=png target=png rotate=landscape hpos=90 vpos=40 gwait=0 aspect=0.5
-ftext='arial' htext=9pt hby=16pt gsfname=exfile gsfmode=replace xmax=16in hsize=10in ymax=11in vsize=6in;
-
-ods graphics on / reset attrpriority=color width=8in height=5in;
+/*goptions device=png target=png rotate=landscape hpos=90 vpos=40 gwait=0 aspect=0.5*/
+/*ftext='arial' htext=9pt hby=16pt gsfname=exfile gsfmode=replace xmax=16in hsize=10in ymax=11in vsize=6in;*/
+/**/
+/*ods graphics on / reset attrpriority=color width=8in height=5in;*/
 /*Reference Plot*/
 /*proc sgplot data = ketone noautolegend cycleattrs;*/
 /*where dtm is not missing and IVVAL01 = "Valid";*/
@@ -333,53 +333,110 @@ ods graphics on / reset attrpriority=color width=8in height=5in;
 /*Profile Plot*/
 
 /*Profile Plot Data*/
-data auu_906;
-format dtm datetime16.;
-set out.auu;
-dtm = dhms(date,0,0,time);
-ana_100 = ANA/100;
-where type = "906" and year(date) = 2023;
-drop date time;
-run;
+/*data auu_906;*/
+/*format dtm datetime16.;*/
+/*set out.auu;*/
+/*dtm = dhms(date,0,0,time);*/
+/*ana_100 = ANA/100;*/
+/*where type = "906" and year(date) = 2023;*/
+/*drop date time;*/
+/*run;*/
 
 /*uniqle sensor*/
-proc sort data = auu_906 NODUPKEY out = sensor(keep = subject condition_id);
-by subject condition_id;
-run; 
+/*proc sort data = auu_906 NODUPKEY out = sensor(keep = subject condition_id);*/
+/*by subject condition_id;*/
+/*run; */
 
 /*left join to ketone reference*/
-proc sql;
-create table reference as
-select * from kgrivmhcad as x left join sensor as y
-on x.subject = y.subject
-order by subject, condition_id, dtm;
-quit;
+/*proc sql;*/
+/*create table reference as*/
+/*select * from kgrivmhcad as x left join sensor as y*/
+/*on x.subject = y.subject*/
+/*order by subject, condition_id, dtm;*/
+/*quit;*/
 
-data profile_data;
-set auu_906 reference;
-if ^find(IVVAL01,"Invalid","i");
-run;
+/*data profile_data;*/
+/*set auu_906 reference;*/
+/*if ^find(IVVAL01,"Invalid","i");*/
+/*run;*/
 
 /*sort dtm*/
-proc sort data = profile_data;
-by subject condition_id dtm;
+/*proc sort data = profile_data;*/
+/*by subject condition_id dtm;*/
+/*run;*/
+/**/
+/*proc sgplot data=profile_data noautolegend cycleattrs;*/
+/*by Subject;*/
+/*/*where Subject = "90004" and dtm between '21aug23:05:30:00'dt and '21aug23:15:20:00'dt;*/*/
+/*title1 "Subject #byval(subject) - All Sensors";*/
+/*styleattrs datacontrastcolors=(magenta green blue orange);*/
+/*	series x = dtm y = ana_100 / group=condition_id groupdisplay=overlay markers markerattrs=(size=3 symbol=dot) name="REAL";*/
+/*    scatter x = dtm y = krseq01 / markerattrs = (symbol = StarFilled color = black size=5) name= "Ketone";*/
+/*	scatter x = dtm y = krseq03 /y2axis markerattrs = (symbol = trianglefilled color = lilac size=5) name= "Glucose";*/
+/*    yaxis label="Ketone Test Result (mmol/L)";*/
+/*	y2axis label="Glucose Test Result(mg/dL)" values=(0 to 500 by 100);*/
+/*	xaxis label="Date";*/
+/*	keylegend / title="Condition ID" ;*/
+/*run;*/
+/**/
+/*ODS RTF CLOSE;
+
+
+/*Paired Data Point*/
+/*Filter Type = 905 for sensor data*/
+data auu_905;
+set auu;
+format dtm datetime16.;
+dtm = dhms(date,0,0,time);
+ana_100 = ANA/100;
+where type = "905" and year(date) = 2023;
+drop date time snr ANA;
 run;
 
-proc sgplot data=profile_data noautolegend cycleattrs;
-by Subject;
-/*where Subject = "90004" and dtm between '21aug23:05:30:00'dt and '21aug23:15:20:00'dt;*/
-title1 "Subject #byval(subject) - All Sensors";
-styleattrs datacontrastcolors=(magenta green blue orange);
-	series x = dtm y = ana_100 / group=condition_id groupdisplay=overlay markers markerattrs=(size=3 symbol=dot) name="REAL";
-    scatter x = dtm y = krseq01 / markerattrs = (symbol = StarFilled color = black size=5) name= "Ketone";
-	scatter x = dtm y = krseq03 /y2axis markerattrs = (symbol = trianglefilled color = lilac size=5) name= "Glucose";
-    yaxis label="Ketone Test Result (mmol/L)";
-	y2axis label="Glucose Test Result(mg/dL)" values=(0 to 500 by 100);
-	xaxis label="Date";
-	keylegend / title="Condition ID" ;
+/*Wrangle Reference ketone*/
+data ketone_reference;
+set ketone;
+where IVVAL01 = "Valid" and ^missing(dtm);
+keep subject dtm IVID01 KRSEQ01;
+rename dtm = dtm_ref;
 run;
 
-ODS RTF CLOSE;
+/*Pair Reference Ketone and Ketone Sensor Data*/
+proc sql;
+ create table paired_ketone as
+ select a.*, b.*
+ from auu_905 a, ketone_reference b
+ where a.subject=b.subject and a.dtm-300<=b.dtm_ref<=a.dtm+300
+ group by b.subject, dtm_ref
+ order by b.subject, dtm_ref;
+quit;
 
+data paired_ketone1;
+ set paired_ketone;
+ abstimediff=abs(dtm-dtm_ref);
+run;
 
+proc sort data=paired_ketone1; by subject condition_id dtm_ref abstimediff KRSEQ01 descending dtm; run;
 
+data paired_ketone2;
+ set paired_ketone1;
+ by subject condition_id dtm_ref abstimediff KRSEQ01 descending dtm;
+ if first.dtm_ref; *Choose pair that is closest in time when BG paired with multiple GM;
+run;
+
+proc sort data=paired_ketone2; by subject condition_id dtm abstimediff dtm_ref; run;
+
+data Ap;
+ set paired_ketone2;
+ by subject condition_id dtm abstimediff dtm_ref;
+ if first.dtm; *Choose pair that is closest in time when GM paired with multiple BG;
+ drop abstimediff;
+run;
+
+proc sgplot data = Ap noautolegend cycleattrs;
+title1 "Ketone Sensor vs Reference";
+styleattrs datacontrastcolors = (magenta green blue orange lilac lime marron olive steel violet yellow);
+	scatter x = KRSEQ01 y = ana_100 / markerattrs = (symbol = StarFilled color = black size=5) name= "Ketone";;
+	yaxis label = "Sensor Ketone Value(mmol/L)" values=(0 to 11 by 1);
+	xaxis label = "Reference (mmol/L)" values=(0 to 8 by 1) VALUESROTATE=DIAGONAL2;
+run;
