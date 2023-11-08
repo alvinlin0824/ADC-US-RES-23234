@@ -260,18 +260,18 @@ run;
 /*ods rtf file="C:\Project\ADC-US-RES-23234\ADC-US-RES-23234-Report-%trim(%sysfunc(today(),yymmddn8.)).rtf" startpage=no;*/
 
 /*Summary Statistics on Ketone Result*/
-/*Proc means data = ketone maxdec=2 nonobs;*/
-/*title;*/
-/*var KRSEQ01;*/
-/*class Subject;*/
-/*where IVVAL01 = "Valid" and ^missing(KRSEQ01);*/
-/*run;*/
+Proc means data = ketone maxdec=2 nonobs;
+title;
+var KRSEQ01;
+class Subject;
+where IVVAL01 = "Valid" and ^missing(KRSEQ01);
+run;
 
-/*proc print data = analysis_ketone(rename = (subject = Subject first_test_dtm = 'Start Time'n peak_test_dtm = 'Peak Time'n Peak = 'Max Ketone Reference(mmol/L)'n last_test_dtm = 'Time once < 1 mmol/L'n duration_to_peak = 'Time to Peak(Hours)'n duration_to_last = 'Time to < 1 mmol/L(Hours)'n)) noobs;*/
-/*format 'Time to Peak(Hours)'n 'Time to < 1 mmol/L(Hours)'n 8.2;*/
-/*where ^missing('Max Ketone Reference(mmol/L)'n);*/
-/*var Subject 'Start Time'n 'Peak Time'n 'Max Ketone Reference(mmol/L)'n 'Time once < 1 mmol/L'n 'Time to Peak(Hours)'n 'Time to < 1 mmol/L(Hours)'n;*/
-/*run;*/
+proc print data = analysis_ketone(rename = (subject = Subject first_test_dtm = 'Start Time'n peak_test_dtm = 'Peak Time'n Peak = 'Max Ketone Reference(mmol/L)'n last_test_dtm = 'Time once < 1 mmol/L'n duration_to_peak = 'Time to Peak(Hours)'n duration_to_last = 'Time to < 1 mmol/L(Hours)'n)) noobs;
+format 'Time to Peak(Hours)'n 'Time to < 1 mmol/L(Hours)'n 8.2;
+where ^missing('Max Ketone Reference(mmol/L)'n);
+var Subject 'Start Time'n 'Peak Time'n 'Max Ketone Reference(mmol/L)'n 'Time once < 1 mmol/L'n 'Time to Peak(Hours)'n 'Time to < 1 mmol/L(Hours)'n;
+run;
 
 /*proc tabulate data = analysis_ketone;*/
 /*where IVVAL01 = "Valid" and ^missing(first_below);*/
