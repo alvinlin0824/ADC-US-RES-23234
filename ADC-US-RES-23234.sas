@@ -199,14 +199,14 @@ run;
 /*/*	Extract Condition ID*/*/
 /*	if find(path,"Mobi","i") then condition_id = upcase(substr(path,find(path,"Mobi","i")+18,3));*/
 /*run;*/
-
+/**/
 /*data events_list anaplus_list;*/
 /*	set list;*/
 /*	if find(path,"events.csv","i") then output events_list;*/
 /*    if find(path,"anaPlus.csv","i")  then output anaplus_list;*/
 /*run;*/
-
-/*Loop events.csv Data*/
+/**/
+/*/*Loop events.csv Data*/*/
 /*data events;*/
 /*	set events_list;*/
 /*	infile dummy filevar = path length = reclen end = done missover dlm='2C'x dsd firstobs=4;*/
@@ -218,8 +218,8 @@ run;
 /*        output;*/
 /*	end;*/
 /*run;*/
-
-/*Multiple Sensor Start*/
+/**/
+/*/*Multiple Sensor Start*/*/
 /*proc sort data = events;*/
 /*by subject condition_id date time;*/
 /*run;*/
@@ -228,8 +228,8 @@ run;
 /*	by subject condition_id;*/
 /*    if last.condition_id;*/
 /*run;*/
-
-/*Loop anaplus.csv Data*/
+/**/
+/*/*Loop anaplus.csv Data*/*/
 /*data anaplus;*/
 /*	set anaplus_list;*/
 /*	infile dummy filevar = path length = reclen end = done missover dlm='2C'x dsd firstobs=4;*/
@@ -239,39 +239,45 @@ run;
 /*		drop uid st--nonact;*/
 /*        output;*/
 /*	end;*/
+/*run;*/
+/**/
+/*/*Left join to get sensor serial number*/*/
+/*proc sort data = anaplus;*/
+/*by subject condition_id;*/
+/*run;*/
+/**/
+/*data auu;*/
+/*format dtm datetime16.;*/
+/*merge anaplus events_start;*/
+/*by subject condition_id;*/
+/*dtm = dhms(date,0,0,time);*/
+/*drop date time;*/
 /*run;
 
 /*stack*/
 libname out "\\oneabbott.com\dept\ADC\Technical_OPS\Clinical_Affairs\Clinical Study Files\Apollo\ADC-US-RES-23234_IDE Pump Suspension Study\Statistics\Programs\Datasets\AL";
 
-/*data auu;*/
-/*	set events_start anaplus;*/
-/*run;*/
 /*Remove Duplicated uploads*/
 /*proc sort data = auu NODUP out = out.AUU; */
-/*by subject condition_id date time;*/
+/*by subject condition_id dtm;*/
 /*run;*/
-
-data auu;
-set out.auu;
-run;
 
 /*options papersize=a3 orientation=portrait;*/
 /*ods rtf file="C:\Project\ADC-US-RES-23234\ADC-US-RES-23234-Report-%trim(%sysfunc(today(),yymmddn8.)).rtf" startpage=no;*/
 
 /*Summary Statistics on Ketone Result*/
-Proc means data = ketone maxdec=2 nonobs;
-title;
-var KRSEQ01;
-class Subject;
-where IVVAL01 = "Valid" and ^missing(KRSEQ01);
-run;
+/*Proc means data = ketone maxdec=2 nonobs;*/
+/*title;*/
+/*var KRSEQ01;*/
+/*class Subject;*/
+/*where IVVAL01 = "Valid" and ^missing(KRSEQ01);*/
+/*run;*/
 
-proc print data = analysis_ketone(rename = (subject = Subject first_test_dtm = 'Start Time'n peak_test_dtm = 'Peak Time'n Peak = 'Max Ketone Reference(mmol/L)'n last_test_dtm = 'Time once < 1 mmol/L'n duration_to_peak = 'Time to Peak(Hours)'n duration_to_last = 'Time to < 1 mmol/L(Hours)'n)) noobs;
-format 'Time to Peak(Hours)'n 'Time to < 1 mmol/L(Hours)'n 8.2;
-where ^missing('Max Ketone Reference(mmol/L)'n);
-var Subject 'Start Time'n 'Peak Time'n 'Max Ketone Reference(mmol/L)'n 'Time once < 1 mmol/L'n 'Time to Peak(Hours)'n 'Time to < 1 mmol/L(Hours)'n;
-run;
+/*proc print data = analysis_ketone(rename = (subject = Subject first_test_dtm = 'Start Time'n peak_test_dtm = 'Peak Time'n Peak = 'Max Ketone Reference(mmol/L)'n last_test_dtm = 'Time once < 1 mmol/L'n duration_to_peak = 'Time to Peak(Hours)'n duration_to_last = 'Time to < 1 mmol/L(Hours)'n)) noobs;*/
+/*format 'Time to Peak(Hours)'n 'Time to < 1 mmol/L(Hours)'n 8.2;*/
+/*where ^missing('Max Ketone Reference(mmol/L)'n);*/
+/*var Subject 'Start Time'n 'Peak Time'n 'Max Ketone Reference(mmol/L)'n 'Time once < 1 mmol/L'n 'Time to Peak(Hours)'n 'Time to < 1 mmol/L(Hours)'n;*/
+/*run;*/
 
 /*proc tabulate data = analysis_ketone;*/
 /*where IVVAL01 = "Valid" and ^missing(first_below);*/
@@ -385,12 +391,10 @@ run;
 /*Paired Data Point*/
 /*Filter Type = 905 for sensor data*/
 data auu_905;
-set auu;
-format dtm datetime16.;
-dtm = dhms(date,0,0,time);
+set out.auu;
 ana_100 = ANA/100;
 where type = "905" and year(date) = 2023;
-drop date time snr ANA;
+drop ANA;
 run;
 
 /*Wrangle Reference ketone*/
