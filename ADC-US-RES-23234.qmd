@@ -108,8 +108,7 @@ kgr1 <- kgr1 |>
 kgr2 <- read_sas(gsub("\\\\", "/", r"(\\wf00168p.oneabbott.com\data1\CDM\ADC-US-RES-23234\OpenClinica\Current\kgr2.sas7bdat)"))
 kgr2 <- kgr2 |>
         mutate(Subject = as.character(Subject),
-               KRSEQ02 = case_when(KRSEQ02 == 3020930 ~ "20930",
-                                   .default = as.character(KRSEQ02))) |>
+               KRSEQ02 = as.character(KRSEQ02)) |>
         arrange(Subject)
 ```
 

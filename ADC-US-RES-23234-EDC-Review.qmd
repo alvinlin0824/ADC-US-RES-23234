@@ -256,7 +256,7 @@ is.na(cm2$CMENDTC) & str_detect(cm2$CMONGO,"^$|pattern")                        
 
 `r knitr::asis_output("CMDOS(Dosage) should not be blank")` `r colorize(cm2[str_detect(cm2$CMDOS,"^$|pattern"),]$Subject,"red")`
 
-`r knitr::asis_output("CMDOSU(Units) should not be blank")` `r colorize(cm2[str_detect(cm2$CMDOSU,"^$|pattern|[:digit:]"),]$Subject,"red")`
+`r knitr::asis_output("CMDOSU(Units) should not be blank and should be character")` `r colorize(cm2[str_detect(cm2$CMDOSU,"^$|pattern|[:digit:]"),]$Subject,"red")`
 
 `r knitr::asis_output("CMROUTE(Route) should not be blank")` `r colorize(cm2[str_detect(cm2$CMROUTE,"^$|pattern"),]$Subject,"red")`
 
@@ -503,8 +503,13 @@ htmltools::browsable(
       onclick = "Reactable.downloadDataCSV('du2', 'du2.csv')"
     ),
 du2[
+# Device Type
+!str_detect(du2$UPORES01,"Sensor|Other") | 
+# If other, Other Type Specify
+str_detect(du2$UPORES01,"Other") & str_detect(du2$UPTXT01,"^$|pattern") | 
 # Sensor number
-(is.na(du2$UPID01) | str_detect(du2$UPID01,"^$|pattern")) |
+str_detect(du2$UPORES01,"Sensor") & str_length(du2$UPID01) != 1 |
+# (is.na(du2$UPID01) | str_detect(du2$UPID01,"^$|pattern")) |
 # Clinic Visit Number
 (is.na(du2$UPID02) | str_detect(du2$UPID02,"^$|pattern"))  |
 # Date of Upload
@@ -527,7 +532,9 @@ str_length(du2$UPDTC02) != median(str_length(du2$UPDTC02),na.rm = T),] %>%
 
 `r if(is_empty(du2$Subject)){knitr::asis_output(colorize("DU2 is empty","red"))}`
 
-`r knitr::asis_output("UPID01(Sensor number) should not be blank")` `r colorize(du2[(is.na(du2$UPID01) | str_detect(du2$UPID01,"^$|pattern")),]$Subject,"red")`
+`r knitr::asis_output("UPORES01(Device Type) should be either Sensor or Other")` `r colorize(du2[!str_detect(du2$UPORES01,"Sensor|Other"),]$Subject,"red")` `r knitr::asis_output("If UPORES01(Device Type) is Other, UPTXT01(Other Type Specify) should not be blank")` `r colorize(du2[str_detect(du2$UPORES01,"Other") & str_detect(du2$UPTXT01,"^$|pattern"),]$Subject,"red")`
+
+`r knitr::asis_output("Length of UPID01(Sensor number) should be 1")` `r colorize(du2[str_detect(du2$UPORES01,"Sensor") & str_length(du2$UPID01) != 1,]$Subject,"red")`
 
 `r knitr::asis_output("UPID02(Clinic Visit Number) should not be blank")` `r colorize(du2[(is.na(du2$UPID02) | str_detect(du2$UPID02,"^$|pattern")),]$Subject,"red")`
 
@@ -1215,7 +1222,7 @@ str_detect(ma$QSORES09,regex("Yes",ignore_case = T)) & str_detect(ma$QSTXT01,"^$
 
 `r knitr::asis_output("QSORES09(Is the subject currently using any type of SGLT-2 inhibitor not listed above?) should be either Yes or No")` `r colorize(ma[!str_detect(ma$QSORES09,regex("Yes|No",ignore_case = T)),]$Subject,"red")` `r knitr::asis_output("If QSORES09(Is the subject currently using any type of SGLT-2 inhibitor not listed above?) is Yes, QSTXT01(If yes, please specify the SGLT-2 inhibitor name) should not be blank")` `r colorize(ma[str_detect(ma$QSORES09,regex("Yes",ignore_case = T)) & str_detect(ma$QSTXT01,"^$|pattern"),]$Subject,"red")`
 
-# **MH1 Review**`
+# **MH1 Review**
 
 `r htmltools::a("Diabetes History",href = gsub("\\\\", "/", r"(\\oneabbott.com\dept\ADC\Technical_OPS\Clinical_Affairs\Clinical Study Files\Apollo\ADC-US-RES-23234_IDE Pump Suspension Study\Case Report Forms\Version B\Approved\pdf\Diabetes_History.pdf)"))`
 
@@ -1456,7 +1463,7 @@ str_length(ps$PSTM03) != median(str_length(ps$PSTM03),na.rm = T) |
 # Enter blood glucose level (mg/dL): Enter blood ketone level (mmol/L): Enter blood potassium level (mmol/L): Enter blood pH level:
 (is.na(ps$PSORES07) | is.na(ps$PSORES08) | is.na(ps$PSORES09) | is.na(ps$PSORES10))  |
 # Extreme values for PSORES07
-ps$PSORES07 < quantile(ps$PSORES07,probs = 0.25) - 1.5*(quantile(ps$PSORES07,probs = 0.75) - quantile(ps$PSORES07,probs = 0.25)) |
+ps$PSORES07 < quantile(ps$PSORES07,probs = 0.25,na.rm = T) - 1.5*(quantile(ps$PSORES07,probs = 0.75,na.rm = T) - quantile(ps$PSORES07,probs = 0.25,na.rm = T)) |
 # Is the subject stable and is it safe to discharge the subject?
 !str_detect(ps$PSYN02,regex("Yes|No",ignore_case = T)) |
 # If no, provide reason:
@@ -1510,7 +1517,7 @@ str_length(ps$PSTM04) != median(str_length(ps$PSTM04),na.rm = T) |
 
 `r knitr::asis_output("PSORES07(Enter blood glucose level (mg/dL):) and PSORES08(Enter blood ketone level (mmol/L):) and PSORES09(Enter blood potassium level (mmol/L):) and PSORES10(Enter blood pH level:) should not be blank")` `r colorize(ps[is.na(ps$PSORES07) | is.na(ps$PSORES08) | is.na(ps$PSORES09) | is.na(ps$PSORES10),]$Subject,"red")`
 
-`r knitr::asis_output("Extreme PSORES07(Enter blood glucose level (mg/dL):)")` `r colorize(ps[ps$PSORES07 < quantile(ps$PSORES07,probs = 0.25) - 1.5*(quantile(ps$PSORES07,probs = 0.75) - quantile(ps$PSORES07,probs = 0.25)),]$Subject,"red")`
+`r knitr::asis_output("Extreme PSORES07(Enter blood glucose level (mg/dL):)")` `r colorize(ps[ps$PSORES07 < quantile(ps$PSORES07,probs = 0.25,na.rm = T) - 1.5*(quantile(ps$PSORES07,probs = 0.75,na.rm = T) - quantile(ps$PSORES07,probs = 0.25,na.rm = T)),]$Subject,"red")`
 
 `r knitr::asis_output("PSYN02(Is the subject stable and is it safe to discharge the subject?) should be either Yes or No")` `r colorize(ps[!str_detect(ps$PSYN02,regex("Yes|No",ignore_case = T)),]$Subject,"red")`
 
@@ -1759,25 +1766,25 @@ sk2[
 # Assessment (C)
 !str_detect(sk2$PELOC01,regex("Left Arm|Right Arm|Left Abdomen|Right Abdomen",ignore_case = T)) |
 # General skin tone score (C)
-!str_detect(sk2$PEORES01,regex("1=Poor|2=Average|3=Good",ignore_case = T)) |
+!str_detect(sk2$PESTAT01,"ND") & !str_detect(sk2$PEORES01,regex("1=Poor|2=Average|3=Good",ignore_case = T)) |
 # Cellulite score (C)
-!str_detect(sk2$PEORES02,regex("1=Significant|2=Average|3=Minor",ignore_case = T)) |
+!str_detect(sk2$PESTAT01,"ND") & !str_detect(sk2$PEORES02,regex("1=Significant|2=Average|3=Minor",ignore_case = T)) |
 # Fine Lines Wrinkles score (C)
-!str_detect(sk2$PEORES03,regex("1=Significant|2=Average|3=Minor",ignore_case = T)) |
+!str_detect(sk2$PESTAT01,"ND") & !str_detect(sk2$PEORES03,regex("1=Significant|2=Average|3=Minor",ignore_case = T)) |
 # Hair Coverage score (C)
-!str_detect(sk2$PEORES04,"1=Significant\\(shaving required\\)|2=Non-significant") |
+!str_detect(sk2$PESTAT01,"ND") & !str_detect(sk2$PEORES04,"1=Significant\\(shaving required\\)|2=Non-significant") |
 # Dry Skin score (C)
-!str_detect(sk2$PEORES05,regex("1=Significant\\(Flaky\\)|1=Significant \\(Flaky\\)|2=Non-significant",ignore_case = T))  |
+!str_detect(sk2$PESTAT01,"ND") & !str_detect(sk2$PEORES05,regex("1=Significant\\(Flaky\\)|1=Significant \\(Flaky\\)|2=Non-significant",ignore_case = T))  |
 # Scabbing score (C)
-!str_detect(sk2$PEORES06,regex("Yes|No",ignore_case = T))   |
+!str_detect(sk2$PESTAT01,"ND") & !str_detect(sk2$PEORES06,regex("Yes|No",ignore_case = T))   |
 # If Yes, Scabbing Area (cm2) (N)
 str_detect(sk2$PEORES06,regex("Yes",ignore_case = T)) & is.na(sk2$PEORES07)             |
 # Scarring score (C)
-!str_detect(sk2$PEORES08,regex("Yes|No",ignore_case = T))                               |
+!str_detect(sk2$PESTAT01,"ND") & !str_detect(sk2$PEORES08,regex("Yes|No",ignore_case = T))                               |
 # If Yes, Scarring Area (cm2) (N)
 str_detect(sk2$PEORES08,regex("Yes",ignore_case = T)) & is.na(sk2$PEORES09)             |
 # Hypo/Hyperpigmentation score (C)
-!str_detect(sk2$PEORES10,regex("Yes|No",ignore_case = T))                               |
+!str_detect(sk2$PESTAT01,"ND") & !str_detect(sk2$PEORES10,regex("Yes|No",ignore_case = T))                               |
 # If yes, Hypo/Hyperpigmentation Area (cm2) (N)
 str_detect(sk2$PEORES10,regex("Yes",ignore_case = T)) & is.na(sk2$PEORES11),] %>%
   select(Subject,`__STUDYEVENTREPEATKEY`,PELOC01:last_col()) %>%
@@ -1794,25 +1801,25 @@ str_detect(sk2$PEORES10,regex("Yes",ignore_case = T)) & is.na(sk2$PEORES11),] %>
 
 `r knitr::asis_output("PELOC01(Assessment) should be either Left Arm or Right Arm or Left Abdomen or Right Abdomen")` `r colorize(sk2[!str_detect(sk2$PELOC01,regex("Left Arm|Right Arm|Left Abdomen|Right Abdomen",ignore_case = T)),]$Subject,"red")`
 
-`r knitr::asis_output("PEORES01(General skin tone score) should be 1=Poor,2=Average,3=Good")` `r colorize(sk2[!str_detect(sk2$PEORES01,regex("1=Poor|2=Average|3=Good",ignore_case = T)),]$Subject,"red")`
+`r knitr::asis_output("PEORES01(General skin tone score) should be 1=Poor,2=Average,3=Good")` `r colorize(sk2[!str_detect(sk2$PESTAT01,"ND") & !str_detect(sk2$PEORES01,regex("1=Poor|2=Average|3=Good",ignore_case = T)),]$Subject,"red")`
 
-`r knitr::asis_output("PEORES02(Cellulite score) should be 1=Significant, 2=Average, 3=Minor")` `r colorize(sk2[!str_detect(sk2$PEORES02,regex("1=Significant|2=Average|3=Minor",ignore_case = T)),]$Subject,"red")`
+`r knitr::asis_output("PEORES02(Cellulite score) should be 1=Significant, 2=Average, 3=Minor")` `r colorize(sk2[!str_detect(sk2$PESTAT01,"ND") & !str_detect(sk2$PEORES02,regex("1=Significant|2=Average|3=Minor",ignore_case = T)),]$Subject,"red")`
 
-`r knitr::asis_output("PEORES03(Fine Lines Wrinkles score) should be 1=Significant, 2=Average, 3=Minor")` `r colorize(sk2[!str_detect(sk2$PEORES03,regex("1=Significant|2=Average|3=Minor",ignore_case = T)),]$Subject,"red")`
+`r knitr::asis_output("PEORES03(Fine Lines Wrinkles score) should be 1=Significant, 2=Average, 3=Minor")` `r colorize(sk2[!str_detect(sk2$PESTAT01,"ND") & !str_detect(sk2$PEORES03,regex("1=Significant|2=Average|3=Minor",ignore_case = T)),]$Subject,"red")`
 
-`r knitr::asis_output("PEORES04(Hair Coverage score) should be 1=Significant(shaving required), 2=Non-significant")` `r colorize(sk2[!str_detect(sk2$PEORES04,"1=Significant\\(shaving required\\)|2=Non-significant"),]$Subject,"red")`
+`r knitr::asis_output("PEORES04(Hair Coverage score) should be 1=Significant(shaving required), 2=Non-significant")` `r colorize(sk2[!str_detect(sk2$PESTAT01,"ND") & !str_detect(sk2$PEORES04,"1=Significant\\(shaving required\\)|2=Non-significant"),]$Subject,"red")`
 
-`r knitr::asis_output("PEORES05(Dry Skin score) should be 1=Significant(Flaky),2=Non-significant")` `r colorize(sk2[!str_detect(sk2$PEORES05,regex("1=Significant\\(Flaky\\)|1=Significant \\(Flaky\\)|2=Non-significant",ignore_case = T)),]$Subject,"red")`
+`r knitr::asis_output("PEORES05(Dry Skin score) should be 1=Significant(Flaky),2=Non-significant")` `r colorize(sk2[!str_detect(sk2$PESTAT01,"ND") & !str_detect(sk2$PEORES05,regex("1=Significant\\(Flaky\\)|1=Significant \\(Flaky\\)|2=Non-significant",ignore_case = T)),]$Subject,"red")`
 
-`r knitr::asis_output("PEORES06(Scabbing score) should be Yes or No")` `r colorize(sk2[!str_detect(sk2$PEORES06,regex("Yes|No",ignore_case = T)),]$Subject,"red")`
+`r knitr::asis_output("PEORES06(Scabbing score) should be Yes or No")` `r colorize(sk2[!str_detect(sk2$PESTAT01,"ND") & !str_detect(sk2$PEORES06,regex("Yes|No",ignore_case = T)),]$Subject,"red")`
 
 `r knitr::asis_output("If PEORES06(Scabbing score) is Yes, PEORES07(Scabbing Area (cm2)) should not be blank")` `r colorize(sk2[str_detect(sk2$PEORES06,regex("Yes",ignore_case = T)) & is.na(sk2$PEORES07),]$Subject,"red")`
 
-`r knitr::asis_output("PEORES08(Scarring score) should be Yes or No")` `r colorize(sk2[!str_detect(sk2$PEORES08,regex("Yes|No",ignore_case = T)),]$Subject,"red")`
+`r knitr::asis_output("PEORES08(Scarring score) should be Yes or No")` `r colorize(sk2[!str_detect(sk2$PESTAT01,"ND") & !str_detect(sk2$PEORES08,regex("Yes|No",ignore_case = T)),]$Subject,"red")`
 
 `r knitr::asis_output("If PEORES08(Scabbing score) is Yes, PEORES09(Scarring Area (cm2)) should not be blank")` `r colorize(sk2[str_detect(sk2$PEORES08,regex("Yes",ignore_case = T)) & is.na(sk2$PEORES09) ,]$Subject,"red")`
 
-`r knitr::asis_output("PEORES010(Hypo/Hyperpigmentation score) should be Yes or No")` `r colorize(sk2[!str_detect(sk2$PEORES10,regex("Yes|No",ignore_case = T)),]$Subject,"red")`
+`r knitr::asis_output("PEORES010(Hypo/Hyperpigmentation score) should be Yes or No")` `r colorize(sk2[!str_detect(sk2$PESTAT01,"ND") & !str_detect(sk2$PEORES10,regex("Yes|No",ignore_case = T)),]$Subject,"red")`
 
 `r knitr::asis_output("If PEORES010(Hypo/Hyperpigmentation score) is Yes, PEORES11(Hypo/Hyperpigmentation Area (cm2)) should not be blank")` `r colorize(sk2[str_detect(sk2$PEORES10,regex("Yes",ignore_case = T)) & is.na(sk2$PEORES11) ,]$Subject,"red")`
 
