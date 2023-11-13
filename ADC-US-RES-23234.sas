@@ -60,7 +60,6 @@ run;
 data kgr12;
 merge kgr2 kgr1;
 by Subject;
-if KRSEQ02 = 3020930 then KRSEQ02 = 20930;
 rename KRDTC01 = IVDTC01 KRSEQ02 = IVID01;
 run;
 
@@ -262,8 +261,8 @@ libname out "\\oneabbott.com\dept\ADC\Technical_OPS\Clinical_Affairs\Clinical St
 /*by subject condition_id dtm;*/
 /*run;*/
 
-options papersize=a3 orientation=portrait;
-ods rtf file="C:\Project\ADC-US-RES-23234\ADC-US-RES-23234-Report-%trim(%sysfunc(today(),yymmddn8.)).rtf" startpage=no;
+/*options papersize=a3 orientation=portrait;*/
+/*ods rtf file="C:\Project\ADC-US-RES-23234\ADC-US-RES-23234-Report-%trim(%sysfunc(today(),yymmddn8.)).rtf" startpage=no;*/
 
 /*Summary Statistics on Ketone Result*/
 Proc means data = ketone maxdec=2 nonobs;
@@ -335,7 +334,7 @@ styleattrs datacontrastcolors = (magenta green blue orange lilac lime marron oli
 	xaxis label = "Time(Hours)" values=(0 to 8 by 1) INTERVAL = HOUR VALUESROTATE=DIAGONAL2;
 	keylegend / title = "Subject ID";
 run;
-ODS RTF CLOSE;
+/*ODS RTF CLOSE;*/
 /*Profile Plot*/
 
 /*Profile Plot Data*/
@@ -420,7 +419,9 @@ ODS RTF CLOSE;
 /* abstimediff=abs(dtm-dtm_ref);*/
 /*run;*/
 
-/*proc sort data=paired_ketone1; by subject condition_id dtm_ref abstimediff KRSEQ01 descending dtm; run;*/
+/*proc sort data=paired_ketone1; 
+/*by subject condition_id dtm_ref abstimediff KRSEQ01 descending dtm; */
+/*run;*/*/
 /**/
 /*data paired_ketone2;*/
 /* set paired_ketone1;*/
@@ -428,7 +429,9 @@ ODS RTF CLOSE;
 /* if first.dtm_ref; *Choose pair that is closest in time when BG paired with multiple GM;*/
 /*run;*/
 /**/
-/*proc sort data=paired_ketone2; by subject condition_id dtm abstimediff dtm_ref; run;*/
+/*proc sort data=paired_ketone2; 
+/*by subject condition_id dtm abstimediff dtm_ref; */
+/*run;*/*/
 /**/
 /*data Ap;*/
 /* set paired_ketone2;*/

@@ -163,11 +163,32 @@ summary_calculation <- list(Mean = ~ mean(.x, na.rm = T),
 ketone |>
    group_by(Subject) |>
    summarise_at("KRSEQ01",summary_calculation) |>
+   # Fix round half to even
+   mutate(across(c(Mean,SD), ~ round(.x + 0.0001,2))) |> 
    gt() |>
    cols_align(align = "center") |>
-   fmt_number(columns = Mean:Max,decimals = 2) |>
    opt_stylize(style = 6, color = "blue") |>
    tab_header(title = md("**Ketone Test Result (mmol/L)**"))
+```
+
+```{r}
+#| label: Duration Table
+ketone |> 
+  slice_max(KRSEQ01,n = 1,with_ties = F,by = Subject) |> 
+  left_join(
+    ketone |> 
+    select(Subject,`Start Time` = `Ketone Date Time`) |> 
+    slice(1,.by = Subject),by = join_by(Subject)) |> 
+  select(Subject,`Start Time`,`Peak Time`,
+         `Max Ketone Reference(mmol/L)` = KRSEQ01,`Time once < 1 mmol/L` = `Time < 1 mmol/L`,
+         `Time to Peak(Hours)` = duration_to_peak, `Time to < 1 mmol/L(Hours)` = duration_to_below_1mmol) |>
+  # Fix round half to even
+  mutate(across(c(`Time to Peak(Hours)`,`Time to < 1 mmol/L(Hours)`), ~ round(.x + 0.0001,2))) |> 
+  arrange(Subject) |> 
+  gt() |>
+  cols_align(align = "center") |>
+  opt_stylize(style = 6, color = "blue")
+  # tab_header(title = md("**Ketone Test Result (mmol/L)**"))
 ```
 
 ```{r}
