@@ -1,5 +1,5 @@
 ---
-title: "ADC-US-RES-23234 Insulin Pump Suspension Study"
+title: "ADC-US-RES-23234 Insulin Pump Suspension Study `r params$title1`"
 description: "To characterize beta-hydroxybutyrate ketone levels in people with type 1 diabetes using continuous subcutaneous insulin infusion (CSII) during a planned suspension of their insulin pump"
 author: "Alvin, Lin"
 date: "`r Sys.Date()`"
@@ -14,6 +14,11 @@ execute:
   echo: false
   warning: false 
   keep-md: true
+params:
+  analysis: FALSE
+  plot: TRUE
+  title1: "Profile Plot"
+  title2: "Accuracy Performance"
 ---
 
 <!-- EDC \\wf00168p.oneabbott.com\data1\CDM\ADC-US-RES-23234\OpenClinica\Current -->
@@ -125,13 +130,22 @@ kgr12 <- kgr2 |>
 ```{r}
 #| label: KGR12 left join IV12
 kgriv12 <- kgr12 |> 
+           filter(!is.na(KRSEQ02)) |> 
+           # Manually Change Sample ID
+           mutate(KRSEQ02 = case_when(
+            str_detect(Subject,"1330001") & str_length(KRSEQ02) == 1 ~ str_c("1010",KRSEQ02),
+            str_detect(Subject,"1330001") & str_length(KRSEQ02) == 2 ~ str_c("101",KRSEQ02),
+            str_detect(Subject,"1330002") & str_length(KRSEQ02) == 1 ~ str_c("1020",KRSEQ02),
+            str_detect(Subject,"1330002") & str_length(KRSEQ02) == 2 ~ str_c("102",KRSEQ02),
+            str_detect(Subject,"1330004") & KRSEQ02 == "10730" ~ "10430",
+            .default = KRSEQ02)) |> 
            left_join(iv12, 
                      by = join_by(Subject == Subject,KRSEQ02 == IVID01, KRDTC01 == IVDTC01)) |> 
            mutate(`Ketone Date Time` = ymd_hm(str_c(KRDTC01,KRDTC02,sep = " ")),
                   `Glucose Date Time` = ymd_hm(str_c(KRDTC01,KRDTC03,sep = " "))
                   ,.keep = "unused",.before = KRSEQ03) |> 
-           arrange(`Ketone Date Time`) |> 
-           filter(IVVAL01 == "Valid")
+           arrange(Subject,`Ketone Date Time`) |> 
+           filter(str_detect(IVVAL01,"Valid") | is.na(IVVAL01))
 ```
 
 ```{r}
@@ -151,9 +165,8 @@ ketone <- kgriv12 |>
                  duration_to_below_1mmol = as.numeric(difftime(`Time < 1 mmol/L`,`Peak Time` ,units = "hours")),.by = Subject) 
 ```
 
-```{r}
+```{r eval = params$analysis}
 #| label: Summary for Ketone Reference
-#| eval: false
 summary_calculation <- list(Mean = ~ mean(.x, na.rm = T),
                             Median = ~ median(.x, na.rm = T),
                             SD = ~ sd(.x, na.rm = T),
@@ -171,7 +184,7 @@ ketone |>
    tab_header(title = md("**Ketone Test Result (mmol/L)**"))
 ```
 
-```{r}
+```{r eval = params$analysis}
 #| label: Duration Table
 ketone |> 
   slice_max(KRSEQ01,n = 1,with_ties = F,by = Subject) |> 
@@ -191,10 +204,9 @@ ketone |>
   # tab_header(title = md("**Ketone Test Result (mmol/L)**"))
 ```
 
-```{r}
+```{r eval = params$analysis}
 #| label: Summary for Peak
 #| column: body
-#| eval: false
 ketone |> 
      filter(KRSEQ01 == max(KRSEQ01) & !is.na(`Time < 1 mmol/L`) ,.by = Subject) |> 
      slice_min(`Ketone Date Time`, n = 1, with_ties = F,by = Subject) |> 
@@ -214,25 +226,25 @@ ketone |>
       opt_stylize(style = 6, color = "blue")
 ```
 
-```{r}
+```{r eval = params$analysis}
 #| label: Ketone Reference Plot
 #| fig-align: center
-#| eval: false
 ketone |>
    mutate(eTime = as.numeric(difftime(`Ketone Date Time`,first(`Ketone Date Time`),units = "hours")),.by = Subject) |> 
   ggplot(aes(x = eTime, y = KRSEQ01, color = Subject)) +
   geom_point() + 
   geom_line() + 
+  scale_x_continuous(expand = c(0,0)) + 
+  scale_y_continuous(expand = c(0,0)) + 
   geom_hline(yintercept = 1,linewidth = 1) + 
   labs(title = "Ketone Reference",x = "Time(Hours)", y = "Ketone Test Result (mmol/L)") +
   theme_bw() +
   theme(panel.grid.major.y = element_blank(),panel.grid.minor.y = element_blank(),legend.position = "bottom",plot.title = element_text(hjust = 0.5))
 ```
 
-```{r}
+```{r eval = params$analysis}
 #| label: Ketone Vary Over Time
 #| fig-align: center
-#| eval: false
 ketone |>
    mutate(eTime = as.numeric(difftime(`Ketone Date Time`,first(`Ketone Date Time`),units = "hours")),
           lag_diff = KRSEQ01 - lag(KRSEQ01),
@@ -247,29 +259,31 @@ ketone |>
   theme(panel.grid.major.y = element_blank(),panel.grid.minor.y = element_blank(),legend.position = "bottom",plot.title = element_text(hjust = 0.5))
 ```
 
-```{r}
+```{r eval = params$analysis}
 #| label: Time From Baseline To Peak
 #| fig-align: center
-#| eval: false
 ketone |>
   filter(`Peak Time` >= `Ketone Date Time`,.by = Subject) |> 
   ggplot(aes(x = duration_to_peak, y = KRSEQ01, color = Subject)) +
   geom_point() +
   geom_line() +
+  scale_x_continuous(expand = c(0,0)) + 
+  scale_y_continuous(expand = c(0,0)) + 
   labs(title = "Time From Baseline To Peak",x = "Time(Hours)", y = "Ketone Test Result (mmol/L)") +
   theme_bw() +
   theme(panel.grid.major.y = element_blank(),panel.grid.minor.y = element_blank(),legend.position = "bottom",plot.title = element_text(hjust = 0.5))
 ```
 
-```{r}
+```{r eval = params$analysis}
 #| label: Time From Peak To 1 mmol/L
 #| fig-align: center
-#| eval: false
 ketone |>
   filter(`Peak Time` <= `Ketone Date Time` & !is.na(duration_to_below_1mmol) >= 1,.by = Subject) |> 
   ggplot(aes(x = as.numeric(difftime(`Ketone Date Time`,`Peak Time`,units = "hours")), y = KRSEQ01, color = Subject)) +
   geom_point() +
   geom_line() +
+  scale_x_continuous(expand = c(0,0)) + 
+  scale_y_continuous(expand = c(0,0)) + 
   labs(title = "Time From Peak To 1 mmol/L",x = "Time(Hours)", y = "Ketone Test Result (mmol/L)") +
   theme_bw() +
   theme(panel.grid.major.y = element_blank(),panel.grid.minor.y = element_blank(),legend.position = "bottom",plot.title = element_text(hjust = 0.5))
@@ -305,7 +319,7 @@ mobi_anaPlus(events = events_path_ketone, ana = anaplus_path_ketone) |>
 upload_ketone <- readRDS(gsub("\\\\", "/", r"(\\oneabbott.com\dept\ADC\Technical_OPS\Clinical_Affairs\Clinical Study Files\Apollo\ADC-US-RES-23234_IDE Pump Suspension Study\Statistics\Programs\Datasets\AL\ketone.rds)"))
 ```
 
-```{r}
+```{r eval = params$plot}
 breakdown_condition_plot <- function(Id) {
   highchart() %>%
   # Add title
@@ -316,7 +330,7 @@ breakdown_condition_plot <- function(Id) {
     data = upload_ketone %>%
            filter(`Subject ID` == Id,
                   Type == "906", year(`Date Time`) == 2023) %>%
-           slice(seq(1,n(),5),.by = c(`Sensor Serial Number`)) %>%
+           slice(seq(1,n(),3),.by = c(`Sensor Serial Number`)) %>%
            # multiple and consecutive wears
            arrange(`Date Time`),
     type = "line",
@@ -366,10 +380,10 @@ breakdown_condition_plot <- function(Id) {
 ```{r}
 #| column: screen
 #| eval: false
-breakdown_condition_plot(Id = "90004")
+breakdown_condition_plot(Id = "1330001")
 ```
 
-```{r}
+```{r eval = params$plot}
 #| label: For Loop Plots
 #| column: screen
 plots <- list()
