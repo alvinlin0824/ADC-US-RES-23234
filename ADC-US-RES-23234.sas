@@ -342,9 +342,9 @@ lag_dtm_ref = .;
 end;
 /*Calculate the rate*/
 if first.snr then ketone_ref_rate = .;
-else ketone_ref_rate = (KRSEQ01 - lag_KRSEQ01) / ((dtm_ref - lag_dtm_ref)/60);
+else ketone_ref_rate = (KRSEQ01 - lag_KRSEQ01) / ((dtm_ref - lag_dtm_ref)/3600);
 if first.snr then ketone_sensor_rate = .;
-else ketone_sensor_rate = (ana_100 - lag_ana_100) / ((dtm - lag_dtm)/60);
+else ketone_sensor_rate = (ana_100 - lag_ana_100) / ((dtm - lag_dtm)/3600);
 /*Calculate rate deviation*/
 rd = round(ketone_ref_rate-ketone_sensor_rate,.00000001);
 ard=abs(rd);
@@ -352,10 +352,11 @@ ard=abs(rd);
  if rd lt -3 and ^missing(rd) then level = '1: <-3';
  if rd ge -3 and rd lt -2 then level = '2: [-3, -2)';
  if rd ge -2 and rd lt -1 then level = '3: [-2, -1)';
- if rd ge -1 and rd le 1 then level = '4: [-1, 1]';
- if rd gt 1 and rd le 2 then level = '5: (1, 2]';
- if rd gt 2 and rd le 3 then level = '6: (2, 3]';
- if rd gt 3 then level = '7: >3';
+ if rd ge -1 and rd lt 0 then level = '4: [-1, 0)';
+ if rd ge 0 and rd le 1 then level = '5: [0, 1]';
+ if rd gt 1 and rd le 2 then level = '6: (1, 2]';
+ if rd gt 2 and rd le 3 then level = '7: (2, 3]';
+ if rd gt 3 then level = '8: >3';
  
  if ard ge 0 and ard le 1 then level1 = '1: [0, 1]';
  if ard gt 1 and ard le 2 then level1 = '2: (1, 2]';
@@ -443,18 +444,18 @@ run;
 proc tabulate data = Ap_rate format=8.1 style=[cellwidth=2.0cm just=c];
  title1 " ";
  class level;
- table level = 'Rate Deviation (mmol/L/min)', n pctn='%' / rts=25;
+ table level = 'Rate Deviation (mmol/L/hour)', n pctn='%' / rts=25;
 run;
 
 /*Absoulte Rate Deviation*/
 proc tabulate data = Ap_rate format=8.1 style=[cellwidth=2.0cm just=c];
  title1 " ";
  class level1;
- table level1 = 'Absoulte Rate Deviation (mmol/L/min)', n pctn='%' / rts=25;
+ table level1 = 'Absoulte Rate Deviation (mmol/L/hour)', n pctn='%' / rts=25;
 run;
 
 /*Summary on Rate deviation and absolute rate deviation*/
-proc means data = Ap_rate;
+proc means data = Ap_rate maxdec=2 nonobs;
  title1 " "; 
  var rd ard;
  output out=_null_ mean= std= min= max= n= / autoname;
@@ -464,7 +465,7 @@ run;
 proc sgplot data = Ap_rate;
 title "Distribution of Rate Deviation";
 histogram rd;
-xaxis label = 'Rate Deviation (mmol/L/minute)';
+xaxis label = 'Rate Deviation (mmol/L/hour)' values = (-100 to 100 by 5);
 run;
 
 ODS RTF CLOSE;

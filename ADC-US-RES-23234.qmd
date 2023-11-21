@@ -292,14 +292,14 @@ ketone |>
 ```{r}
 #| label: Import ketone events, anaplus files csv
 #| eval: false
-file_list_ketone <- dir_ls(gsub("\\\\", "/", r"(C:\UDP\OutputFiles\Output_2023-11-02-13-54\outputs)"),recurse = T,glob = "*events.csv|*anaPlus.csv")
+file_list_ketone <- dir_ls(gsub("\\\\", "/", r"(C:\UDP\Archive\Output_2023-11-02-13-54\outputs)"),recurse = T,glob = "*events.csv|*anaPlus.csv")
 ```
-
+<!-- filter_path(file_path = file_list_ketone)[[1]] filter_path(file_path = file_list_ketone)[[5]] -->
 ```{r}
 #| label: Ketone Filter events, anaPlus
 #| eval: false
-events_path_ketone <- filter_path(file_path = file_list_ketone)[[1]]
-anaplus_path_ketone <- filter_path(file_path = file_list_ketone)[[5]]
+events_path_ketone <- file_list_ketone[str_detect(file_list_ketone,"events.csv")]
+anaplus_path_ketone <- file_list_ketone[str_detect(file_list_ketone,"anaPlus.csv")] 
 ```
 
 ```{r}
@@ -318,6 +318,102 @@ mobi_anaPlus(events = events_path_ketone, ana = anaplus_path_ketone) |>
 #| label: Import ketone.rds
 upload_ketone <- readRDS(gsub("\\\\", "/", r"(\\oneabbott.com\dept\ADC\Technical_OPS\Clinical_Affairs\Clinical Study Files\Apollo\ADC-US-RES-23234_IDE Pump Suspension Study\Statistics\Programs\Datasets\AL\ketone.rds)"))
 ```
+
+```{r}
+#| label: Pair Ketone Reference
+PairKetone <- function(sensor_data){
+  # ketone reference
+  ketone |>
+    rename(`Subject ID` = Subject) |> 
+    inner_join(
+      # Sensor Data
+      sensor_data |>
+        dplyr::mutate(
+          # `Date Time` = force_tz(`Date Time`,tz = "UTC"),
+          `Lower Bound` = round_date(`Date Time`,"minute") - dminutes(5),
+          `Upper Bound` = round_date(`Date Time`,"minute") + dminutes(5)
+        ),
+      by = join_by("Subject ID", between(`Ketone Date Time`,`Lower Bound`,`Upper Bound`)),
+      multiple = "all"
+    ) |>
+    # Select the nearest time
+    group_by(`Subject ID`,`Ketone Date Time`) |>
+    arrange(desc(`Date Time`)) |>
+    slice_min(abs(`Ketone Date Time` - round_date(`Date Time`,"minute")),n = 1,with_ties = F) |>
+    ungroup() |>
+    # Select the nearest time
+    group_by(`Subject ID`,`Date Time`) |>
+    arrange(desc(`Date Time`)) |>
+    slice_min(abs(`Ketone Date Time` - round_date(`Date Time`,"minute")),n = 1,with_ties = F) |>
+    ungroup() |> 
+    select(!c(contains("Bound")))
+}
+```
+
+```{r}
+#| label: Pair Ketone
+Ap <- upload_ketone |> 
+      select(!c(Path, Tr)) |> 
+      filter(Type == "906",year(`Date Time`) == 2023) |>  
+      group_split(`Subject ID`,`Condition ID`,`Sensor Serial Number`) |>  
+      # New anonymous function
+      map(\(df) PairKetone(sensor_data = df),.progress = T) |>
+      list_rbind() |> 
+      # Rate
+      mutate(sensor_rate = ((ANA-lag(ANA))/100) / (as.numeric(difftime(`Date Time`,lag(`Date Time`),units = "hours"))),
+             ref_rate = ((KRSEQ01-lag(KRSEQ01))) / (as.numeric(difftime(`Ketone Date Time`,lag(`Ketone Date Time`),units = "hours"))),
+             `Rate Deviation` = round((ref_rate - sensor_rate) + 0.0000000001,8),
+             `Absolute Rate Deviation` = abs(`Rate Deviation`),
+      # Assign Category
+          `Rate Deviation(mmol/L/hour)` = fct_case_when(
+            `Rate Deviation` < -3 ~ "<-3",
+            `Rate Deviation` >= -3 & `Rate Deviation` < -2 ~ "[-3, -2)",
+            `Rate Deviation` >= -2 & `Rate Deviation` < -1 ~ "[-2, -1)",
+            `Rate Deviation` >= -1 & `Rate Deviation` < 0 ~ "[-1, 0)",
+            `Rate Deviation` >= 0 & `Rate Deviation` <= 1 ~ "[0, 1]",
+            `Rate Deviation` > 1 & `Rate Deviation` <= 2 ~ "(1, 2]",
+            `Rate Deviation` > 2 & `Rate Deviation` <= 3 ~ "(2, 3]",
+            `Rate Deviation` > 3  ~ ">3"),  
+          `Absolute Rate Deviation(mmol/L/hour)` = fct_case_when(
+            `Absolute Rate Deviation` >= 0 & `Absolute Rate Deviation` <= 1~ "[0, 1]",
+            `Absolute Rate Deviation` > 1 & `Absolute Rate Deviation` <= 2 ~ "(1, 2]",
+            `Absolute Rate Deviation` > 2 & `Absolute Rate Deviation` <= 3 ~ "(2, 3]",
+            `Absolute Rate Deviation` > 3  ~ ">3"),.by = `Sensor Serial Number`) |> 
+        filter(!is.na(`Rate Deviation`)) 
+```
+
+```{r}
+Ap |> 
+   tabyl(`Rate Deviation(mmol/L/hour)`) |> 
+   adorn_totals("row") |> 
+   gt() |> 
+   cols_align(align = "center") |>
+   fmt_percent(columns = percent, decimals = 2) |> 
+   opt_stylize(style = 6, color = "blue")
+```
+
+```{r}
+Ap |> 
+   tabyl(`Absolute Rate Deviation(mmol/L/hour)`) |> 
+   adorn_totals("row") |> 
+   gt() |> 
+   cols_align(align = "center") |>
+   fmt_percent(columns = percent, decimals = 2) |> 
+   opt_stylize(style = 6, color = "blue")
+```
+
+```{r}
+diff_calculation <- list(Mean = ~ mean(.x, na.rm = T),
+                          Median = ~ median(.x, na.rm = T),
+                          SD = ~ sd(.x, na.rm = T),
+                          Min = ~ min(.x, na.rm = T),
+                          Max = ~ max(.x, na.rm = T),
+                          N = ~ sum(!is.na(.x),na.rm = T))
+Ap |>
+   reframe(across(c(`Rate Deviation`,`Absolute Rate Deviation`),diff_calculation))
+   # summarise_at(.vars = c("Rate Deviation","Absolute Rate Deviation"),.funs = diff_calculation)
+```
+
 
 ```{r eval = params$plot}
 breakdown_condition_plot <- function(Id) {
