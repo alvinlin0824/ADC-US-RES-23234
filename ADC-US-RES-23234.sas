@@ -270,8 +270,105 @@ libname out "\\oneabbott.com\dept\ADC\Technical_OPS\Clinical_Affairs\Clinical St
 /*by subject condition_id dtm;*/
 /*run;*/
 
-/*options papersize=a3 orientation=portrait;*/
-/*ods rtf file="C:\Project\ADC-US-RES-23234\ADC-US-RES-23234-Report-%trim(%sysfunc(today(),yymmddn8.)).rtf" startpage=no;*/
+/*Paired Data Point*/
+/*Filter Type = 906 for sensor data*/
+data auu_906;
+set out.auu;
+ana_100 = ANA/100;
+where type = "906" and year(datepart(dtm)) = 2023;
+drop ANA;
+run;
+
+/*Wrangle Reference ketone*/
+data ketone_reference;
+set ketone;
+/*where IVVAL01 = "Valid" and ^missing(dtm);*/
+keep subject dtm IVID01 KRSEQ01;
+rename dtm = dtm_ref;
+run;
+
+/*Pair Reference Ketone and Ketone Sensor Data*/
+proc sql;
+ create table paired_ketone as
+ select a.*, b.*
+ from auu_906 a, ketone_reference b
+ where a.subject = b.subject and a.dtm-300 <= b.dtm_ref <= a.dtm+300
+ group by b.subject, dtm_ref
+ order by b.subject, dtm_ref;
+quit;
+
+data paired_ketone1;
+ set paired_ketone;
+ abstimediff = abs(dtm - dtm_ref);
+run;
+
+proc sort data = paired_ketone1; 
+by subject condition_id dtm_ref abstimediff KRSEQ01 descending dtm; 
+run;
+
+data paired_ketone2;
+ set paired_ketone1;
+ by subject condition_id dtm_ref abstimediff KRSEQ01 descending dtm;
+ if first.dtm_ref; *Choose pair that is closest in time when BG paired with multiple GM;
+run;
+
+proc sort data = paired_ketone2; 
+by subject condition_id dtm abstimediff dtm_ref; 
+run;
+
+data Ap;
+ set paired_ketone2;
+ by subject condition_id dtm abstimediff dtm_ref;
+ if first.dtm; *Choose pair that is closest in time when GM paired with multiple BG;
+ drop abstimediff;
+run;
+
+/*Rate Deviation*/
+Proc sort data = Ap;
+by subject snr;
+run;
+
+data Ap_rate;
+set Ap;
+length level $25.;
+format lag_dtm datetime16. lag_dtm_ref datetime14;
+/*Consider individual sensor*/
+by subject snr;
+lag_dtm = lag(dtm); lag_dtm_ref = lag(dtm_ref);
+lag_ana_100 = lag(ana_100); lag_KRSEQ01 = lag(KRSEQ01);
+if first.snr then do;
+lag_dtm = .; lag_dtm_ref = .; lag_ana_100 = .;
+lag_dtm_ref = .;
+end;
+/*Calculate the rate*/
+if first.snr then ketone_ref_rate = .;
+else ketone_ref_rate = (KRSEQ01 - lag_KRSEQ01) / ((dtm_ref - lag_dtm_ref)/60);
+if first.snr then ketone_sensor_rate = .;
+else ketone_sensor_rate = (ana_100 - lag_ana_100) / ((dtm - lag_dtm)/60);
+/*Calculate rate deviation*/
+rd = round(ketone_ref_rate-ketone_sensor_rate,.00000001);
+ard=abs(rd);
+/*Assign category*/
+ if rd lt -3 and ^missing(rd) then level = '1: <-3';
+ if rd ge -3 and rd lt -2 then level = '2: [-3, -2)';
+ if rd ge -2 and rd lt -1 then level = '3: [-2, -1)';
+ if rd ge -1 and rd le 1 then level = '4: [-1, 1]';
+ if rd gt 1 and rd le 2 then level = '5: (1, 2]';
+ if rd gt 2 and rd le 3 then level = '6: (2, 3]';
+ if rd gt 3 then level = '7: >3';
+ 
+ if ard ge 0 and ard le 1 then level1 = '1: [0, 1]';
+ if ard gt 1 and ard le 2 then level1 = '2: (1, 2]';
+ if ard gt 2 and ard le 3 then level1 = '3: (2, 3]';
+ if ard gt 3 then level1 = '4: >3';
+/* Remove missing rd*/
+ if missing(rd) then delete;
+/*Drop useless columns*/
+drop lag_dtm--lag_KRSEQ01;
+run;
+
+options papersize=a3 orientation=portrait;
+ods rtf file="C:\Project\ADC-US-RES-23234\ADC-US-RES-23234-Report-%trim(%sysfunc(today(),yymmddn8.)).rtf" startpage=no;
 
 /*Summary Statistics on Ketone Result*/
 Proc means data = ketone maxdec=2 nonobs;
@@ -320,7 +417,6 @@ styleattrs datacontrastcolors = (magenta green blue orange lilac lime marron oli
 	keylegend / title = "Subject ID";
 run;
 
-
 /*Time from baseline to peak*/
 proc sgplot data = ketone noautolegend cycleattrs;
 where ^missing(dtm) and dtm <= peak_test_dtm;
@@ -342,7 +438,36 @@ styleattrs datacontrastcolors = (magenta green blue orange lilac lime marron oli
 	xaxis label = "Time(Hours)" values=(0 to 8 by 1) INTERVAL = HOUR VALUESROTATE=DIAGONAL2;
 	keylegend / title = "Subject ID";
 run;
-/*ODS RTF CLOSE;*/
+
+/*Rate Deviation*/
+proc tabulate data = Ap_rate format=8.1 style=[cellwidth=2.0cm just=c];
+ title1 " ";
+ class level;
+ table level = 'Rate Deviation (mmol/L/min)', n pctn='%' / rts=25;
+run;
+
+/*Absoulte Rate Deviation*/
+proc tabulate data = Ap_rate format=8.1 style=[cellwidth=2.0cm just=c];
+ title1 " ";
+ class level1;
+ table level1 = 'Absoulte Rate Deviation (mmol/L/min)', n pctn='%' / rts=25;
+run;
+
+/*Summary on Rate deviation and absolute rate deviation*/
+proc means data = Ap_rate;
+ title1 " "; 
+ var rd ard;
+ output out=_null_ mean= std= min= max= n= / autoname;
+run;
+
+/*Plot distribution of rd*/
+proc sgplot data = Ap_rate;
+title "Distribution of Rate Deviation";
+histogram rd;
+xaxis label = 'Rate Deviation (mmol/L/minute)';
+run;
+
+ODS RTF CLOSE;
 /*Profile Plot*/
 
 /*Profile Plot Data*/
@@ -392,61 +517,6 @@ run;
 /*	keylegend / title="Condition ID" ;*/
 /*run;*/
 /**/
-
-
-
-/*Paired Data Point*/
-/*Filter Type = 905 for sensor data*/
-/*data auu_905;*/
-/*set out.auu;*/
-/*ana_100 = ANA/100;*/
-/*where type = "905" and year(date) = 2023;*/
-/*drop ANA;*/
-/*run;*/
-
-/*Wrangle Reference ketone*/
-/*data ketone_reference;*/
-/*set ketone;*/
-/*where IVVAL01 = "Valid" and ^missing(dtm);*/
-/*keep subject dtm IVID01 KRSEQ01;*/
-/*rename dtm = dtm_ref;*/
-/*run;*/
-
-/*Pair Reference Ketone and Ketone Sensor Data*/
-/*proc sql;*/
-/* create table paired_ketone as*/
-/* select a.*, b.**/
-/* from auu_905 a, ketone_reference b*/
-/* where a.subject=b.subject and a.dtm-300<=b.dtm_ref<=a.dtm+300*/
-/* group by b.subject, dtm_ref*/
-/* order by b.subject, dtm_ref;*/
-/*quit;*/
-/**/
-/*data paired_ketone1;*/
-/* set paired_ketone;*/
-/* abstimediff=abs(dtm-dtm_ref);*/
-/*run;*/
-
-/*proc sort data=paired_ketone1; 
-/*by subject condition_id dtm_ref abstimediff KRSEQ01 descending dtm; */
-/*run;*/*/
-/**/
-/*data paired_ketone2;*/
-/* set paired_ketone1;*/
-/* by subject condition_id dtm_ref abstimediff KRSEQ01 descending dtm;*/
-/* if first.dtm_ref; *Choose pair that is closest in time when BG paired with multiple GM;*/
-/*run;*/
-/**/
-/*proc sort data=paired_ketone2; 
-/*by subject condition_id dtm abstimediff dtm_ref; */
-/*run;*/*/
-/**/
-/*data Ap;*/
-/* set paired_ketone2;*/
-/* by subject condition_id dtm abstimediff dtm_ref;*/
-/* if first.dtm; *Choose pair that is closest in time when GM paired with multiple BG;*/
-/* drop abstimediff;*/
-/*run;*/
 
 /*proc sgplot data = Ap noautolegend cycleattrs;*/
 /*title1 "Ketone Sensor vs Reference";*/
