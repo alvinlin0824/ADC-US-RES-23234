@@ -145,7 +145,7 @@ kgriv12 <- kgr12 |>
                   `Glucose Date Time` = ymd_hm(str_c(KRDTC01,KRDTC03,sep = " "))
                   ,.keep = "unused",.before = KRSEQ03) |> 
            arrange(Subject,`Ketone Date Time`) |> 
-           filter(str_detect(IVVAL01,"Valid") | is.na(IVVAL01))
+           filter(str_detect(IVVAL01,"Valid"))
 ```
 
 ```{r}

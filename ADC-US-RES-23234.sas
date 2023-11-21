@@ -119,7 +119,7 @@ run;
 
 proc sort data = kgrivmhcad;
 by subject dtm;
-where ^missing(dtm);
+where ^missing(dtm) and IVVAL01 = "Valid";
 run;
 
 /*Get First Ketone Date and Time*/
@@ -270,15 +270,14 @@ libname out "\\oneabbott.com\dept\ADC\Technical_OPS\Clinical_Affairs\Clinical St
 /*by subject condition_id dtm;*/
 /*run;*/
 
-options papersize=a3 orientation=portrait;
-ods rtf file="C:\Project\ADC-US-RES-23234\ADC-US-RES-23234-Report-%trim(%sysfunc(today(),yymmddn8.)).rtf" startpage=no;
+/*options papersize=a3 orientation=portrait;*/
+/*ods rtf file="C:\Project\ADC-US-RES-23234\ADC-US-RES-23234-Report-%trim(%sysfunc(today(),yymmddn8.)).rtf" startpage=no;*/
 
 /*Summary Statistics on Ketone Result*/
 Proc means data = ketone maxdec=2 nonobs;
 title;
 var KRSEQ01;
 class Subject;
-where ^find(IVVAL01,"Invalid","i") and ^missing(KRSEQ01);
 run;
 
 proc print data = analysis_ketone(rename = (subject = Subject first_test_dtm = 'Start Time'n peak_test_dtm = 'Peak Time'n Peak = 'Max Ketone Reference(mmol/L)'n last_test_dtm = 'Time once < 1 mmol/L'n duration_to_peak = 'Time to Peak(Hours)'n duration_to_last = 'Time to < 1 mmol/L(Hours)'n)) noobs;
@@ -288,7 +287,7 @@ var Subject 'Start Time'n 'Peak Time'n 'Max Ketone Reference(mmol/L)'n 'Time onc
 run;
 
 proc tabulate data = analysis_ketone;
-where ^find(IVVAL01,"Invalid","i") and ^missing(first_below);
+where ^missing(first_below);
 class Visit;
 var KRSEQ01 duration_to_peak duration_to_last;
 table  Visit, KRSEQ01 = "Maximum Ketone Level Achieved"*(n mean stddev) duration_to_peak = "Time(Hours) To Peak Ketone Level From First Test"*(n mean stddev)
@@ -301,7 +300,7 @@ ftext='arial' htext=9pt hby=16pt gsfname=exfile gsfmode=replace xmax=16in hsize=
 ods graphics on / reset attrpriority=color width=8in height=5in;
 /*Reference Plot*/
 proc sgplot data = ketone noautolegend cycleattrs;
-where dtm is not missing and ^find(IVVAL01,"Invalid","i");
+where dtm is not missing;
 title1 "Ketone Reference";
 styleattrs datacontrastcolors = (magenta green blue orange lilac lime marron olive steel violet yellow);
 	series x = time_diff y = krseq01 / group = subject groupdisplay = overlay markers markerattrs = (size = 3 symbol = dot) name = "REAL";
@@ -312,7 +311,7 @@ run;
 
 /*Delta*/
 proc sgplot data = ketone_lag noautolegend cycleattrs;
-where ^missing(dtm) and ^find(IVVAL01,"Invalid","i");
+where ^missing(dtm);
 title1 "Ketone Vary Over Time";
 styleattrs datacontrastcolors = (magenta green blue orange lilac lime marron olive steel violet yellow);
 	series x = time_diff y = krseq01_diff / group = subject groupdisplay = overlay markers markerattrs = (size = 3 symbol = dot) name = "REAL";
@@ -324,7 +323,7 @@ run;
 
 /*Time from baseline to peak*/
 proc sgplot data = ketone noautolegend cycleattrs;
-where ^missing(dtm) and ^find(IVVAL01,"Invalid","i") and dtm <= peak_test_dtm;
+where ^missing(dtm) and dtm <= peak_test_dtm;
 title1 "Time From Baseline To Peak";
 styleattrs datacontrastcolors = (magenta green blue orange lilac lime marron olive steel violet yellow);
 	series x = time_diff y = krseq01 / group = subject groupdisplay = overlay markers markerattrs = (size = 3 symbol = dot) name = "REAL";
@@ -335,7 +334,7 @@ run;
 
 /*Time from peak to 1 mmol*/
 proc sgplot data = ketone noautolegend cycleattrs;
-where ^missing(dtm) and ^find(IVVAL01,"Invalid","i") and ^missing(duration_to_last);
+where ^missing(dtm) and ^missing(duration_to_last);
 title1 "Time From Peak To < 1 mmol/L";
 styleattrs datacontrastcolors = (magenta green blue orange lilac lime marron olive steel violet yellow);
 	series x = time_diif1 y = krseq01 / group = subject groupdisplay = overlay markers markerattrs = (size = 3 symbol = dot) name = "REAL";
@@ -343,7 +342,7 @@ styleattrs datacontrastcolors = (magenta green blue orange lilac lime marron oli
 	xaxis label = "Time(Hours)" values=(0 to 8 by 1) INTERVAL = HOUR VALUESROTATE=DIAGONAL2;
 	keylegend / title = "Subject ID";
 run;
-ODS RTF CLOSE;
+/*ODS RTF CLOSE;*/
 /*Profile Plot*/
 
 /*Profile Plot Data*/
