@@ -194,87 +194,111 @@ if first.subject;
 run;
 
 /*Upload Data*/
-/*filename dir pipe "dir /b/l/s  ""C:\UDP\OutputFiles\Output_2023-11-02-13-54\outputs\*.csv""";*/
+filename dir pipe "dir /b/l/s  ""C:\UDP\OutputFiles\Output_2023-11-02-13-54\outputs\*.csv""";
 /**/
-/*data list;*/
-/*	infile dir truncover;*/
-/*	input path $256.;*/
-/*/*	Extract Subject ID*/*/
-/*/*    009*/*/
-/*    if find(path,"Mobi00","i") then subject = substr(path,find(path,"Mobi","i")+6,5);*/
-/*/*    133*/*/
-/*    if find(path,"Mobi133","i") then subject = substr(path,find(path,"Mobi","i")+4,7);*/
-/*/*	Extract Condition ID*/*/
-/*	if find(path,"Mobi","i") then condition_id = upcase(substr(path,find(path,"Mobi","i")+18,3));*/
-/*run;*/
+data list;
+	infile dir truncover;
+	input path $256.;
+/*	Extract Subject ID*/
+/*    009*/
+    if find(path,"Mobi00","i") then subject = substr(path,find(path,"Mobi","i")+6,5);
+/*    133*/
+    if find(path,"Mobi133","i") then subject = substr(path,find(path,"Mobi","i")+4,7);
+/*	Extract Condition ID*/
+	if find(path,"Mobi","i") then condition_id = upcase(substr(path,find(path,"Mobi","i")+18,3));
+run;
 /**/
-/*data events_list anaplus_list;*/
-/*	set list;*/
-/*	if find(path,"events.csv","i") then output events_list;*/
-/*    if find(path,"anaPlus.csv","i")  then output anaplus_list;*/
-/*run;*/
+data events_list anaplus_list;
+	set list;
+	if find(path,"events.csv","i") then output events_list;
+    if find(path,"anaPlus.csv","i")  then output anaplus_list;
+run;
 /**/
-/*/*Loop events.csv Data*/*/
-/*data events;*/
-/*	set events_list;*/
-/*	infile dummy filevar = path length = reclen end = done missover dlm='2C'x dsd firstobs=4;*/
-/*	do while(not done);*/
-/*		input uid: $char256. date: yymmdd10. time:time8. type: $char56. col_4: $char3. col_5: $char11. col_6: $char4. col_7: best8. col_8: $char9. */
-/* snr: $char11.;*/
-/*        format date date9. time time8.;*/
-/*		drop uid col_4-col_8;*/
-/*        output;*/
-/*	end;*/
-/*run;*/
+/*Loop events.csv Data*/
+data events;
+	set events_list;
+	infile dummy filevar = path length = reclen end = done missover dlm='2C'x dsd firstobs=4;
+	do while(not done);
+	    filename = substr(path,find(path,"Mobi","i"),35);
+		input uid: $char256. date: yymmdd10. time:time8. type: $char56. col_4: $char3. col_5: $char11. col_6: $char4. col_7: best8. col_8: $char9. 
+ snr: $char11.;
+        format date date9. time time8.;
+		drop uid col_4-col_8;
+        output;
+	end;
+run;
 /**/
-/*/*Multiple Sensor Start*/*/
-/*proc sort data = events;*/
-/*by subject condition_id date time;*/
-/*run;*/
-/*data events_start;*/
-/*	set events (where = (type ="SENSOR_STARTED (58)"));*/
-/*	by subject condition_id;*/
-/*    if last.condition_id;*/
-/*run;*/
+/*Multiple Sensor Start*/
+proc sort data = events;
+by filename subject condition_id date time;
+run;
+data events_start;
+	set events (where = (type ="SENSOR_STARTED (58)"));
+	by filename subject condition_id;
+    if last.condition_id;
+run;
 /**/
-/*/*Loop anaplus.csv Data*/*/
-/*data anaplus;*/
-/*	set anaplus_list;*/
-/*	infile dummy filevar = path length = reclen end = done missover dlm='2C'x dsd firstobs=4;*/
-/*	do while(not done);*/
-/*		input uid: $char16. date: yymmdd10. time: time8. type: $char56. ANA: best8. st: best8. tr: best1. nonact: best1.;*/
-/*        format date date9. time time8.;*/
-/*		drop uid st--nonact;*/
-/*        output;*/
-/*	end;*/
-/*run;*/
+/*Loop anaplus.csv Data*/
+data anaplus;
+	set anaplus_list;
+	infile dummy filevar = path length = reclen end = done missover dlm='2C'x dsd firstobs=4;
+	do while(not done);
+	    filename = substr(path,find(path,"Mobi","i"),35);
+		input uid: $char16. date: yymmdd10. time: time8. type: $char56. ANA: best8. st: best8. tr: best1. nonact: best1.;
+        format date date9. time time8.;
+		drop uid st--nonact;
+        output;
+	end;
+run;
 /**/
-/*/*Left join to get sensor serial number*/*/
+/*Left join to get sensor serial number*/
 /*proc sort data = anaplus;*/
-/*by subject condition_id;*/
+/*by filename subject condition_id;*/
 /*run;*/
 /**/
+/*proc sort data = events_start;*/
+/*by filename subject condition_id;*/
+/*run;*/
+/**/
+proc sql;
+	create table auu as
+	select * from anaplus as x left join events_start as y
+	on x.filename = y.filename;
+quit;
+
+data auu1;
+set auu events_start;
+run;
+
+proc sort data=auu1;
+by subject condition_id date time;
+run;
+
 /*data auu;*/
 /*format dtm datetime16.;*/
-/*merge anaplus events_start;*/
-/*by subject condition_id;*/
-/*dtm = dhms(date,0,0,time);*/
-/*drop date time;*/
-/*run;
-
+/*merge anaplus(in = x) events_start(in = y);*/
+/*by filename subject condition_id;*/
+/*if x;*/
+/*/*dtm = dhms(date,0,0,time);*/*/
+/*/*drop date time filename;*/*/
+/*run;*/
+/*out = out.AUU*/
 /*stack*/
 libname out "\\oneabbott.com\dept\ADC\Technical_OPS\Clinical_Affairs\Clinical Study Files\Apollo\ADC-US-RES-23234_IDE Pump Suspension Study\Statistics\Programs\Datasets\AL";
 
 /*Remove Duplicated uploads*/
-/*proc sort data = auu NODUP out = out.AUU; */
-/*by subject condition_id dtm;*/
-/*run;*/
+proc sort data = auu NODUP; 
+by subject condition_id dtm;
+run;
 
 /*Paired Data Point*/
 /*Filter Type = 906 for sensor data*/
 data auu_906;
 set out.auu;
 ana_100 = ANA/100;
+if snr = "089CR2FAX" then dtm = dtm + 2*60*60;
+if snr = "089CR2ELD" then dtm = dtm - 1*60*60;
+if snr = "089CR2EAN" then delete;
 where type = "906" and year(datepart(dtm)) = 2023;
 drop ANA;
 run;

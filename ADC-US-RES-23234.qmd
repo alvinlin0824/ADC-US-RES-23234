@@ -290,16 +290,44 @@ ketone |>
 ```
 
 ```{r}
+#| label: Import sa
+# sa <- read_sas(gsub("\\\\", "/", r"(\\wf00168p.oneabbott.com\data1\CDM\ADC-US-RES-23234\OpenClinica\Current\sa.sas7bdat)"))
+```
+
+```{r}
+#| label: Wrangle SA
+# sa <- sa |> 
+#       filter(!str_detect(DUYN01,regex("CHECK HERE IF NO DATA RECORDED",ignore_case = T))) |>
+#       mutate(Subject = as.character(Subject),
+#              DUSEQ01 = as.numeric(DUSEQ01)) |> 
+#       arrange(Subject)
+```
+
+```{r}
+#| label: Import du2
+# du2 <- read_sas(gsub("\\\\", "/", r"(\\wf00168p.oneabbott.com\data1\CDM\ADC-US-RES-23234\OpenClinica\Current\du2.sas7bdat)"))
+```
+
+```{r}
+# du2 <- du2 |>
+#        filter(!str_detect(UPDTC02,"^$|pattern")) |>
+#        mutate(Subject = as.character(Subject),
+#               UPDTC02  = hms::parse_hms(UPDTC02),
+#               UPID01 = as.numeric(UPID01)) |>
+#        arrange(Subject,desc(UPDTC01),UPDTC02)
+```
+
+```{r}
 #| label: Import ketone events, anaplus files csv
 #| eval: false
-file_list_ketone <- dir_ls(gsub("\\\\", "/", r"(C:\UDP\Archive\Output_2023-11-02-13-54\outputs)"),recurse = T,glob = "*events.csv|*anaPlus.csv")
+file_list_ketone <- dir_ls(gsub("\\\\", "/", r"(C:\UDP\OutputFiles\Output_2023-11-02-13-54\outputs)"),recurse = T,glob = "*events.csv|*anaPlus.csv")
 ```
-<!-- filter_path(file_path = file_list_ketone)[[1]] filter_path(file_path = file_list_ketone)[[5]] -->
+
 ```{r}
 #| label: Ketone Filter events, anaPlus
 #| eval: false
-events_path_ketone <- file_list_ketone[str_detect(file_list_ketone,"events.csv")]
-anaplus_path_ketone <- file_list_ketone[str_detect(file_list_ketone,"anaPlus.csv")] 
+events_path_ketone <- filter_path(file_path = file_list_ketone)[[1]]
+anaplus_path_ketone <- filter_path(file_path = file_list_ketone)[[5]] 
 ```
 
 ```{r}
@@ -311,6 +339,8 @@ mobi_anaPlus(events = events_path_ketone, ana = anaplus_path_ketone) |>
             `Sensor Serial Number` == "089CR2FAX" ~ `Date Time` + dhours(2),
             `Sensor Serial Number` == "089CR2ELD" ~ `Date Time` - dhours(1),
               .default = `Date Time`)) |>
+     # Consider Replaced sensor
+      filter(`Sensor Serial Number` != "089CR2EAN") |> 
   saveRDS(gsub("\\\\", "/", r"(\\oneabbott.com\dept\ADC\Technical_OPS\Clinical_Affairs\Clinical Study Files\Apollo\ADC-US-RES-23234_IDE Pump Suspension Study\Statistics\Programs\Datasets\AL\ketone.rds)"))
 ```
 
