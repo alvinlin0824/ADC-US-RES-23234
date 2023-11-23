@@ -250,44 +250,26 @@ data anaplus;
         output;
 	end;
 run;
-/**/
+
 /*Left join to get sensor serial number*/
-/*proc sort data = anaplus;*/
-/*by filename subject condition_id;*/
-/*run;*/
-/**/
-/*proc sort data = events_start;*/
-/*by filename subject condition_id;*/
-/*run;*/
-/**/
 proc sql;
-	create table auu as
+	create table auu_snr as
 	select * from anaplus as x left join events_start as y
 	on x.filename = y.filename;
 quit;
 
-data auu1;
-set auu events_start;
+data auu;
+set events_start auu_snr;
+format dtm datetime16.;
+dtm = dhms(date,0,0,time);
+drop date time filename;
 run;
 
-proc sort data=auu1;
-by subject condition_id date time;
-run;
-
-/*data auu;*/
-/*format dtm datetime16.;*/
-/*merge anaplus(in = x) events_start(in = y);*/
-/*by filename subject condition_id;*/
-/*if x;*/
-/*/*dtm = dhms(date,0,0,time);*/*/
-/*/*drop date time filename;*/*/
-/*run;*/
-/*out = out.AUU*/
 /*stack*/
 libname out "\\oneabbott.com\dept\ADC\Technical_OPS\Clinical_Affairs\Clinical Study Files\Apollo\ADC-US-RES-23234_IDE Pump Suspension Study\Statistics\Programs\Datasets\AL";
 
 /*Remove Duplicated uploads*/
-proc sort data = auu NODUP; 
+proc sort data = auu NODUP out = out.AUU; 
 by subject condition_id dtm;
 run;
 
@@ -295,11 +277,12 @@ run;
 /*Filter Type = 906 for sensor data*/
 data auu_906;
 set out.auu;
-ana_100 = ANA/100;
-if snr = "089CR2FAX" then dtm = dtm + 2*60*60;
-if snr = "089CR2ELD" then dtm = dtm - 1*60*60;
-if snr = "089CR2EAN" then delete;
-where type = "906" and year(datepart(dtm)) = 2023;
+/*ana_100 = ANA/100;*/
+/*if snr = "089CR2FAX" then dtm = dtm + 2*60*60;*/
+/*if snr = "089CR2ELD" then dtm = dtm - 1*60*60;*/
+/*if snr = "089CR2EAN" then delete;*/
+/*where type = "906" and year(datepart(dtm)) = 2023;*/
+where year(datepart(dtm)) = 2022;
 drop ANA;
 run;
 

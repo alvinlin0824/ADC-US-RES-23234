@@ -141,8 +141,9 @@ kgriv12 <- kgr12 |>
             .default = KRSEQ02)) |> 
            left_join(iv12, 
                      by = join_by(Subject == Subject,KRSEQ02 == IVID01, KRDTC01 == IVDTC01)) |> 
-           mutate(`Ketone Date Time` = ymd_hm(str_c(KRDTC01,KRDTC02,sep = " ")),
-                  `Glucose Date Time` = ymd_hm(str_c(KRDTC01,KRDTC03,sep = " "))
+           mutate(`Ketone Date Time` = ymd_hm(str_c(KRDTC01,IVTM01,sep = " ")),
+                  `Glucose Date Time` = ymd_hm(str_c(KRDTC01,KRDTC03,sep = " ")),
+                  KRDTC02 = NULL
                   ,.keep = "unused",.before = KRSEQ03) |> 
            arrange(Subject,`Ketone Date Time`) |> 
            filter(str_detect(IVVAL01,"Valid"))
@@ -336,12 +337,17 @@ anaplus_path_ketone <- filter_path(file_path = file_list_ketone)[[5]]
 #| eval: false
 mobi_anaPlus(events = events_path_ketone, ana = anaplus_path_ketone) |> 
           mutate(`Date Time` = case_when(
+            # Subject 90009 RU1 Sensor Start is wrong
+            `Sensor Serial Number` == "089CR2CRA" & 
+  Type == "SENSOR_STARTED (58)" ~ `Date Time` - dhours(12),
             `Sensor Serial Number` == "089CR2FAX" ~ `Date Time` + dhours(2),
             `Sensor Serial Number` == "089CR2ELD" ~ `Date Time` - dhours(1),
-              .default = `Date Time`)) |>
-     # Consider Replaced sensor
-      filter(`Sensor Serial Number` != "089CR2EAN") |> 
-  saveRDS(gsub("\\\\", "/", r"(\\oneabbott.com\dept\ADC\Technical_OPS\Clinical_Affairs\Clinical Study Files\Apollo\ADC-US-RES-23234_IDE Pump Suspension Study\Statistics\Programs\Datasets\AL\ketone.rds)"))
+              .default = `Date Time`)) |> 
+          arrange(`Subject ID`,`Condition ID`,`Date Time`) |>
+          fill(`Sensor Serial Number`,.direction = "updown") |> 
+        # Consider Replaced sensor
+          filter(`Sensor Serial Number` != "089CR2EAN" | is.na(`Sensor Serial Number`)) |> 
+     saveRDS(gsub("\\\\", "/", r"(\\oneabbott.com\dept\ADC\Technical_OPS\Clinical_Affairs\Clinical Study Files\Apollo\ADC-US-RES-23234_IDE Pump Suspension Study\Statistics\Programs\Datasets\AL\ketone.rds)"))
 ```
 
 ```{r}
@@ -365,17 +371,17 @@ PairKetone <- function(sensor_data){
         ),
       by = join_by("Subject ID", between(`Ketone Date Time`,`Lower Bound`,`Upper Bound`)),
       multiple = "all"
-    ) |>
+    ) |> 
     # Select the nearest time
     group_by(`Subject ID`,`Ketone Date Time`) |>
-    arrange(desc(`Date Time`)) |>
-    slice_min(abs(`Ketone Date Time` - round_date(`Date Time`,"minute")),n = 1,with_ties = F) |>
-    ungroup() |>
+    arrange(desc(`Date Time`)) |> 
+    slice_min(abs(`Ketone Date Time` - `Date Time`),n = 1,with_ties = F) |>
+    ungroup() |> 
     # Select the nearest time
     group_by(`Subject ID`,`Date Time`) |>
     arrange(desc(`Date Time`)) |>
-    slice_min(abs(`Ketone Date Time` - round_date(`Date Time`,"minute")),n = 1,with_ties = F) |>
-    ungroup() |> 
+    slice_min(abs(`Ketone Date Time` - `Date Time`),n = 1,with_ties = F) |>
+    ungroup() |>
     select(!c(contains("Bound")))
 }
 ```
@@ -385,6 +391,7 @@ PairKetone <- function(sensor_data){
 Ap <- upload_ketone |> 
       select(!c(Path, Tr)) |> 
       filter(Type == "906",year(`Date Time`) == 2023) |>  
+      # filter(`Subject ID` == "1330005", `Condition ID` == "LL1") |>
       group_split(`Subject ID`,`Condition ID`,`Sensor Serial Number`) |>  
       # New anonymous function
       map(\(df) PairKetone(sensor_data = df),.progress = T) |>
@@ -403,14 +410,49 @@ Ap <- upload_ketone |>
             `Rate Deviation` >= 0 & `Rate Deviation` <= 1 ~ "[0, 1]",
             `Rate Deviation` > 1 & `Rate Deviation` <= 2 ~ "(1, 2]",
             `Rate Deviation` > 2 & `Rate Deviation` <= 3 ~ "(2, 3]",
-            `Rate Deviation` > 3  ~ ">3"),  
+            `Rate Deviation` > 3  ~ ">3"),
           `Absolute Rate Deviation(mmol/L/hour)` = fct_case_when(
             `Absolute Rate Deviation` >= 0 & `Absolute Rate Deviation` <= 1~ "[0, 1]",
             `Absolute Rate Deviation` > 1 & `Absolute Rate Deviation` <= 2 ~ "(1, 2]",
             `Absolute Rate Deviation` > 2 & `Absolute Rate Deviation` <= 3 ~ "(2, 3]",
-            `Absolute Rate Deviation` > 3  ~ ">3"),.by = `Sensor Serial Number`) |> 
-        filter(!is.na(`Rate Deviation`)) 
+            `Absolute Rate Deviation` > 3  ~ ">3"),.by = `Sensor Serial Number`) |>
+        filter(!is.na(`Rate Deviation`))
 ```
+
+,`Rate Deviation(mmol/L/hour)`,`Absolute Rate Deviation(mmol/L/hour)`)
+      mutate(across(where(is.factor), ~ as.character(.x)))
+```{r}
+haven::read_sas("ap_rate.sas7bdat") |>
+      transmute(`Subject ID` = as.character(subject),
+                `Condition ID` = condition_id,
+                `Date Time` = with_tz(dtm,tz = "UTC"),
+                 `Ketone Date Time` = with_tz(dtm_ref,tz = "UTC"),
+                 ANA = ana_100*100,
+                 KRSEQ01 = KRSEQ01,
+                 `Rate Deviation` = rd
+                # `Rate Deviation(mmol/L/hour)` = str_sub(level,3,10),
+                # `Absolute Rate Deviation(mmol/L/hour)` = str_sub(level1,3,9)
+                 ) |> 
+  dplyr::setdiff(
+   Ap |>
+   select(`Subject ID`,`Condition ID`,`Date Time`,`Ketone Date Time`,ANA,KRSEQ01,`Rate Deviation`)) |> 
+  arrange(`Subject ID`,`Condition ID`)
+
+Ap |>
+   select(`Subject ID`,`Condition ID`,`Date Time`,`Ketone Date Time`,ANA,KRSEQ01,`Rate Deviation`) |>
+  dplyr::setdiff(
+    haven::read_sas("ap_rate.sas7bdat") |>
+      transmute(`Subject ID` = as.character(subject),
+                `Condition ID` = condition_id,
+                `Date Time` = with_tz(dtm,tz = "UTC"),
+                 `Ketone Date Time` = with_tz(dtm_ref,tz = "UTC"),
+                 ANA = ana_100*100,
+                 KRSEQ01 = KRSEQ01,
+                 `Rate Deviation` = rd
+  ))
+   
+```
+
 
 ```{r}
 Ap |> 
