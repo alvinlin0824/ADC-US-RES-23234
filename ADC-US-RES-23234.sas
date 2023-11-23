@@ -105,7 +105,7 @@ data kgriv12;
 format dtm datetime14.;
 merge kgr12 iv12;
 by Subject IVDTC01 IVID01_C;
-dtm = dhms(IVDTC01,0,0,input(KRDTC02,time5.));
+dtm = dhms(IVDTC01,0,0,input(IVTM01,time5.));
 run;
 
 /*KGR12 left join mh1 and cad3*/
@@ -194,95 +194,98 @@ if first.subject;
 run;
 
 /*Upload Data*/
-filename dir pipe "dir /b/l/s  ""C:\UDP\OutputFiles\Output_2023-11-02-13-54\outputs\*.csv""";
+/*filename dir pipe "dir /b/l/s  ""C:\UDP\OutputFiles\Output_2023-11-02-13-54\outputs\*.csv""";*/
+/*/**/*/
+/*data list;*/
+/*	infile dir truncover;*/
+/*	input path $256.;*/
+/*/*	Extract Subject ID*/*/
+/*/*    009*/*/
+/*    if find(path,"Mobi00","i") then subject = substr(path,find(path,"Mobi","i")+6,5);*/
+/*/*    133*/*/
+/*    if find(path,"Mobi133","i") then subject = substr(path,find(path,"Mobi","i")+4,7);*/
+/*/*	Extract Condition ID*/*/
+/*	if find(path,"Mobi","i") then condition_id = upcase(substr(path,find(path,"Mobi","i")+18,3));*/
+/*run;*/
 /**/
-data list;
-	infile dir truncover;
-	input path $256.;
-/*	Extract Subject ID*/
-/*    009*/
-    if find(path,"Mobi00","i") then subject = substr(path,find(path,"Mobi","i")+6,5);
-/*    133*/
-    if find(path,"Mobi133","i") then subject = substr(path,find(path,"Mobi","i")+4,7);
-/*	Extract Condition ID*/
-	if find(path,"Mobi","i") then condition_id = upcase(substr(path,find(path,"Mobi","i")+18,3));
-run;
-/**/
-data events_list anaplus_list;
-	set list;
-	if find(path,"events.csv","i") then output events_list;
-    if find(path,"anaPlus.csv","i")  then output anaplus_list;
-run;
+/*data events_list anaplus_list;*/
+/*	set list;*/
+/*	if find(path,"events.csv","i") then output events_list;*/
+/*    if find(path,"anaPlus.csv","i")  then output anaplus_list;*/
+/*run;*/
 /**/
 /*Loop events.csv Data*/
-data events;
-	set events_list;
-	infile dummy filevar = path length = reclen end = done missover dlm='2C'x dsd firstobs=4;
-	do while(not done);
-	    filename = substr(path,find(path,"Mobi","i"),35);
-		input uid: $char256. date: yymmdd10. time:time8. type: $char56. col_4: $char3. col_5: $char11. col_6: $char4. col_7: best8. col_8: $char9. 
- snr: $char11.;
-        format date date9. time time8.;
-		drop uid col_4-col_8;
-        output;
-	end;
-run;
+/*data events;*/
+/*	set events_list;*/
+/*	infile dummy filevar = path length = reclen end = done missover dlm='2C'x dsd firstobs=4;*/
+/*	do while(not done);*/
+/*	    filename = substr(path,find(path,"Mobi","i"),35);*/
+/*		input uid: $char256. date: yymmdd10. time:time8. type: $char56. col_4: $char3. col_5: $char11. col_6: $char4. col_7: best8. col_8: $char9. */
+/* snr: $char11.;*/
+/*        format date date9. time time8.;*/
+/*		drop uid col_4-col_8;*/
+/*        output;*/
+/*	end;*/
+/*run;*/
 /**/
 /*Multiple Sensor Start*/
-proc sort data = events;
-by filename subject condition_id date time;
-run;
-data events_start;
-	set events (where = (type ="SENSOR_STARTED (58)"));
-	by filename subject condition_id;
-    if last.condition_id;
-run;
+/*proc sort data = events;*/
+/*by filename subject condition_id date time;*/
+/*run;*/
+/*data events_start;*/
+/*	set events (where = (type ="SENSOR_STARTED (58)"));*/
+/*	by filename subject condition_id;*/
+/*    if last.condition_id;*/
+/*run;*/
 /**/
 /*Loop anaplus.csv Data*/
-data anaplus;
-	set anaplus_list;
-	infile dummy filevar = path length = reclen end = done missover dlm='2C'x dsd firstobs=4;
-	do while(not done);
-	    filename = substr(path,find(path,"Mobi","i"),35);
-		input uid: $char16. date: yymmdd10. time: time8. type: $char56. ANA: best8. st: best8. tr: best1. nonact: best1.;
-        format date date9. time time8.;
-		drop uid st--nonact;
-        output;
-	end;
-run;
+/*data anaplus;*/
+/*	set anaplus_list;*/
+/*	infile dummy filevar = path length = reclen end = done missover dlm='2C'x dsd firstobs=4;*/
+/*	do while(not done);*/
+/*	    filename = substr(path,find(path,"Mobi","i"),35);*/
+/*		input uid: $char16. date: yymmdd10. time: time8. type: $char56. ANA: best8. st: best8. tr: best1. nonact: best1.;*/
+/*        format date date9. time time8.;*/
+/*		drop uid st--nonact;*/
+/*        output;*/
+/*	end;*/
+/*run;*/
 
 /*Left join to get sensor serial number*/
-proc sql;
-	create table auu_snr as
-	select * from anaplus as x left join events_start as y
-	on x.filename = y.filename;
-quit;
+/*proc sql;*/
+/*	create table auu_snr as*/
+/*	select * from anaplus as x left join events_start as y*/
+/*	on x.filename = y.filename;*/
+/*quit;*/
 
-data auu;
-set events_start auu_snr;
-format dtm datetime16.;
-dtm = dhms(date,0,0,time);
-drop date time filename;
-run;
+/*data auu;*/
+/*set events_start auu_snr;*/
+/*format dtm datetime16.;*/
+/*dtm = dhms(date,0,0,time);*/
+/*drop date time filename;*/
+/*run;*/
 
 /*stack*/
 libname out "\\oneabbott.com\dept\ADC\Technical_OPS\Clinical_Affairs\Clinical Study Files\Apollo\ADC-US-RES-23234_IDE Pump Suspension Study\Statistics\Programs\Datasets\AL";
 
 /*Remove Duplicated uploads*/
-proc sort data = auu NODUP out = out.AUU; 
-by subject condition_id dtm;
-run;
+/*proc sort data = auu NODUP out = out.AUU; */
+/*by subject condition_id dtm;*/
+/*run;*/
 
 /*Paired Data Point*/
 /*Filter Type = 906 for sensor data*/
 data auu_906;
+format dtm_sec datetime16.;
 set out.auu;
-/*ana_100 = ANA/100;*/
-/*if snr = "089CR2FAX" then dtm = dtm + 2*60*60;*/
-/*if snr = "089CR2ELD" then dtm = dtm - 1*60*60;*/
-/*if snr = "089CR2EAN" then delete;*/
-/*where type = "906" and year(datepart(dtm)) = 2023;*/
-where year(datepart(dtm)) = 2022;
+ana_100 = ANA/100;
+if snr = "089CR2FAX" then dtm = dtm + 2*60*60;
+if snr = "089CR2ELD" then dtm = dtm - 1*60*60;
+if snr = "089CR2CRA" and Type = "SENSOR_STARTED (58)" then dtm = dtm - 12*60*60;
+if snr = "089CR2EAN" then delete;
+dtm_sec = dtm;
+dtm = round(dtm,'0:01:00'T);
+where type = "906" and year(datepart(dtm)) = 2023;
 drop ANA;
 run;
 
@@ -310,28 +313,28 @@ data paired_ketone1;
 run;
 
 proc sort data = paired_ketone1; 
-by subject condition_id dtm_ref abstimediff KRSEQ01 descending dtm; 
+by subject condition_id dtm_ref abstimediff KRSEQ01 descending dtm_sec; 
 run;
 
 data paired_ketone2;
  set paired_ketone1;
- by subject condition_id dtm_ref abstimediff KRSEQ01 descending dtm;
- if first.dtm_ref; *Choose pair that is closest in time when BG paired with multiple GM;
+ by subject condition_id dtm_ref abstimediff KRSEQ01 descending dtm_sec;
+ if first.dtm_ref; *Choose pair that is closest in time when Ketone paired with multiple GM;
 run;
 
 proc sort data = paired_ketone2; 
-by subject condition_id dtm abstimediff dtm_ref; 
+by subject condition_id dtm_sec abstimediff dtm_ref; 
 run;
 
 data Ap;
  set paired_ketone2;
- by subject condition_id dtm abstimediff dtm_ref;
- if first.dtm; *Choose pair that is closest in time when GM paired with multiple BG;
- drop abstimediff;
+ by subject condition_id dtm_sec abstimediff dtm_ref;
+ if first.dtm_sec; *Choose pair that is closest in time when GM paired with multiple Ketone;
+ drop abstimediff dtm;
 run;
 
 /*Rate Deviation*/
-Proc sort data = Ap;
+proc sort data = Ap;
 by subject snr;
 run;
 
@@ -341,7 +344,7 @@ length level $25.;
 format lag_dtm datetime16. lag_dtm_ref datetime14;
 /*Consider individual sensor*/
 by subject snr;
-lag_dtm = lag(dtm); lag_dtm_ref = lag(dtm_ref);
+lag_dtm = lag(dtm_sec); lag_dtm_ref = lag(dtm_ref);
 lag_ana_100 = lag(ana_100); lag_KRSEQ01 = lag(KRSEQ01);
 if first.snr then do;
 lag_dtm = .; lag_dtm_ref = .; lag_ana_100 = .;
@@ -351,7 +354,7 @@ end;
 if first.snr then ketone_ref_rate = .;
 else ketone_ref_rate = (KRSEQ01 - lag_KRSEQ01) / ((dtm_ref - lag_dtm_ref)/3600);
 if first.snr then ketone_sensor_rate = .;
-else ketone_sensor_rate = (ana_100 - lag_ana_100) / ((dtm - lag_dtm)/3600);
+else ketone_sensor_rate = (ana_100 - lag_ana_100) / ((dtm_sec - lag_dtm)/3600);
 /*Calculate rate deviation*/
 rd = round(ketone_ref_rate-ketone_sensor_rate,.00000001);
 ard=abs(rd);
@@ -375,8 +378,22 @@ ard=abs(rd);
 drop lag_dtm--lag_KRSEQ01;
 run;
 
-options papersize=a3 orientation=portrait;
-ods rtf file="C:\Project\ADC-US-RES-23234\ADC-US-RES-23234-Report-%trim(%sysfunc(today(),yymmddn8.)).rtf" startpage=no;
+/*Accuracy Performance*/
+data Ap_accuracy;
+set Ap;
+bias=ana_100 - KRSEQ01; 
+abs_bias=abs(bias); 
+pbias=100*(bias)/KRSEQ01; 
+abs_pbias=abs(pbias);
+run;
+
+proc means data = Ap_accuracy maxdec=2 nonobs;
+title;
+var bias abs_bias pbias abs_pbias;
+run;
+
+/*options papersize=a3 orientation=portrait;*/
+/*ods rtf file="C:\Project\ADC-US-RES-23234\ADC-US-RES-23234-Report-%trim(%sysfunc(today(),yymmddn8.)).rtf" startpage=no;*/
 
 /*Summary Statistics on Ketone Result*/
 Proc means data = ketone maxdec=2 nonobs;
@@ -472,10 +489,10 @@ run;
 proc sgplot data = Ap_rate;
 title "Distribution of Rate Deviation";
 histogram rd;
-xaxis label = 'Rate Deviation (mmol/L/hour)' values = (-100 to 100 by 5);
+xaxis label = 'Rate Deviation (mmol/L/hour)' values = (-20 to 20 by 5);
 run;
 
-ODS RTF CLOSE;
+/*ODS RTF CLOSE;*/
 /*Profile Plot*/
 
 /*Profile Plot Data*/

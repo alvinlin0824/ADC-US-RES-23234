@@ -375,12 +375,12 @@ PairKetone <- function(sensor_data){
     # Select the nearest time
     group_by(`Subject ID`,`Ketone Date Time`) |>
     arrange(desc(`Date Time`)) |> 
-    slice_min(abs(`Ketone Date Time` - `Date Time`),n = 1,with_ties = F) |>
+    slice_min(abs(`Ketone Date Time` - round_date(`Date Time`,"minute")),n = 1,with_ties = F) |>
     ungroup() |> 
     # Select the nearest time
     group_by(`Subject ID`,`Date Time`) |>
     arrange(desc(`Date Time`)) |>
-    slice_min(abs(`Ketone Date Time` - `Date Time`),n = 1,with_ties = F) |>
+    slice_min(abs(`Ketone Date Time` - round_date(`Date Time`,"minute")),n = 1,with_ties = F) |>
     ungroup() |>
     select(!c(contains("Bound")))
 }
@@ -415,47 +415,18 @@ Ap <- upload_ketone |>
             `Absolute Rate Deviation` >= 0 & `Absolute Rate Deviation` <= 1~ "[0, 1]",
             `Absolute Rate Deviation` > 1 & `Absolute Rate Deviation` <= 2 ~ "(1, 2]",
             `Absolute Rate Deviation` > 2 & `Absolute Rate Deviation` <= 3 ~ "(2, 3]",
-            `Absolute Rate Deviation` > 3  ~ ">3"),.by = `Sensor Serial Number`) |>
-        filter(!is.na(`Rate Deviation`))
+            `Absolute Rate Deviation` > 3  ~ ">3"),
+            # Accuracy
+            `Difference(mmol/L)` = ANA/100 - KRSEQ01,
+            `Absolute Difference(mmol/L)` = abs(`Difference(mmol/L)`),
+            `Relative Difference(%)` = (`Difference(mmol/L)`/KRSEQ01)*100,
+            `Absolute Relative Difference(%)` = abs(`Relative Difference(%)`),
+       .by = `Sensor Serial Number`)
 ```
-
-,`Rate Deviation(mmol/L/hour)`,`Absolute Rate Deviation(mmol/L/hour)`)
-      mutate(across(where(is.factor), ~ as.character(.x)))
-```{r}
-haven::read_sas("ap_rate.sas7bdat") |>
-      transmute(`Subject ID` = as.character(subject),
-                `Condition ID` = condition_id,
-                `Date Time` = with_tz(dtm,tz = "UTC"),
-                 `Ketone Date Time` = with_tz(dtm_ref,tz = "UTC"),
-                 ANA = ana_100*100,
-                 KRSEQ01 = KRSEQ01,
-                 `Rate Deviation` = rd
-                # `Rate Deviation(mmol/L/hour)` = str_sub(level,3,10),
-                # `Absolute Rate Deviation(mmol/L/hour)` = str_sub(level1,3,9)
-                 ) |> 
-  dplyr::setdiff(
-   Ap |>
-   select(`Subject ID`,`Condition ID`,`Date Time`,`Ketone Date Time`,ANA,KRSEQ01,`Rate Deviation`)) |> 
-  arrange(`Subject ID`,`Condition ID`)
-
-Ap |>
-   select(`Subject ID`,`Condition ID`,`Date Time`,`Ketone Date Time`,ANA,KRSEQ01,`Rate Deviation`) |>
-  dplyr::setdiff(
-    haven::read_sas("ap_rate.sas7bdat") |>
-      transmute(`Subject ID` = as.character(subject),
-                `Condition ID` = condition_id,
-                `Date Time` = with_tz(dtm,tz = "UTC"),
-                 `Ketone Date Time` = with_tz(dtm_ref,tz = "UTC"),
-                 ANA = ana_100*100,
-                 KRSEQ01 = KRSEQ01,
-                 `Rate Deviation` = rd
-  ))
-   
-```
-
 
 ```{r}
 Ap |> 
+   filter(!is.na(`Rate Deviation`)) |> 
    tabyl(`Rate Deviation(mmol/L/hour)`) |> 
    adorn_totals("row") |> 
    gt() |> 
@@ -466,6 +437,7 @@ Ap |>
 
 ```{r}
 Ap |> 
+   filter(!is.na(`Rate Deviation`)) |> 
    tabyl(`Absolute Rate Deviation(mmol/L/hour)`) |> 
    adorn_totals("row") |> 
    gt() |> 
@@ -482,10 +454,50 @@ diff_calculation <- list(Mean = ~ mean(.x, na.rm = T),
                           Max = ~ max(.x, na.rm = T),
                           N = ~ sum(!is.na(.x),na.rm = T))
 Ap |>
-   reframe(across(c(`Rate Deviation`,`Absolute Rate Deviation`),diff_calculation))
-   # summarise_at(.vars = c("Rate Deviation","Absolute Rate Deviation"),.funs = diff_calculation)
+   filter(!is.na(`Rate Deviation`)) |> 
+   pivot_longer(`Rate Deviation`:`Absolute Rate Deviation`,names_to = "Variable") |> 
+   group_by(Variable) |> 
+   summarise_at(.vars = c("value"),.funs = diff_calculation) |> 
+   gt() |> 
+   cols_align(align = "center") |>
+   fmt_number(columns = Mean:Max,decimals = 2) |> 
+   opt_stylize(style = 6, color = "blue")  
 ```
 
+```{r}
+Ap |> 
+   filter(!is.na(`Rate Deviation`)) |> 
+   ggplot() +
+   geom_histogram(aes(x = `Rate Deviation`, y = ..density..),bins = 50) + 
+   scale_x_continuous(breaks = c(seq(-20,20,5)),limits = c(-20,20))
+```
+
+```{r}
+Ap |> 
+     # group_by(pick({{group_var}})) |> 
+     summarise(
+      across(c(`Difference(mmol/L)`:`Absolute Relative Difference(%)`), 
+              diff_calculation[1:3],.names = "{.col} {.fn}"), N = n()) |> 
+     relocate(N,.after = last_col()) |> 
+     gt()  |> 
+     cols_align(align = "center") |> 
+     tab_spanner(label = "Difference(mmol/L)",columns = c("Difference(mmol/L) Mean","Difference(mmol/L) Median","Difference(mmol/L) SD")) |> 
+     tab_spanner(label = "Abs. Difference (mmol/L)",columns = c("Absolute Difference(mmol/L) Mean","Absolute Difference(mmol/L) Median","Absolute Difference(mmol/L) SD")) |> 
+     tab_spanner(label = "Relative Difference(%)",columns = c("Relative Difference(%) Mean","Relative Difference(%) Median","Relative Difference(%) SD")) |> 
+     tab_spanner(label = "Absolute Relative Difference(%)",columns = c("Absolute Relative Difference(%) Mean","Absolute Relative Difference(%) Median","Absolute Relative Difference(%) SD")) |> 
+     fmt_number(columns = contains(c("Mean","Median")),decimals = 1) |> 
+     fmt_number(columns = contains(c("SD")),decimals = 2) |> 
+     cols_label(
+      `Difference(mmol/L) Mean` = "Mean",`Difference(mmol/L) Median` = "Median",
+      `Difference(mmol/L) SD` = "SD",
+      `Relative Difference(%) Mean` = "Mean",`Relative Difference(%) Median` = "Median",`Relative Difference(%) SD` = "SD",
+      `Absolute Difference(mmol/L) Mean` = "Mean",`Absolute Difference(mmol/L) Median` = "Median",
+      `Absolute Difference(mmol/L) SD` =  "SD",`Absolute Relative Difference(%) Mean` = "Mean",
+      `Absolute Relative Difference(%) Median` = "Median",
+      `Absolute Relative Difference(%) SD` = "SD"
+    ) |> 
+      opt_stylize(style = 6, color = "blue")
+```
 
 ```{r eval = params$plot}
 breakdown_condition_plot <- function(Id) {
