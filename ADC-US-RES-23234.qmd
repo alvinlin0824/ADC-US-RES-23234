@@ -465,11 +465,11 @@ Ap |>
 ```
 
 ```{r}
-Ap |> 
-   filter(!is.na(`Rate Deviation`)) |> 
-   ggplot() +
-   geom_histogram(aes(x = `Rate Deviation`, y = ..density..),bins = 50) + 
-   scale_x_continuous(breaks = c(seq(-20,20,5)),limits = c(-20,20))
+# Ap |> 
+#    filter(!is.na(`Rate Deviation`)) |> 
+#    ggplot() +
+#    geom_histogram(aes(x = `Rate Deviation`, y = ..density..),bins = 50) + 
+#    scale_x_continuous(breaks = c(seq(-20,20,5)),limits = c(-20,20))
 ```
 
 ```{r}
@@ -485,7 +485,7 @@ Ap |>
      tab_spanner(label = "Abs. Difference (mmol/L)",columns = c("Absolute Difference(mmol/L) Mean","Absolute Difference(mmol/L) Median","Absolute Difference(mmol/L) SD")) |> 
      tab_spanner(label = "Relative Difference(%)",columns = c("Relative Difference(%) Mean","Relative Difference(%) Median","Relative Difference(%) SD")) |> 
      tab_spanner(label = "Absolute Relative Difference(%)",columns = c("Absolute Relative Difference(%) Mean","Absolute Relative Difference(%) Median","Absolute Relative Difference(%) SD")) |> 
-     fmt_number(columns = contains(c("Mean","Median")),decimals = 1) |> 
+     fmt_number(columns = contains(c("Mean","Median")),decimals = 2) |> 
      fmt_number(columns = contains(c("SD")),decimals = 2) |> 
      cols_label(
       `Difference(mmol/L) Mean` = "Mean",`Difference(mmol/L) Median` = "Median",

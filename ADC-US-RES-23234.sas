@@ -9,6 +9,7 @@
 /*DMP \\oneabbott.com\dept\ADC\Technical_OPS\Clinical_Affairs\Clinical Study Files\Apollo\ADC-US-RES-23234_IDE Pump Suspension Study\CDM\Study_Binder\Data_Management_Plan\Version_1.0\Final*/
 
 libname edc "M:\ADC-US-RES-23234\OpenClinica\Current";
+libname out "\\oneabbott.com\dept\ADC\Technical_OPS\Clinical_Affairs\Clinical Study Files\Apollo\ADC-US-RES-23234_IDE Pump Suspension Study\Statistics\Programs\Datasets\AL";
 
 /*IV SAMPLE COLLECTION*/
 data iv1;
@@ -258,15 +259,13 @@ run;
 /*	on x.filename = y.filename;*/
 /*quit;*/
 
+/*stack*/
 /*data auu;*/
 /*set events_start auu_snr;*/
 /*format dtm datetime16.;*/
 /*dtm = dhms(date,0,0,time);*/
 /*drop date time filename;*/
-/*run;*/
-
-/*stack*/
-libname out "\\oneabbott.com\dept\ADC\Technical_OPS\Clinical_Affairs\Clinical Study Files\Apollo\ADC-US-RES-23234_IDE Pump Suspension Study\Statistics\Programs\Datasets\AL";
+/*run;
 
 /*Remove Duplicated uploads*/
 /*proc sort data = auu NODUP out = out.AUU; */
@@ -381,10 +380,10 @@ run;
 /*Accuracy Performance*/
 data Ap_accuracy;
 set Ap;
-bias=ana_100 - KRSEQ01; 
-abs_bias=abs(bias); 
-pbias=100*(bias)/KRSEQ01; 
-abs_pbias=abs(pbias);
+bias = ana_100 - KRSEQ01; 
+abs_bias = abs(bias); 
+pbias = 100*(bias)/KRSEQ01; 
+abs_pbias = abs(pbias);
 run;
 
 proc means data = Ap_accuracy maxdec=2 nonobs;
@@ -493,6 +492,11 @@ xaxis label = 'Rate Deviation (mmol/L/hour)' values = (-20 to 20 by 5);
 run;
 
 /*ODS RTF CLOSE;*/
+
+
+
+
+
 /*Profile Plot*/
 
 /*Profile Plot Data*/
