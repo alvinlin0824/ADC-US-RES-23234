@@ -338,7 +338,7 @@ by subject snr;
 run;
 
 data Ap_rate;
-set Ap;
+set Ap(where = (ana_100 between 0.6 and 3.0));
 length level $25.;
 format lag_dtm datetime16. lag_dtm_ref datetime14;
 /*Consider individual sensor*/
@@ -375,20 +375,6 @@ ard=abs(rd);
  if missing(rd) then delete;
 /*Drop useless columns*/
 drop lag_dtm--lag_KRSEQ01;
-run;
-
-/*Accuracy Performance*/
-data Ap_accuracy;
-set Ap;
-bias = ana_100 - KRSEQ01; 
-abs_bias = abs(bias); 
-pbias = 100*(bias)/KRSEQ01; 
-abs_pbias = abs(pbias);
-run;
-
-proc means data = Ap_accuracy maxdec=2 nonobs;
-title;
-var bias abs_bias pbias abs_pbias;
 run;
 
 /*options papersize=a3 orientation=portrait;*/
@@ -492,6 +478,45 @@ xaxis label = 'Rate Deviation (mmol/L/hour)' values = (-20 to 20 by 5);
 run;
 
 /*ODS RTF CLOSE;*/
+
+data Ap_accuracy;
+/*Filter range 0.6 and 3.0 mmol/L*/
+set Ap(where = (ana_100 between 0.6 and 3.0));
+length Level Group $25.;
+bias = ana_100 - KRSEQ01; 
+abs_bias = abs(bias); 
+pbias = 100*(bias)/KRSEQ01; 
+abs_pbias = abs(pbias);
+/*Assign a Level based on reference*/
+if KRSEQ01 < 1 then Level = "<1 mmol/L";
+else Level = ">=1 mmol/L";
+/*Categorize Bias Group*/
+/*Reference < 1*/
+if KRSEQ01 < 1 then do;
+if abs_bias >= 0 and abs_bias <= 0.1 then Group = "Within +- 0.1 mmol/L"; 
+if abs_bias > 0.1 and abs_bias <= 0.2 then Group = "Within +- 0.2 mmol/L"; 
+if abs_bias > 0.2 and abs_bias <= 0.3 then Group = "Within +- 0.3 mmol/L"; 
+if abs_bias > 0.3 and abs_bias <= 0.4 then Group = "Within +- 0.4 mmol/L"; 
+if abs_bias > 0.4 then Group = "Outside +- 0.4 mmol/L";
+end;
+/*Reference >= 1*/
+if KRSEQ01 >= 1 then do;
+if round(abs_pbias) >= 0 and round(abs_pbias) <= 10 then Group = "Within +- 10%"; 
+if round(abs_pbias) > 10 and round(abs_pbias) <= 20 then Group = "Within +- 20%"; 
+if round(abs_pbias) > 20 and round(abs_pbias) <= 30 then Group = "Within +- 30%"; 
+if round(abs_pbias) > 30 and round(abs_pbias) <= 40 then Group = "Within +- 40%";
+if round(abs_pbias) > 40 then Group = "Outside +- 40%";
+end;
+run;
+
+proc freq data = Ap_accuracy;
+
+
+/*proc means data = Ap_accuracy maxdec=2 nonobs;*/
+/*title;*/
+/*var bias abs_bias pbias abs_pbias;*/
+/*run;*/
+
 
 
 
