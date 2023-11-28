@@ -482,44 +482,94 @@ run;
 data Ap_accuracy;
 /*Filter range 0.6 and 3.0 mmol/L*/
 set Ap(where = (ana_100 between 0.6 and 3.0));
-length Level Group $25.;
+format Level Group $35.;
 bias = ana_100 - KRSEQ01; 
 abs_bias = abs(bias); 
 pbias = 100*(bias)/KRSEQ01; 
 abs_pbias = abs(pbias);
-/*Assign a Level based on reference*/
-if KRSEQ01 < 1 then Level = "<1 mmol/L";
-else Level = ">=1 mmol/L";
 /*Categorize Bias Group*/
 /*Reference < 1*/
 if KRSEQ01 < 1 then do;
-if abs_bias >= 0 and abs_bias <= 0.1 then Group = "Within +- 0.1 mmol/L"; 
-if abs_bias > 0.1 and abs_bias <= 0.2 then Group = "Within +- 0.2 mmol/L"; 
-if abs_bias > 0.2 and abs_bias <= 0.3 then Group = "Within +- 0.3 mmol/L"; 
-if abs_bias > 0.3 and abs_bias <= 0.4 then Group = "Within +- 0.4 mmol/L"; 
-if abs_bias > 0.4 then Group = "Outside +- 0.4 mmol/L";
+if abs_bias >= 0 and abs_bias <= 0.1 then Group = "Within +- 10%/ +- 0.1 mmol/L"; 
+if abs_bias > 0.1 and abs_bias <= 0.2 then Group = "Within +- 20%/ +- 0.2 mmol/L"; 
+if abs_bias > 0.2 and abs_bias <= 0.3 then Group = "Within +- 30%/ +- 0.3 mmol/L"; 
+if abs_bias > 0.3 and abs_bias <= 0.4 then Group = "Within +- 40%/ +- 0.4 mmol/L"; 
+if abs_bias > 0.4 then Group = "Outside +- 40%/ +- 0.4 mmol/L";
+/*Assign a Level based on reference*/
+Level = "<1 mmol/L";
 end;
 /*Reference >= 1*/
 if KRSEQ01 >= 1 then do;
-if round(abs_pbias) >= 0 and round(abs_pbias) <= 10 then Group = "Within +- 10%"; 
-if round(abs_pbias) > 10 and round(abs_pbias) <= 20 then Group = "Within +- 20%"; 
-if round(abs_pbias) > 20 and round(abs_pbias) <= 30 then Group = "Within +- 30%"; 
-if round(abs_pbias) > 30 and round(abs_pbias) <= 40 then Group = "Within +- 40%";
-if round(abs_pbias) > 40 then Group = "Outside +- 40%";
+if round(abs_pbias) >= 0 and round(abs_pbias) <= 10 then Group = "Within +- 10%/ +- 0.1 mmol/L"; 
+if round(abs_pbias) > 10 and round(abs_pbias) <= 20 then Group = "Within +- 20%/ +- 0.2 mmol/L"; 
+if round(abs_pbias) > 20 and round(abs_pbias) <= 30 then Group = "Within +- 30%/ +- 0.3 mmol/L"; 
+if round(abs_pbias) > 30 and round(abs_pbias) <= 40 then Group = "Within +- 40%/ +- 0.4 mmol/L";
+if round(abs_pbias) > 40 then Group = "Outside +- 40%/ +- 0.4 mmol/L";
+/*Assign a Level based on reference*/
+Level = ">=1 mmol/L";
 end;
 run;
 
-proc freq data = Ap_accuracy;
+/*System Agreement*/
 
+/*Count Each Group*/
+proc freq data = Ap_accuracy noprint;
+tables Level*Group/ out = freq;
+run;
 
-/*proc means data = Ap_accuracy maxdec=2 nonobs;*/
-/*title;*/
-/*var bias abs_bias pbias abs_pbias;*/
-/*run;*/
+/*Global Sum*/
+proc sql;
+create table sql_freq as 
+select Level,Group,COUNT, sum(COUNT) as global_sum
+from freq 
+group by Level;
+quit;
 
+/*Cumulative Sum per Group*/
+proc sort data = sql_freq;
+by Level Group;
+run;
 
+data sys_freq;
+set sql_freq;
+by Level;
+if first.Level then local_sum = .;
+else local_sum + COUNT;
+run;
 
+/*Percent*/
+data sys_freq1;
+set sys_freq;
+if local_sum = . then local_sum = COUNT;
+percent = (local_sum/global_sum)*100;
+N = put(local_sum,5.)||' / '||strip(put(global_sum,5.))||' ('||strip(put(percent,5.1))||'%)';
+run;
 
+/*Transpose*/
+proc transpose data = sys_freq1 out = sys_trans(drop=_name_);
+by Level;
+ID Group;
+VAR N;
+run;
+
+data sys_trans1;
+retain Level "Within +- 10%/ +- 0.1 mmol/L"n
+"Within +- 20%/ +- 0.2 mmol/L"n "Within +- 30%/ +- 0.3 mmol/L"n
+"Within +- 40%/ +- 0.4 mmol/L"n "Outside +- 40%/ +- 0.4 mmol/L"n;
+set sys_trans;
+run;
+
+proc report data=sys_trans1 nofs split='$'
+ style(column)=[just=l font=(arial, 10pt)]
+ style(header)=[font_weight=bold just=c font=(arial, 10pt)]
+ style(lines)=[font_weight=bold just=l];
+ title1 ' ';
+ columns ("System Agreement Results Split at 1 mmol/L" Level "Within +- 10%/ +- 0.1 mmol/L"n
+"Within +- 20%/ +- 0.2 mmol/L"n "Within +- 30%/ +- 0.3 mmol/L"n
+"Within +- 40%/ +- 0.4 mmol/L"n "Outside +- 40%/ +- 0.4 mmol/L"n);
+ define Level /"Ketone Level" order order=data width=5; 
+run;
+/*System Agreement*/
 
 
 /*Profile Plot*/
