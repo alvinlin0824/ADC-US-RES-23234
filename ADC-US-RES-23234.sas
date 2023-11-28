@@ -571,6 +571,38 @@ proc report data=sys_trans1 nofs split='$'
 run;
 /*System Agreement*/
 
+proc means data = Ap_accuracy noprint;
+var abs_pbias pbias abs_bias bias;
+output out = bias_mean(drop = _TYPE_ _FREQ_) mean =  median =  n = / autoname ;
+run;
+
+/*Change Column names and order*/
+data bias_table;
+retain abs_pbias_Mean abs_pbias_Median
+pbias_Mean pbias_Median abs_bias_Mean abs_bias_Median bias_Mean bias_Median;
+set bias_mean(drop = abs_pbias_N pbias_N abs_bias_N);
+run;
+
+proc report data=bias_table nofs split='$'
+ style(column)=[just=l font=(arial, 10pt)] style(header)=[font_weight=bold just=c font=(arial, 10pt)] style(lines)=[font_weight=bold just=l];
+ title1 ' ';
+ columns ("Bias Measures" ("MARD (%)" abs_pbias_Mean abs_pbias_Median) ("% Bias" pbias_Mean pbias_Median) ("Abs. Bias (mmol/L)" abs_bias_Mean abs_bias_Median) ("Bias (mmol/L)" bias_Mean bias_Median) bias_N);
+ define abs_pbias_Mean /"Mean" display f=8.1 width=5; 
+ define abs_pbias_Median /"Median" display f=8.1 width=5;
+ define pbias_Mean /"Mean" display f=8.1 width=5; 
+ define pbias_Median /"Median" display f=8.1 width=5; 
+ define abs_bias_Mean /"Mean" display f=8.1 width=5; 
+ define abs_bias_Median /"Median" display f=8.1 width=5; 
+ define bias_Mean /"Mean" display f=8.1 width=5;
+ define bias_Median /"Median" display f=8.1 width=5; 
+ define bias_N /"N" display width=5;
+run;
+
+/*Difference Measure*/
+
+
+
+
 
 /*Profile Plot*/
 
