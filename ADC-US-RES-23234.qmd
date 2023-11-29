@@ -397,7 +397,9 @@ Ap <- upload_ketone |>
       map(\(df) PairKetone(sensor_data = df),.progress = T) |>
       list_rbind() |> 
       # Rate
-      mutate(sensor_rate = ((ANA-lag(ANA))/100) / (as.numeric(difftime(`Date Time`,lag(`Date Time`),units = "hours"))),
+      mutate(Level = case_when(KRSEQ01 < 1 ~ "< 1 mmol/L",
+                              .default = ">= 1 mmol/L"),
+             sensor_rate = ((ANA-lag(ANA))/100) / (as.numeric(difftime(`Date Time`,lag(`Date Time`),units = "hours"))),
              ref_rate = ((KRSEQ01-lag(KRSEQ01))) / (as.numeric(difftime(`Ketone Date Time`,lag(`Ketone Date Time`),units = "hours"))),
              `Rate Deviation` = round((ref_rate - sensor_rate) + 0.0000000001,8),
              `Absolute Rate Deviation` = abs(`Rate Deviation`),
@@ -425,7 +427,9 @@ Ap <- upload_ketone |>
 ```
 
 ```{r}
+#| label: Summary for Rate Deviation
 Ap |> 
+   filter(between(ANA,60,300)) |> 
    filter(!is.na(`Rate Deviation`)) |> 
    tabyl(`Rate Deviation(mmol/L/hour)`) |> 
    adorn_totals("row") |> 
@@ -436,7 +440,9 @@ Ap |>
 ```
 
 ```{r}
+#| label: Summary for Absolute Rate Deviation
 Ap |> 
+   filter(between(ANA,60,300)) |>
    filter(!is.na(`Rate Deviation`)) |> 
    tabyl(`Absolute Rate Deviation(mmol/L/hour)`) |> 
    adorn_totals("row") |> 
@@ -447,6 +453,7 @@ Ap |>
 ```
 
 ```{r}
+#| label: Summary statistics for rate deviation
 diff_calculation <- list(Mean = ~ mean(.x, na.rm = T),
                           Median = ~ median(.x, na.rm = T),
                           SD = ~ sd(.x, na.rm = T),
@@ -454,6 +461,7 @@ diff_calculation <- list(Mean = ~ mean(.x, na.rm = T),
                           Max = ~ max(.x, na.rm = T),
                           N = ~ sum(!is.na(.x),na.rm = T))
 Ap |>
+   filter(between(ANA,60,300)) |>
    filter(!is.na(`Rate Deviation`)) |> 
    pivot_longer(`Rate Deviation`:`Absolute Rate Deviation`,names_to = "Variable") |> 
    group_by(Variable) |> 
@@ -465,16 +473,91 @@ Ap |>
 ```
 
 ```{r}
-# Ap |> 
-#    filter(!is.na(`Rate Deviation`)) |> 
-#    ggplot() +
-#    geom_histogram(aes(x = `Rate Deviation`, y = ..density..),bins = 50) + 
-#    scale_x_continuous(breaks = c(seq(-20,20,5)),limits = c(-20,20))
+#| label: Histogram of Rate Deviation
+Ap |>
+   filter(between(ANA,60,300)) |>
+   filter(!is.na(`Rate Deviation`)) |>
+   ggplot() +
+   geom_histogram(aes(x = `Rate Deviation`, y = ..density..),bins = 50) +
+   scale_x_continuous(breaks = c(seq(-10,10,1)),limits = c(-10,10)) +
+   theme_bw() + 
+   theme(panel.grid.major.y = element_blank(),panel.grid.minor.y = element_blank(),legend.position = "bottom",plot.title = element_text(hjust = 0.5))
 ```
 
 ```{r}
+#| label: System Agreement
+ketone_breaks <- c(0,0.1,0.2,0.3,0.4,Inf)
+ketone_breaks_percent <- c(0,10,20,30,40,Inf)
+sys <- Ap |> 
+        bind_rows(
+          Ap |> 
+          mutate(Level = "Overall")) |> 
+        filter(between(ANA,60,300)) |>
+        mutate(Level = factor(Level,levels = c("< 1 mmol/L",">= 1 mmol/L","Overall")),
+               Group = case_when(Level == "< 1 mmol/L" & KRSEQ01 < 1 ~ cut(`Absolute Difference(mmol/L)`, breaks = ketone_breaks,include.lowest = T),
+                             Level == ">= 1 mmol/L" & KRSEQ01 >= 1 ~ cut(round(`Absolute Relative Difference(%)` + 0.001,0), breaks = ketone_breaks_percent,include.lowest = T),
+                             Level == "Overall" & KRSEQ01 < 1  ~ cut(100*`Absolute Difference(mmol/L)`, breaks = ketone_breaks_percent,include.lowest = T),
+                             Level == "Overall" & KRSEQ01 >= 1 ~ cut(round(`Absolute Relative Difference(%)` + 0.001,0), breaks = ketone_breaks_percent,include.lowest = T))
+           ) |> 
+          group_by(Level) |>
+          count(Level,Group,.drop = F) |> 
+          # Remove redundant factor levels
+          filter(!(Level == "< 1 mmol/L"
+                 & Group %in% c("[0,10]","(10,20]","(20,30]","(30,40]","(40,Inf]")) &
+                 !(Level %in% c(">= 1 mmol/L","Overall")
+                 & Group %in% c("[0,0.1]","(0.1,0.2]","(0.2,0.3]","(0.3,0.4]","(0.4,Inf]"))) |> 
+          mutate(Sum = sum(n),
+                 cum = case_when(row_number() %in% c(1:4) ~ cumsum(n),
+                      .default = n),
+                 Percent = case_when(Sum == 0 ~ 0,
+                          .default = round((cum/Sum)*100,1))) |> 
+         ungroup() |>
+         filter(!is.na(Level))
+ # sys |>
+ #   mutate(Group = case_when(
+ #          Level == "< 1 mmol/L" & Group == "[0,0.1]" ~ "Within ± 0.1 mmol/L",
+ #          Level == "< 1 mmol/L" & Group == "(0.1,0.2]" ~ "Within ± 0.2 mmol/L",
+ #          Level == "< 1 mmol/L" & Group == "(0.2,0.3]" ~ "Within ± 0.3 mmol/L",
+ #          Level == "< 1 mmol/L" & Group == "(0.3,0.4]" ~ "Within ± 0.4 mmol/L",
+ #          Level == "< 1 mmol/L" & Group == "(0.4,Inf]" ~ "Outside ± 0.4 mmol/L",
+ #          
+ #          Level == ">= 1 mmol/L" & Group == "[0,10]" ~ "Within ± 10%",
+ #          Level == ">= 1 mmol/L" & Group == "(10,20]" ~ "Within ± 20%",
+ #          Level == ">= 1 mmol/L" & Group == "(20,30]" ~ "Within ± 30%",
+ #          Level == ">= 1 mmol/L" & Group == "(30,40]" ~ "Within ± 40%",
+ #          Level == ">= 1 mmol/L" & Group == "(40,Inf]" ~ "Outside ± 40%",
+ #          
+ #          Level == "Overall" & Group == "[0,10]" ~ "Within ± 10% / Within ± 0.1 mmol/L",
+ #          Level == "Overall" & Group == "(10,20]" ~ "Within ± 20% / Within ± 0.2 mmol/L",
+ #          Level == "Overall" & Group == "(20,30]" ~ "Within ± 30% / Within ± 0.3 mmol/L",
+ #          Level == "Overall" & Group == "(30,40]" ~ "Within ± 40% / Within ± 0.4 mmol/L",
+ #          Level == "Overall" & Group == "(40,Inf]" ~ "Outside ± 40%/ Outside ± 0.4 mmol/L"),
+ #          `N(%)` = str_c(cum,"/",Sum," ","(",Percent,"%)")) |> 
+ #  pivot_wider(id_cols = !c(n:Percent),names_from = NULL,values_from = `N(%)`)
+
+ sys |>
+         mutate(Group = case_when(
+           Group %in% c("[0,10]","[0,0.1]") ~ "Within ± 10% / Within ± 0.1 mmol/L",
+           Group %in% c("(10,20]","(0.1,0.2]") ~ "Within ± 20% / Within ± 0.2 mmol/L",
+           Group %in% c("(20,30]","(0.2,0.3]") ~ "Within ± 30% / Within ± 0.3 mmol/L",
+           Group %in% c("(30,40]","(0.3,0.4]") ~ "Within ± 40% / Within ± 0.4 mmol/L",
+           Group %in% c("(40,Inf]","(0.4,Inf]") ~ "Outside ± 40%/ Outside ± 0.4 mmol/L"),
+          `N(%)` = str_c(cum,"/",Sum," ","(",Percent,"%)")) |>
+    pivot_wider(id_cols = !c(n:Percent),names_from = Group,values_from = `N(%)`) |> 
+    gt() |>
+    cols_align(align = "center") |>
+    cols_width(everything() ~ px(200)) |>
+    opt_stylize(style = 6, color = "blue")
+```
+
+```{r}
+#| label: Difference Measures
 Ap |> 
-     # group_by(pick({{group_var}})) |> 
+   bind_rows(
+     Ap |> 
+        mutate(Level = "Overall")) |> 
+    filter(between(ANA,60,300)) |>
+    group_by(Level) |> 
      summarise(
       across(c(`Difference(mmol/L)`:`Absolute Relative Difference(%)`), 
               diff_calculation[1:3],.names = "{.col} {.fn}"), N = n()) |> 
@@ -485,8 +568,8 @@ Ap |>
      tab_spanner(label = "Abs. Difference (mmol/L)",columns = c("Absolute Difference(mmol/L) Mean","Absolute Difference(mmol/L) Median","Absolute Difference(mmol/L) SD")) |> 
      tab_spanner(label = "Relative Difference(%)",columns = c("Relative Difference(%) Mean","Relative Difference(%) Median","Relative Difference(%) SD")) |> 
      tab_spanner(label = "Absolute Relative Difference(%)",columns = c("Absolute Relative Difference(%) Mean","Absolute Relative Difference(%) Median","Absolute Relative Difference(%) SD")) |> 
-     fmt_number(columns = contains(c("Mean","Median")),decimals = 2) |> 
-     fmt_number(columns = contains(c("SD")),decimals = 2) |> 
+     fmt_number(columns = contains(c("Mean","Median")),decimals = 1) |> 
+     fmt_number(columns = contains(c("SD")),decimals = 1) |> 
      cols_label(
       `Difference(mmol/L) Mean` = "Mean",`Difference(mmol/L) Median` = "Median",
       `Difference(mmol/L) SD` = "SD",
@@ -498,6 +581,60 @@ Ap |>
     ) |> 
       opt_stylize(style = 6, color = "blue")
 ```
+
+```{r}
+#| label: Concurrence function
+concur_fun <- function(data, trans = FALSE){
+  
+
+data %>%  
+   # Create YSI and GM Category
+                                  # Round half to even, so add noise
+   mutate(ANA = ANA/100,
+          `KM (mmol/L)` =  
+                        fct_case_when(ANA < 0.6 ~ "<0.6",
+                                      ANA >= 0.6 & ANA < 1.0 ~ "[0.6-1.0)",
+                                      ANA >= 1.0 & ANA <= 1.5 ~ "[1.0-1.5]",
+                                      ANA > 1.5 & ANA <= 3.0 ~ "(1.5-3.0]",
+                                      ANA > 3.0 ~ ">3.0"),
+          `Ref (mmol/L)` =  
+                      fct_case_when(KRSEQ01 < 0.6 ~ "<0.6",
+                                    KRSEQ01 >= 0.6 & KRSEQ01 < 1.0 ~ "[0.6-1.0)",
+                                    KRSEQ01 >= 1.0 & KRSEQ01 <= 1.5 ~ "[1.0-1.5]",
+                                    KRSEQ01 > 1.5 & KRSEQ01 <= 3.0 ~ "(1.5-3.0]",
+                                    KRSEQ01 > 3.0 ~ ">3.0")) %>% 
+    # Three Way contingency Table
+    {if (trans == FALSE) tabyl(.,`KM (mmol/L)`,`Ref (mmol/L)`) 
+     else tabyl(.,`Ref (mmol/L)`,`KM (mmol/L)`)} %>% 
+    adorn_totals("col") %>% 
+    adorn_percentages("row") %>%  
+    adorn_pct_formatting(digits = 1) %>%
+    adorn_ns() %>% 
+    mutate(Total = str_remove_all(Total,"100.0%|\\(|\\)")) %>%
+    gt() %>% 
+    cols_align(align = "center") %>%
+    sub_missing(columns = everything(),missing_text = "") %>%
+    opt_stylize(style = 6, color = "blue") %>%
+    {if (trans == FALSE) tab_spanner(.,label = "Ref (mmol/L)",columns = !contains("Total"))
+    else tab_spanner(.,label = "KM (mmol/L)",columns = -contains("Total"))} %>%
+    # Add Header
+    {if (trans == FALSE ) tab_header(.,title = md("Concurrence Analysis by Ketone Level (KM vs. Ref)"))
+    else (tab_header(.,title = md("Concurrence Analysis by Glucose Level (Ref vs. KM)")))}
+}
+```
+
+```{r}
+#| label: KM vs Ref
+Ap |> 
+   concur_fun(trans = F)
+```
+
+```{r}
+#| label: Ref vs KM
+Ap |> 
+   concur_fun(trans = T)
+```
+
 
 ```{r eval = params$plot}
 breakdown_condition_plot <- function(Id) {

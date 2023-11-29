@@ -336,9 +336,9 @@ run;
 proc sort data = Ap;
 by subject snr;
 run;
-
+/*(where = (ana_100 between 0.6 and 3.0))*/
 data Ap_rate;
-set Ap(where = (ana_100 between 0.6 and 3.0));
+set Ap;
 length level $25.;
 format lag_dtm datetime16. lag_dtm_ref datetime14;
 /*Consider individual sensor*/
@@ -373,6 +373,7 @@ ard=abs(rd);
  if ard gt 3 then level1 = '4: >3';
 /* Remove missing rd*/
  if missing(rd) then delete;
+ if ana_100 >= 0.6 and ana_100 <= 3;
 /*Drop useless columns*/
 drop lag_dtm--lag_KRSEQ01;
 run;
@@ -401,13 +402,13 @@ table  Visit, KRSEQ01 = "Maximum Ketone Level Achieved"*(n mean stddev) duration
 duration_to_last = "Time(Hours) From Peak Ketone Level to Ketone Level < 1 mmol/L"*(n mean stddev);
 run;
 
-/*goptions device=png target=png rotate=landscape hpos=90 vpos=40 gwait=0 aspect=0.5*/
-/*ftext='arial' htext=9pt hby=16pt gsfname=exfile gsfmode=replace xmax=16in hsize=10in ymax=11in vsize=6in;*/
+goptions device=png target=png rotate=landscape hpos=90 vpos=40 gwait=0 aspect=0.5
+ftext='arial' htext=9pt hby=16pt gsfname=exfile gsfmode=replace xmax=16in hsize=10in ymax=11in vsize=6in;
 
 ods graphics on / reset attrpriority=color width=8in height=5in;
 /*Reference Plot*/
 proc sgplot data = ketone noautolegend cycleattrs;
-where dtm is not missing;
+where ^missing(dtm);
 title1 "Ketone Reference";
 styleattrs datacontrastcolors = (magenta green blue orange lilac lime marron olive steel violet yellow);
 	series x = time_diff y = krseq01 / group = subject groupdisplay = overlay markers markerattrs = (size = 3 symbol = dot) name = "REAL";
@@ -476,7 +477,7 @@ title "Distribution of Rate Deviation";
 histogram rd;
 xaxis label = 'Rate Deviation (mmol/L/hour)' values = (-10 to 10 by 1);
 run;
-/*ODS RTF CLOSE;*/
+ODS RTF CLOSE;
 
 data Ap_accuracy;
 set Ap;
@@ -511,13 +512,13 @@ if KRSEQ01 < 0.6 then concur_ref_group = "1: <0.6";
 if KRSEQ01 >= 0.6 and KRSEQ01 < 1.0 then concur_ref_group = "2: [0.6-1.0)";
 if KRSEQ01 >= 1.0 and KRSEQ01 <= 1.5 then concur_ref_group = "3: [1.0-1.5]";
 if KRSEQ01 > 1.5 and KRSEQ01 <= 3 then concur_ref_group = "4: (1.5-3]";
-else concur_ref_group = "5: >3.0";
+if KRSEQ01 > 3.0 then concur_ref_group = "5: >3.0";
 /*Ketone Upload Category*/
 if ana_100 < 0.6 then concur_upload_group = "1: <0.6";
 if ana_100 >= 0.6 and ana_100 < 1.0 then concur_upload_group = "2: [0.6-1.0)";
 if ana_100 >= 1.0 and ana_100 <= 1.5 then concur_upload_group = "3: [1.0-1.5]";
 if ana_100 > 1.5 and ana_100 <= 3 then concur_upload_group = "4: (1.5-3]";
-else concur_upload_group = "5: >3.0";
+if ana_100 > 3.0 then concur_upload_group = "5: >3.0";
 run;
 
 /*/*System Agreement*/
@@ -592,9 +593,9 @@ pbias_Mean pbias_Median abs_bias_Mean abs_bias_Median bias_Mean bias_Median;
 set bias_mean(drop = abs_pbias_N pbias_N abs_bias_N);
 where ^missing(Level);
 run;
-/*/*Difference Measure*/*/
+/*Difference Measure*/
 
-/*/*Concurrence*/*/
+/*Concurrence*/
 /*KM vs Ref*/
 ods select none;
 proc tabulate data=Ap_accuracy format=8.1 style=[cellwidth=1.0cm just=c] out = upload_count;
@@ -641,7 +642,7 @@ run;
 data concur_km_vs_ref;
  merge upload_count_tran upload_percent_tran;
  by concur_upload_group;
- if concur_upload_group = '1: <0.6' then ref_nam = '<0.6    '; 
+ if concur_upload_group = '1: <0.6' then ref_nam = '<0.6      '; 
  else if concur_upload_group ='2: [0.6-1.0)' then ref_nam = '[0.6-1.0)'; 
  else if concur_upload_group ='3: [1.0-1.5]' then ref_nam = '[1.0-1.5]';
  else if concur_upload_group ='4: (1.5-3]' then ref_nam='(1.5-3]'; 
@@ -695,7 +696,7 @@ run;
 data concur_ref_vs_km;
  merge ref_count_tran ref_percent_tran;
  by concur_ref_group;
- if concur_ref_group = '1: <0.6' then ref_nam = '<0.6    '; 
+ if concur_ref_group = '1: <0.6' then ref_nam = '<0.6      '; 
  else if concur_ref_group ='2: [0.6-1.0)' then ref_nam = '[0.6-1.0)'; 
  else if concur_ref_group ='3: [1.0-1.5]' then ref_nam = '[1.0-1.5]';
  else if concur_ref_group ='4: (1.5-3]' then ref_nam='(1.5-3]'; 
@@ -705,8 +706,8 @@ run;
 /*/*Concurrence*/*/
 
 
-/*options papersize=a3 orientation=portrait;*/
-/*ods rtf file="C:\Project\ADC-US-RES-23234\ADC-US-RES-23234-Accuracy-Report-%trim(%sysfunc(today(),yymmddn8.)).rtf" startpage=no;*/
+options papersize=a3 orientation=portrait;
+ods rtf file="C:\Project\ADC-US-RES-23234\ADC-US-RES-23234-Accuracy-Report-%trim(%sysfunc(today(),yymmddn8.)).rtf" startpage=no;
 proc report data=sys_trans1 nofs split='$'
  style(column)=[just=l font=(arial, 10pt)]
  style(header)=[font_weight=bold just=c font=(arial, 10pt)]
@@ -739,8 +740,11 @@ proc report data=concur_km_vs_ref nofs split='$'
  style(header)=[font_weight=bold just=c font=(arial, 10pt)]
  style(lines)=[font_weight=bold just=l];
  title1 " "; 
- columns ("Concurrence Analysis by Ketone Level (KM vs. Ref)" ref_nam ("Ref (mmol/L)" 'p4: (1.5-3]'n 'p5: >3.0'n) nTotal);
+ columns ("Concurrence Analysis by Ketone Level (KM vs. Ref)" ref_nam ("Ref (mmol/L)" 'p1: <0.6'n 'p2: [0.6-1.0)'n 'p3: [1.0-1.5]'n 'p4: (1.5-3]'n 'p5: >3.0'n) nTotal);
  define ref_nam /"KM (mmol/L)" display;
+ define 'p1: <0.6'n /"<0.6" display f=8.1 width=5; 
+ define 'p2: [0.6-1.0)'n /"[0.6-1.0)" display f=8.1 width=5;
+ define 'p3: [1.0-1.5]'n /"[1.0-1.5]" display f=8.1 width=5; 
  define 'p4: (1.5-3]'n /"(1.5-3]" display f=8.1 width=5; 
  define 'p5: >3.0'n /">3.0" display f=8.1 width=5;
  define ntotal /"N" display f=8.0 width=5;
@@ -751,8 +755,11 @@ proc report data=concur_ref_vs_km nofs split='$'
  style(header)=[font_weight=bold just=c font=(arial, 10pt)]
  style(lines)=[font_weight=bold just=l];
  title1 " "; 
- columns ("Concurrence Analysis by Ketone Level (Ref vs. KM)" ref_nam ("KM (mmol/L)" 'p4: (1.5-3]'n 'p5: >3.0'n) nTotal);
+ columns ("Concurrence Analysis by Ketone Level (Ref vs. KM)" ref_nam ("KM (mmol/L)" 'p1: <0.6'n 'p2: [0.6-1.0)'n 'p3: [1.0-1.5]'n 'p4: (1.5-3]'n 'p5: >3.0'n) nTotal);
  define ref_nam /"Ref (mmol/L)" display;
+ define 'p1: <0.6'n /"<0.6" display f=8.1 width=5; 
+ define 'p2: [0.6-1.0)'n /"[0.6-1.0)" display f=8.1 width=5;
+ define 'p3: [1.0-1.5]'n /"[1.0-1.5]" display f=8.1 width=5; 
  define 'p4: (1.5-3]'n /"(1.5-3]" display f=8.1 width=5; 
  define 'p5: >3.0'n /">3.0" display f=8.1 width=5;
  define ntotal /"N" display f=8.0 width=5;
