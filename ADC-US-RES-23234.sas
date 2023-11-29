@@ -377,8 +377,8 @@ ard=abs(rd);
 drop lag_dtm--lag_KRSEQ01;
 run;
 
-/*options papersize=a3 orientation=portrait;*/
-/*ods rtf file="C:\Project\ADC-US-RES-23234\ADC-US-RES-23234-Report-%trim(%sysfunc(today(),yymmddn8.)).rtf" startpage=no;*/
+options papersize=a3 orientation=portrait;
+ods rtf file="C:\Project\ADC-US-RES-23234\ADC-US-RES-23234-Safety-Report-%trim(%sysfunc(today(),yymmddn8.)).rtf" startpage=no;
 
 /*Summary Statistics on Ketone Result*/
 Proc means data = ketone maxdec=2 nonobs;
@@ -401,8 +401,8 @@ table  Visit, KRSEQ01 = "Maximum Ketone Level Achieved"*(n mean stddev) duration
 duration_to_last = "Time(Hours) From Peak Ketone Level to Ketone Level < 1 mmol/L"*(n mean stddev);
 run;
 
-goptions device=png target=png rotate=landscape hpos=90 vpos=40 gwait=0 aspect=0.5
-ftext='arial' htext=9pt hby=16pt gsfname=exfile gsfmode=replace xmax=16in hsize=10in ymax=11in vsize=6in;
+/*goptions device=png target=png rotate=landscape hpos=90 vpos=40 gwait=0 aspect=0.5*/
+/*ftext='arial' htext=9pt hby=16pt gsfname=exfile gsfmode=replace xmax=16in hsize=10in ymax=11in vsize=6in;*/
 
 ods graphics on / reset attrpriority=color width=8in height=5in;
 /*Reference Plot*/
@@ -476,8 +476,8 @@ title "Distribution of Rate Deviation";
 histogram rd;
 xaxis label = 'Rate Deviation (mmol/L/hour)' values = (-10 to 10 by 1);
 run;
-
 /*ODS RTF CLOSE;*/
+
 data Ap_accuracy;
 set Ap;
 format Level Group concur_ref_group concur_upload_group $35.;
@@ -520,7 +520,7 @@ if ana_100 > 1.5 and ana_100 <= 3 then concur_upload_group = "4: (1.5-3]";
 else concur_upload_group = "5: >3.0";
 run;
 
-/*System Agreement*/
+/*/*System Agreement*/
 data overall;
 set Ap_accuracy;
 Level = "Overall";
@@ -576,49 +576,25 @@ retain Level "Within +- 10%/ +- 0.1 mmol/L"n
 "Within +- 40%/ +- 0.4 mmol/L"n "Outside +- 40%/ +- 0.4 mmol/L"n;
 set sys_trans;
 run;
-
-proc report data=sys_trans1 nofs split='$'
- style(column)=[just=l font=(arial, 10pt)]
- style(header)=[font_weight=bold just=c font=(arial, 10pt)]
- style(lines)=[font_weight=bold just=l];
- title1 ' ';
- columns ("System Agreement Results Split at 1 mmol/L" Level "Within +- 10%/ +- 0.1 mmol/L"n
-"Within +- 20%/ +- 0.2 mmol/L"n "Within +- 30%/ +- 0.3 mmol/L"n
-"Within +- 40%/ +- 0.4 mmol/L"n "Outside +- 40%/ +- 0.4 mmol/L"n);
- define Level /"Ketone Level" order order=data width=5; 
-run;
 /*System Agreement*/
 
 /*Difference Measure*/
-proc means data = Ap_accuracy(where = (ana_100 between 0.6 and 3.0)) noprint;
+proc means data = Ap_overall(where = (ana_100 between 0.6 and 3.0)) noprint;
+class Level;
 var abs_pbias pbias abs_bias bias;
 output out = bias_mean(drop = _TYPE_ _FREQ_) mean =  median =  n = / autoname ;
 run;
 
 /*Change Column names and order*/
 data bias_table;
-retain abs_pbias_Mean abs_pbias_Median
+retain Level abs_pbias_Mean abs_pbias_Median
 pbias_Mean pbias_Median abs_bias_Mean abs_bias_Median bias_Mean bias_Median;
 set bias_mean(drop = abs_pbias_N pbias_N abs_bias_N);
+where ^missing(Level);
 run;
+/*/*Difference Measure*/*/
 
-proc report data=bias_table nofs split='$'
- style(column)=[just=l font=(arial, 10pt)] style(header)=[font_weight=bold just=c font=(arial, 10pt)] style(lines)=[font_weight=bold just=l];
- title1 ' ';
- columns ("Bias Measures" ("MARD (%)" abs_pbias_Mean abs_pbias_Median) ("% Bias" pbias_Mean pbias_Median) ("Abs. Bias (mmol/L)" abs_bias_Mean abs_bias_Median) ("Bias (mmol/L)" bias_Mean bias_Median) bias_N);
- define abs_pbias_Mean /"Mean" display f=8.1 width=5; 
- define abs_pbias_Median /"Median" display f=8.1 width=5;
- define pbias_Mean /"Mean" display f=8.1 width=5; 
- define pbias_Median /"Median" display f=8.1 width=5; 
- define abs_bias_Mean /"Mean" display f=8.1 width=5; 
- define abs_bias_Median /"Median" display f=8.1 width=5; 
- define bias_Mean /"Mean" display f=8.1 width=5;
- define bias_Median /"Median" display f=8.1 width=5; 
- define bias_N /"N" display width=5;
-run;
-/*Difference Measure*/
-
-/*Concurrence*/
+/*/*Concurrence*/*/
 /*KM vs Ref*/
 ods select none;
 proc tabulate data=Ap_accuracy format=8.1 style=[cellwidth=1.0cm just=c] out = upload_count;
@@ -726,6 +702,37 @@ data concur_ref_vs_km;
  else if concur_ref_group ='5: >3.0' then ref_nam='>3.0'; 
 run;
 /*Ref vs KM*/
+/*/*Concurrence*/*/
+
+
+/*options papersize=a3 orientation=portrait;*/
+/*ods rtf file="C:\Project\ADC-US-RES-23234\ADC-US-RES-23234-Accuracy-Report-%trim(%sysfunc(today(),yymmddn8.)).rtf" startpage=no;*/
+proc report data=sys_trans1 nofs split='$'
+ style(column)=[just=l font=(arial, 10pt)]
+ style(header)=[font_weight=bold just=c font=(arial, 10pt)]
+ style(lines)=[font_weight=bold just=l];
+ title1 ' ';
+ columns ("System Agreement Results Split at 1 mmol/L" Level "Within +- 10%/ +- 0.1 mmol/L"n
+"Within +- 20%/ +- 0.2 mmol/L"n "Within +- 30%/ +- 0.3 mmol/L"n
+"Within +- 40%/ +- 0.4 mmol/L"n "Outside +- 40%/ +- 0.4 mmol/L"n);
+ define Level /"Ketone Ref Level" order=data width=5; 
+run;
+
+proc report data=bias_table nofs split='$'
+ style(column)=[just=l font=(arial, 10pt)] style(header)=[font_weight=bold just=c font=(arial, 10pt)] style(lines)=[font_weight=bold just=l];
+ title1 ' ';
+ columns ("Bias Measures" Level ("MARD (%)" abs_pbias_Mean abs_pbias_Median) ("% Bias" pbias_Mean pbias_Median) ("Abs. Bias (mmol/L)" abs_bias_Mean abs_bias_Median) ("Bias (mmol/L)" bias_Mean bias_Median) bias_N);
+ define abs_pbias_Mean /"Mean" display f=8.1 width=5; 
+ define abs_pbias_Median /"Median" display f=8.1 width=5;
+ define pbias_Mean /"Mean" display f=8.1 width=5; 
+ define pbias_Median /"Median" display f=8.1 width=5; 
+ define abs_bias_Mean /"Mean" display f=8.1 width=5; 
+ define abs_bias_Median /"Median" display f=8.1 width=5; 
+ define bias_Mean /"Mean" display f=8.1 width=5;
+ define bias_Median /"Median" display f=8.1 width=5; 
+ define bias_N /"N" display width=5;
+ define Level /"Ketone Ref Level" order=data width=5; 
+run;
 
 proc report data=concur_km_vs_ref nofs split='$'
  style(column)=[just=l font=(arial, 10pt)]
@@ -750,8 +757,7 @@ proc report data=concur_ref_vs_km nofs split='$'
  define 'p5: >3.0'n /">3.0" display f=8.1 width=5;
  define ntotal /"N" display f=8.0 width=5;
 run;
-/*Concurrence*/
-
+ODS RTF CLOSE;
 
 
 /*Profile Plot*/
