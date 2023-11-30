@@ -277,7 +277,7 @@ run;
 data auu_906;
 format dtm_sec datetime16.;
 set out.auu;
-ana_100 = ANA/100;
+ana_100 = (ANA/100)*1.25;
 if snr = "089CR2FAX" then dtm = dtm + 2*60*60;
 if snr = "089CR2ELD" then dtm = dtm - 1*60*60;
 if snr = "089CR2CRA" and Type = "SENSOR_STARTED (58)" then dtm = dtm - 12*60*60;
@@ -339,7 +339,7 @@ run;
 /*(where = (ana_100 between 0.6 and 3.0))*/
 data Ap_rate;
 set Ap;
-length level $25.;
+length level level1 level2 $25.;
 format lag_dtm datetime16. lag_dtm_ref datetime14;
 /*Consider individual sensor*/
 by subject snr;
@@ -357,7 +357,7 @@ else ketone_sensor_rate = (ana_100 - lag_ana_100) / ((dtm_sec - lag_dtm)/3600);
 /*Calculate rate deviation*/
 rd = round(ketone_ref_rate-ketone_sensor_rate,.00000001);
 ard=abs(rd);
-/*Assign category*/
+/*Assign category for rd*/
  if rd lt -3 and ^missing(rd) then level = '1: <-3';
  if rd ge -3 and rd lt -2 then level = '2: [-3, -2)';
  if rd ge -2 and rd lt -1 then level = '3: [-2, -1)';
@@ -366,11 +366,20 @@ ard=abs(rd);
  if rd gt 1 and rd le 2 then level = '6: (1, 2]';
  if rd gt 2 and rd le 3 then level = '7: (2, 3]';
  if rd gt 3 then level = '8: >3';
- 
+/*Assign category for ard*/
  if ard ge 0 and ard le 1 then level1 = '1: [0, 1]';
  if ard gt 1 and ard le 2 then level1 = '2: (1, 2]';
  if ard gt 2 and ard le 3 then level1 = '3: (2, 3]';
  if ard gt 3 then level1 = '4: >3';
+/*Assign category for ketone_ref_rate*/
+ if ketone_ref_rate lt -3 and ^missing(ketone_ref_rate) then level2 = '1: <-3';
+ if ketone_ref_rate ge -3 and ketone_ref_rate lt -2 then level2 = '2: [-3, -2)';
+ if ketone_ref_rate ge -2 and ketone_ref_rate lt -1 then level2 = '3: [-2, -1)';
+ if ketone_ref_rate ge -1 and ketone_ref_rate lt 0 then level2 = '4: [-1, 0)';
+ if ketone_ref_rate ge 0 and ketone_ref_rate le 1 then level2 = '5: [0, 1]';
+ if ketone_ref_rate gt 1 and ketone_ref_rate le 2 then level2 = '6: (1, 2]';
+ if ketone_ref_rate gt 2 and ketone_ref_rate le 3 then level2 = '7: (2, 3]';
+ if ketone_ref_rate gt 3 then level2 = '8: >3';
 /* Remove missing rd*/
  if missing(rd) then delete;
  if ana_100 >= 0.6 and ana_100 <= 3;
@@ -379,7 +388,7 @@ drop lag_dtm--lag_KRSEQ01;
 run;
 
 options papersize=a3 orientation=portrait;
-ods rtf file="C:\Project\ADC-US-RES-23234\ADC-US-RES-23234-Safety-Report-%trim(%sysfunc(today(),yymmddn8.)).rtf" startpage=no;
+ods rtf file="C:\Project\ADC-US-RES-23234\ADC-US-RES-23234-Safety-Report(with 1.25 adj)-%trim(%sysfunc(today(),yymmddn8.)).rtf" startpage=no;
 
 /*Summary Statistics on Ketone Result*/
 Proc means data = ketone maxdec=2 nonobs;
@@ -450,6 +459,27 @@ styleattrs datacontrastcolors = (magenta green blue orange lilac lime marron oli
 	keylegend / title = "Subject ID";
 run;
 
+/*Ketone Reference Rate*/
+proc tabulate data = Ap_rate format=8.1 style=[cellwidth=2.0cm just=c];
+ title1 " ";
+ class level2;
+ table level2 = 'Ketone Ref Rate (mmol/L/hour)', n pctn='%' / rts=25;
+run;
+
+/*Summary on Ketone Reference Rate*/
+/*proc means data = Ap_rate maxdec=2 nonobs;*/
+/* title1 " "; */
+/* var ketone_ref_rate;*/
+/* output out=_null_ mean= std= min= max= n= / autoname;*/
+/*run;*/
+
+/*Plot distribution of ketone_ref_rate*/
+proc sgplot data = Ap_rate;
+title "Distribution of Ketone Ref Rate";
+histogram rd / binwidth = 0.5;;
+xaxis label = 'Ketone Ref Rate (mmol/L/hour)' values = (-10 to 10 by 1);
+run;
+
 /*Rate Deviation*/
 proc tabulate data = Ap_rate format=8.1 style=[cellwidth=2.0cm just=c];
  title1 " ";
@@ -464,17 +494,17 @@ proc tabulate data = Ap_rate format=8.1 style=[cellwidth=2.0cm just=c];
  table level1 = 'Absoulte Rate Deviation (mmol/L/hour)', n pctn='%' / rts=25;
 run;
 
-/*Summary on Rate deviation and absolute rate deviation*/
+/*Summary on Rate deviation and absolute rate deviation ketone_ref_rate*/
 proc means data = Ap_rate maxdec=2 nonobs;
  title1 " "; 
- var rd ard;
+ var rd ard ketone_ref_rate;
  output out=_null_ mean= std= min= max= n= / autoname;
 run;
 
 /*Plot distribution of rd*/
 proc sgplot data = Ap_rate;
 title "Distribution of Rate Deviation";
-histogram rd;
+histogram rd / binwidth = 0.5;;
 xaxis label = 'Rate Deviation (mmol/L/hour)' values = (-10 to 10 by 1);
 run;
 ODS RTF CLOSE;
@@ -707,13 +737,13 @@ run;
 
 
 options papersize=a3 orientation=portrait;
-ods rtf file="C:\Project\ADC-US-RES-23234\ADC-US-RES-23234-Accuracy-Report-%trim(%sysfunc(today(),yymmddn8.)).rtf" startpage=no;
+ods rtf file="C:\Project\ADC-US-RES-23234\ADC-US-RES-23234-Accuracy-Report(with 1.25 adj)-%trim(%sysfunc(today(),yymmddn8.)).rtf" startpage=no;
 proc report data=sys_trans1 nofs split='$'
  style(column)=[just=l font=(arial, 10pt)]
  style(header)=[font_weight=bold just=c font=(arial, 10pt)]
  style(lines)=[font_weight=bold just=l];
  title1 ' ';
- columns ("System Agreement Results Split at 1 mmol/L" Level "Within +- 10%/ +- 0.1 mmol/L"n
+ columns ("System Agreement Results Split at 1 mmol/L(with 1.25 adj)" Level "Within +- 10%/ +- 0.1 mmol/L"n
 "Within +- 20%/ +- 0.2 mmol/L"n "Within +- 30%/ +- 0.3 mmol/L"n
 "Within +- 40%/ +- 0.4 mmol/L"n "Outside +- 40%/ +- 0.4 mmol/L"n);
  define Level /"Ketone Ref Level" order=data width=5; 
@@ -722,7 +752,7 @@ run;
 proc report data=bias_table nofs split='$'
  style(column)=[just=l font=(arial, 10pt)] style(header)=[font_weight=bold just=c font=(arial, 10pt)] style(lines)=[font_weight=bold just=l];
  title1 ' ';
- columns ("Bias Measures" Level ("MARD (%)" abs_pbias_Mean abs_pbias_Median) ("% Bias" pbias_Mean pbias_Median) ("Abs. Bias (mmol/L)" abs_bias_Mean abs_bias_Median) ("Bias (mmol/L)" bias_Mean bias_Median) bias_N);
+ columns ("Bias Measures(with 1.25 adj)" Level ("MARD (%)" abs_pbias_Mean abs_pbias_Median) ("% Bias" pbias_Mean pbias_Median) ("Abs. Bias (mmol/L)" abs_bias_Mean abs_bias_Median) ("Bias (mmol/L)" bias_Mean bias_Median) bias_N);
  define abs_pbias_Mean /"Mean" display f=8.1 width=5; 
  define abs_pbias_Median /"Median" display f=8.1 width=5;
  define pbias_Mean /"Mean" display f=8.1 width=5; 
@@ -740,7 +770,7 @@ proc report data=concur_km_vs_ref nofs split='$'
  style(header)=[font_weight=bold just=c font=(arial, 10pt)]
  style(lines)=[font_weight=bold just=l];
  title1 " "; 
- columns ("Concurrence Analysis by Ketone Level (KM vs. Ref)" ref_nam ("Ref (mmol/L)" 'p1: <0.6'n 'p2: [0.6-1.0)'n 'p3: [1.0-1.5]'n 'p4: (1.5-3]'n 'p5: >3.0'n) nTotal);
+ columns ("Concurrence Analysis by Ketone Level (KM vs. Ref)(with 1.25 adj)" ref_nam ("Ref (mmol/L)" 'p1: <0.6'n 'p2: [0.6-1.0)'n 'p3: [1.0-1.5]'n 'p4: (1.5-3]'n 'p5: >3.0'n) nTotal);
  define ref_nam /"KM (mmol/L)" display;
  define 'p1: <0.6'n /"<0.6" display f=8.1 width=5; 
  define 'p2: [0.6-1.0)'n /"[0.6-1.0)" display f=8.1 width=5;
@@ -755,7 +785,7 @@ proc report data=concur_ref_vs_km nofs split='$'
  style(header)=[font_weight=bold just=c font=(arial, 10pt)]
  style(lines)=[font_weight=bold just=l];
  title1 " "; 
- columns ("Concurrence Analysis by Ketone Level (Ref vs. KM)" ref_nam ("KM (mmol/L)" 'p1: <0.6'n 'p2: [0.6-1.0)'n 'p3: [1.0-1.5]'n 'p4: (1.5-3]'n 'p5: >3.0'n) nTotal);
+ columns ("Concurrence Analysis by Ketone Level (Ref vs. KM)(with 1.25 adj)" ref_nam ("KM (mmol/L)" 'p1: <0.6'n 'p2: [0.6-1.0)'n 'p3: [1.0-1.5]'n 'p4: (1.5-3]'n 'p5: >3.0'n) nTotal);
  define ref_nam /"Ref (mmol/L)" display;
  define 'p1: <0.6'n /"<0.6" display f=8.1 width=5; 
  define 'p2: [0.6-1.0)'n /"[0.6-1.0)" display f=8.1 width=5;

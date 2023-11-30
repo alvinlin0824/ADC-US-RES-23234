@@ -1,5 +1,5 @@
 ---
-title: "ADC-US-RES-23234 Insulin Pump Suspension Study `r params$title1`"
+title: "ADC-US-RES-23234 Insulin Pump Suspension Study `r params$title2`"
 description: "To characterize beta-hydroxybutyrate ketone levels in people with type 1 diabetes using continuous subcutaneous insulin infusion (CSII) during a planned suspension of their insulin pump"
 author: "Alvin, Lin"
 date: "`r Sys.Date()`"
@@ -15,8 +15,8 @@ execute:
   warning: false 
   keep-md: true
 params:
-  analysis: FALSE
-  plot: TRUE
+  analysis: TRUE
+  plot: FALSE
   title1: "Profile Plot"
   title2: "Accuracy Performance"
 ---
@@ -355,7 +355,7 @@ mobi_anaPlus(events = events_path_ketone, ana = anaplus_path_ketone) |>
 upload_ketone <- readRDS(gsub("\\\\", "/", r"(\\oneabbott.com\dept\ADC\Technical_OPS\Clinical_Affairs\Clinical Study Files\Apollo\ADC-US-RES-23234_IDE Pump Suspension Study\Statistics\Programs\Datasets\AL\ketone.rds)"))
 ```
 
-```{r}
+```{r eval = params$analysis}
 #| label: Pair Ketone Reference
 PairKetone <- function(sensor_data){
   # ketone reference
@@ -386,7 +386,7 @@ PairKetone <- function(sensor_data){
 }
 ```
 
-```{r}
+```{r eval = params$analysis}
 #| label: Pair Ketone
 Ap <- upload_ketone |> 
       select(!c(Path, Tr)) |> 
@@ -397,9 +397,10 @@ Ap <- upload_ketone |>
       map(\(df) PairKetone(sensor_data = df),.progress = T) |>
       list_rbind() |> 
       # Rate
-      mutate(Level = case_when(KRSEQ01 < 1 ~ "< 1 mmol/L",
+      mutate(ANA = (ANA/100)*1.19,
+             Level = case_when(KRSEQ01 < 1 ~ "< 1 mmol/L",
                               .default = ">= 1 mmol/L"),
-             sensor_rate = ((ANA-lag(ANA))/100) / (as.numeric(difftime(`Date Time`,lag(`Date Time`),units = "hours"))),
+             sensor_rate = (ANA-lag(ANA)) / (as.numeric(difftime(`Date Time`,lag(`Date Time`),units = "hours"))),
              ref_rate = ((KRSEQ01-lag(KRSEQ01))) / (as.numeric(difftime(`Ketone Date Time`,lag(`Ketone Date Time`),units = "hours"))),
              `Rate Deviation` = round((ref_rate - sensor_rate) + 0.0000000001,8),
              `Absolute Rate Deviation` = abs(`Rate Deviation`),
@@ -419,17 +420,17 @@ Ap <- upload_ketone |>
             `Absolute Rate Deviation` > 2 & `Absolute Rate Deviation` <= 3 ~ "(2, 3]",
             `Absolute Rate Deviation` > 3  ~ ">3"),
             # Accuracy
-            `Difference(mmol/L)` = ANA/100 - KRSEQ01,
+            `Difference(mmol/L)` = ANA - KRSEQ01,
             `Absolute Difference(mmol/L)` = abs(`Difference(mmol/L)`),
             `Relative Difference(%)` = (`Difference(mmol/L)`/KRSEQ01)*100,
             `Absolute Relative Difference(%)` = abs(`Relative Difference(%)`),
        .by = `Sensor Serial Number`)
 ```
 
-```{r}
+```{r eval = params$analysis}
 #| label: Summary for Rate Deviation
 Ap |> 
-   filter(between(ANA,60,300)) |> 
+   filter(between(ANA,0.6,3)) |> 
    filter(!is.na(`Rate Deviation`)) |> 
    tabyl(`Rate Deviation(mmol/L/hour)`) |> 
    adorn_totals("row") |> 
@@ -439,10 +440,10 @@ Ap |>
    opt_stylize(style = 6, color = "blue")
 ```
 
-```{r}
+```{r eval = params$analysis}
 #| label: Summary for Absolute Rate Deviation
 Ap |> 
-   filter(between(ANA,60,300)) |>
+   filter(between(ANA,0.6,3)) |>
    filter(!is.na(`Rate Deviation`)) |> 
    tabyl(`Absolute Rate Deviation(mmol/L/hour)`) |> 
    adorn_totals("row") |> 
@@ -452,7 +453,7 @@ Ap |>
    opt_stylize(style = 6, color = "blue")
 ```
 
-```{r}
+```{r eval = params$analysis}
 #| label: Summary statistics for rate deviation
 diff_calculation <- list(Mean = ~ mean(.x, na.rm = T),
                           Median = ~ median(.x, na.rm = T),
@@ -461,7 +462,7 @@ diff_calculation <- list(Mean = ~ mean(.x, na.rm = T),
                           Max = ~ max(.x, na.rm = T),
                           N = ~ sum(!is.na(.x),na.rm = T))
 Ap |>
-   filter(between(ANA,60,300)) |>
+   filter(between(ANA,0.6,3)) |>
    filter(!is.na(`Rate Deviation`)) |> 
    pivot_longer(`Rate Deviation`:`Absolute Rate Deviation`,names_to = "Variable") |> 
    group_by(Variable) |> 
@@ -472,10 +473,10 @@ Ap |>
    opt_stylize(style = 6, color = "blue")  
 ```
 
-```{r}
+```{r eval = params$analysis}
 #| label: Histogram of Rate Deviation
 Ap |>
-   filter(between(ANA,60,300)) |>
+   filter(between(ANA,0.6,3)) |>
    filter(!is.na(`Rate Deviation`)) |>
    ggplot() +
    geom_histogram(aes(x = `Rate Deviation`, y = ..density..),bins = 50) +
@@ -484,15 +485,16 @@ Ap |>
    theme(panel.grid.major.y = element_blank(),panel.grid.minor.y = element_blank(),legend.position = "bottom",plot.title = element_text(hjust = 0.5))
 ```
 
-```{r}
+```{r eval = params$analysis}
 #| label: System Agreement
+#| column: page
 ketone_breaks <- c(0,0.1,0.2,0.3,0.4,Inf)
 ketone_breaks_percent <- c(0,10,20,30,40,Inf)
 sys <- Ap |> 
         bind_rows(
           Ap |> 
           mutate(Level = "Overall")) |> 
-        filter(between(ANA,60,300)) |>
+        filter(between(ANA,0.6,3)) |>
         mutate(Level = factor(Level,levels = c("< 1 mmol/L",">= 1 mmol/L","Overall")),
                Group = case_when(Level == "< 1 mmol/L" & KRSEQ01 < 1 ~ cut(`Absolute Difference(mmol/L)`, breaks = ketone_breaks,include.lowest = T),
                              Level == ">= 1 mmol/L" & KRSEQ01 >= 1 ~ cut(round(`Absolute Relative Difference(%)` + 0.001,0), breaks = ketone_breaks_percent,include.lowest = T),
@@ -550,13 +552,13 @@ sys <- Ap |>
     opt_stylize(style = 6, color = "blue")
 ```
 
-```{r}
+```{r eval = params$analysis}
 #| label: Difference Measures
 Ap |> 
    bind_rows(
      Ap |> 
         mutate(Level = "Overall")) |> 
-    filter(between(ANA,60,300)) |>
+    filter(between(ANA,0.6,3)) |>
     group_by(Level) |> 
      summarise(
       across(c(`Difference(mmol/L)`:`Absolute Relative Difference(%)`), 
@@ -582,7 +584,7 @@ Ap |>
       opt_stylize(style = 6, color = "blue")
 ```
 
-```{r}
+```{r eval = params$analysis}
 #| label: Concurrence function
 concur_fun <- function(data, trans = FALSE){
   
@@ -590,8 +592,7 @@ concur_fun <- function(data, trans = FALSE){
 data %>%  
    # Create YSI and GM Category
                                   # Round half to even, so add noise
-   mutate(ANA = ANA/100,
-          `KM (mmol/L)` =  
+   mutate(`KM (mmol/L)` =  
                         fct_case_when(ANA < 0.6 ~ "<0.6",
                                       ANA >= 0.6 & ANA < 1.0 ~ "[0.6-1.0)",
                                       ANA >= 1.0 & ANA <= 1.5 ~ "[1.0-1.5]",
@@ -623,18 +624,17 @@ data %>%
 }
 ```
 
-```{r}
+```{r eval = params$analysis}
 #| label: KM vs Ref
 Ap |> 
    concur_fun(trans = F)
 ```
 
-```{r}
+```{r eval = params$analysis}
 #| label: Ref vs KM
 Ap |> 
    concur_fun(trans = T)
 ```
-
 
 ```{r eval = params$plot}
 breakdown_condition_plot <- function(Id) {
