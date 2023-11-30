@@ -397,7 +397,7 @@ Ap <- upload_ketone |>
       map(\(df) PairKetone(sensor_data = df),.progress = T) |>
       list_rbind() |> 
       # Rate
-      mutate(ANA = (ANA/100)*1.19,
+      mutate(ANA = (ANA/100)*1.25,
              Level = case_when(KRSEQ01 < 1 ~ "< 1 mmol/L",
                               .default = ">= 1 mmol/L"),
              sensor_rate = (ANA-lag(ANA)) / (as.numeric(difftime(`Date Time`,lag(`Date Time`),units = "hours"))),
@@ -635,6 +635,73 @@ Ap |>
 Ap |> 
    concur_fun(trans = T)
 ```
+
+```{r}
+# haven::read_sas("ap.sas7bdat") |> 
+#   mutate(condition_id = case_when(snr == "089CR2FAX" ~ "LL1",
+#                                   snr == "089CR2ELD" ~ "LU1",
+#                                   .default = condition_id)) |> 
+#   select(!snr) |> 
+#   dplyr::intersect(
+# haven::read_sas("s234_paired 2.sas7bdat") |>
+#   bind_rows(
+#     haven::read_sas("s234_paired_orr.sas7bdat")
+#   ) |>
+#   transmute(dtm_sec = dtm_sec,
+#             subject = as.character(subjid),
+#             condition_id = condition_id,
+#             type = type,
+#             ana_100 = ket*1.25,
+#             dtm_ref = ref_dtm,
+#             KRSEQ01 = ket_ref) |>
+#   filter(type == "906") |>
+#   arrange(subject))
+
+haven::read_sas("ap.sas7bdat") |> 
+    mutate(condition_id = case_when(snr == "089CR2FAX" ~ "LL1",
+                                  snr == "089CR2ELD" ~ "LU1",
+                                  .default = condition_id)) |> 
+  select(!snr) |> 
+  dplyr::setdiff(
+haven::read_sas("s234_paired 2.sas7bdat") |>
+  bind_rows(
+    haven::read_sas("s234_paired_orr.sas7bdat")
+  ) |>
+  transmute(dtm_sec = dtm_sec,
+            subject = as.character(subjid),
+            condition_id = condition_id,
+            type = type,
+            ana_100 = ket*1.25,
+            dtm_ref = ref_dtm,
+            KRSEQ01 = ket_ref) |>
+  filter(type == "906") |>
+  arrange(subject)) |> 
+  bind_cols(
+
+haven::read_sas("s234_paired 2.sas7bdat") |>
+  bind_rows(
+    haven::read_sas("s234_paired_orr.sas7bdat")
+  ) |>
+  transmute(dtm_sec = dtm_sec,
+            subject = as.character(subjid),
+            condition_id = condition_id,
+            type = type,
+            ana_100 = ket*1.25,
+            dtm_ref = ref_dtm,
+            KRSEQ01 = ket_ref) |>
+  filter(type == "906") |>
+  arrange(subject) |> 
+  dplyr::setdiff(
+    haven::read_sas("ap.sas7bdat") |> 
+    mutate(condition_id = case_when(snr == "089CR2FAX" ~ "LL1",
+                                  snr == "089CR2ELD" ~ "LU1",
+                                  .default = condition_id)) |> 
+    select(!snr)
+  )) |> 
+  vroom_write("Paired.csv",delim = ",")
+```
+
+
 
 ```{r eval = params$plot}
 breakdown_condition_plot <- function(Id) {
