@@ -131,14 +131,6 @@ kgr12 <- kgr2 |>
 #| label: KGR12 left join IV12
 kgriv12 <- kgr12 |> 
            filter(!is.na(KRSEQ02)) |> 
-           # Manually Change Sample ID
-           mutate(KRSEQ02 = case_when(
-            str_detect(Subject,"1330001") & str_length(KRSEQ02) == 1 ~ str_c("1010",KRSEQ02),
-            str_detect(Subject,"1330001") & str_length(KRSEQ02) == 2 ~ str_c("101",KRSEQ02),
-            str_detect(Subject,"1330002") & str_length(KRSEQ02) == 1 ~ str_c("1020",KRSEQ02),
-            str_detect(Subject,"1330002") & str_length(KRSEQ02) == 2 ~ str_c("102",KRSEQ02),
-            str_detect(Subject,"1330004") & KRSEQ02 == "10730" ~ "10430",
-            .default = KRSEQ02)) |> 
            left_join(iv12, 
                      by = join_by(Subject == Subject,KRSEQ02 == IVID01, KRDTC01 == IVDTC01)) |> 
            mutate(`Ketone Date Time` = ymd_hm(str_c(KRDTC01,IVTM01,sep = " ")),
@@ -228,6 +220,28 @@ ketone |>
 ```
 
 ```{r eval = params$analysis}
+#| label: Summary for Peak all subjects
+#| column: body
+ketone |> 
+     filter(KRSEQ01 == max(KRSEQ01),.by = Subject) |> 
+     slice_min(`Ketone Date Time`, n = 1, with_ties = F,by = Subject) |> 
+     summarise(across(c(KRSEQ01,duration_to_peak,duration_to_below_1mmol),summary_calculation[c(1,3,6)],.names = "{.col} {.fn}")) |> 
+     gt() |> 
+     cols_align(align = "center") |>
+     tab_spanner(label = "Maximum Ketone Level Achieved",columns = c("KRSEQ01 Mean","KRSEQ01 SD","KRSEQ01 N")) |>
+     tab_spanner(label = "Time(Hours) To Peak Ketone Level From First Test",columns = c("duration_to_peak Mean","duration_to_peak SD","duration_to_peak N")) |>
+     tab_spanner(label = "Time(Hours) From Peak Ketone Level to Ketone Level < 1 mmol/L",columns = c("duration_to_below_1mmol Mean","duration_to_below_1mmol SD","duration_to_below_1mmol N")) |>
+     fmt_number(columns = contains(c("Mean","SD")),decimals = 2) |>
+     cols_label(
+      `KRSEQ01 Mean` = "Mean",`KRSEQ01 SD` = "SD",
+      `KRSEQ01 N` = "N",
+      `duration_to_peak Mean` = "Mean",`duration_to_peak SD` = "SD",`duration_to_peak N` = "N",
+      `duration_to_below_1mmol Mean` = "Mean",`duration_to_below_1mmol SD` = "SD",
+      `duration_to_below_1mmol N` =  "N") |>
+      opt_stylize(style = 6, color = "blue")
+```
+
+```{r eval = params$analysis}
 #| label: Ketone Reference Plot
 #| fig-align: center
 ketone |>
@@ -235,8 +249,8 @@ ketone |>
   ggplot(aes(x = eTime, y = KRSEQ01, color = Subject)) +
   geom_point() + 
   geom_line() + 
-  scale_x_continuous(expand = c(0,0)) + 
-  scale_y_continuous(expand = c(0,0)) + 
+  scale_x_continuous(expand = c(0,0), breaks = c(seq(0,8,1)), limits = c(0,8)) + 
+  scale_y_continuous(expand = c(0,0), limits = c(0,5)) + 
   geom_hline(yintercept = 1,linewidth = 1) + 
   labs(title = "Ketone Reference",x = "Time(Hours)", y = "Ketone Test Result (mmol/L)") +
   theme_bw() +
@@ -254,8 +268,8 @@ ketone |>
   geom_point() + 
   geom_line() + 
   labs(title = "Ketone Vary Over Time",x = "Time(Hours)", y = "Ketone Test Result (mmol/L)") +
-  scale_x_continuous(breaks = c(seq(1,8,1))) + 
-  scale_y_continuous(breaks = c(seq(-1.0,1.0,0.2)),limits = c(-1,1)) +
+  scale_x_continuous(expand = c(0,0), breaks = c(seq(1,8,1))) + 
+  scale_y_continuous(expand = c(0,0), breaks = c(seq(-1.0,1.0,0.2)),limits = c(-1,1)) +
   theme_bw() +
   theme(panel.grid.major.y = element_blank(),panel.grid.minor.y = element_blank(),legend.position = "bottom",plot.title = element_text(hjust = 0.5))
 ```
@@ -268,8 +282,8 @@ ketone |>
   ggplot(aes(x = duration_to_peak, y = KRSEQ01, color = Subject)) +
   geom_point() +
   geom_line() +
-  scale_x_continuous(expand = c(0,0)) + 
-  scale_y_continuous(expand = c(0,0)) + 
+  scale_x_continuous(expand = c(0,0), limits = c(0,7), breaks = c(seq(0,7,1))) + 
+  scale_y_continuous(expand = c(0,0), limits = c(0,5)) + 
   labs(title = "Time From Baseline To Peak",x = "Time(Hours)", y = "Ketone Test Result (mmol/L)") +
   theme_bw() +
   theme(panel.grid.major.y = element_blank(),panel.grid.minor.y = element_blank(),legend.position = "bottom",plot.title = element_text(hjust = 0.5))
