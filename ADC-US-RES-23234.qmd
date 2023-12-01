@@ -496,9 +496,9 @@ sys <- Ap |>
           mutate(Level = "Overall")) |> 
         filter(between(ANA,0.6,3)) |>
         mutate(Level = factor(Level,levels = c("< 1 mmol/L",">= 1 mmol/L","Overall")),
-               Group = case_when(Level == "< 1 mmol/L" & KRSEQ01 < 1 ~ cut(`Absolute Difference(mmol/L)`, breaks = ketone_breaks,include.lowest = T),
+               Group = case_when(Level == "< 1 mmol/L" & KRSEQ01 < 1 ~ cut(round(`Absolute Difference(mmol/L)` + 0.0001,1), breaks = ketone_breaks,include.lowest = T),
                              Level == ">= 1 mmol/L" & KRSEQ01 >= 1 ~ cut(round(`Absolute Relative Difference(%)` + 0.001,0), breaks = ketone_breaks_percent,include.lowest = T),
-                             Level == "Overall" & KRSEQ01 < 1  ~ cut(100*`Absolute Difference(mmol/L)`, breaks = ketone_breaks_percent,include.lowest = T),
+                             Level == "Overall" & KRSEQ01 < 1  ~ cut(round((100*`Absolute Difference(mmol/L)`) + 0.001,0), breaks = ketone_breaks_percent,include.lowest = T),
                              Level == "Overall" & KRSEQ01 >= 1 ~ cut(round(`Absolute Relative Difference(%)` + 0.001,0), breaks = ketone_breaks_percent,include.lowest = T))
            ) |> 
           group_by(Level) |>
@@ -637,15 +637,15 @@ Ap |>
 ```
 
 ```{r}
-# haven::read_sas("ap.sas7bdat") |> 
+# haven::read_sas("ap.sas7bdat") |>
 #   mutate(condition_id = case_when(snr == "089CR2FAX" ~ "LL1",
 #                                   snr == "089CR2ELD" ~ "LU1",
-#                                   .default = condition_id)) |> 
-#   select(!snr) |> 
+#                                   .default = condition_id)) |>
+#   select(!snr) |>
 #   dplyr::intersect(
-# haven::read_sas("s234_paired 2.sas7bdat") |>
+# haven::read_sas("s234_paired 3.sas7bdat") |>
 #   bind_rows(
-#     haven::read_sas("s234_paired_orr.sas7bdat")
+#     haven::read_sas("s234_paired_orr 1.sas7bdat")
 #   ) |>
 #   transmute(dtm_sec = dtm_sec,
 #             subject = as.character(subjid),
@@ -656,52 +656,51 @@ Ap |>
 #             KRSEQ01 = ket_ref) |>
 #   filter(type == "906") |>
 #   arrange(subject))
-
-haven::read_sas("ap.sas7bdat") |> 
-    mutate(condition_id = case_when(snr == "089CR2FAX" ~ "LL1",
-                                  snr == "089CR2ELD" ~ "LU1",
-                                  .default = condition_id)) |> 
-  select(!snr) |> 
-  dplyr::setdiff(
-haven::read_sas("s234_paired 2.sas7bdat") |>
-  bind_rows(
-    haven::read_sas("s234_paired_orr.sas7bdat")
-  ) |>
-  transmute(dtm_sec = dtm_sec,
-            subject = as.character(subjid),
-            condition_id = condition_id,
-            type = type,
-            ana_100 = ket*1.25,
-            dtm_ref = ref_dtm,
-            KRSEQ01 = ket_ref) |>
-  filter(type == "906") |>
-  arrange(subject)) |> 
-  bind_cols(
-
-haven::read_sas("s234_paired 2.sas7bdat") |>
-  bind_rows(
-    haven::read_sas("s234_paired_orr.sas7bdat")
-  ) |>
-  transmute(dtm_sec = dtm_sec,
-            subject = as.character(subjid),
-            condition_id = condition_id,
-            type = type,
-            ana_100 = ket*1.25,
-            dtm_ref = ref_dtm,
-            KRSEQ01 = ket_ref) |>
-  filter(type == "906") |>
-  arrange(subject) |> 
-  dplyr::setdiff(
-    haven::read_sas("ap.sas7bdat") |> 
-    mutate(condition_id = case_when(snr == "089CR2FAX" ~ "LL1",
-                                  snr == "089CR2ELD" ~ "LU1",
-                                  .default = condition_id)) |> 
-    select(!snr)
-  )) |> 
-  vroom_write("Paired.csv",delim = ",")
+# 
+# haven::read_sas("ap.sas7bdat") |> 
+#     mutate(condition_id = case_when(snr == "089CR2FAX" ~ "LL1",
+#                                   snr == "089CR2ELD" ~ "LU1",
+#                                   .default = condition_id)) |> 
+#   select(!snr) |> 
+#   dplyr::setdiff(
+# haven::read_sas("s234_paired 3.sas7bdat") |>
+#   bind_rows(
+#     haven::read_sas("s234_paired_orr 1.sas7bdat")
+#   ) |>
+#   transmute(dtm_sec = dtm_sec,
+#             subject = as.character(subjid),
+#             condition_id = condition_id,
+#             type = type,
+#             ana_100 = ket*1.25,
+#             dtm_ref = ref_dtm,
+#             KRSEQ01 = ket_ref) |>
+#   filter(type == "906") |>
+#   arrange(subject))
+#   # bind_cols(
+# 
+# haven::read_sas("s234_paired 3.sas7bdat") |>
+#   bind_rows(
+#     haven::read_sas("s234_paired_orr 1.sas7bdat")
+#   ) |>
+#   transmute(dtm_sec = dtm_sec,
+#             subject = as.character(subjid),
+#             condition_id = condition_id,
+#             type = type,
+#             ana_100 = ket*1.25,
+#             dtm_ref = ref_dtm,
+#             KRSEQ01 = ket_ref) |>
+#   filter(type == "906") |>
+#   arrange(subject) |> 
+#   dplyr::setdiff(
+#     haven::read_sas("ap.sas7bdat") |> 
+#     mutate(condition_id = case_when(snr == "089CR2FAX" ~ "LL1",
+#                                   snr == "089CR2ELD" ~ "LU1",
+#                                   .default = condition_id)) |> 
+#     select(!snr)
+#   )
+  # ) |> 
+  # vroom_write("Paired.csv",delim = ",")
 ```
-
-
 
 ```{r eval = params$plot}
 breakdown_condition_plot <- function(Id) {
@@ -719,7 +718,7 @@ breakdown_condition_plot <- function(Id) {
            arrange(`Date Time`),
     type = "line",
     yAxis = 0,
-    hcaes(x = datetime_to_timestamp(`Date Time`), y = ANA/100, group = `Condition ID`)) %>%
+    hcaes(x = datetime_to_timestamp(`Date Time`), y = (ANA/100)*1.25, group = `Condition ID`)) %>%
     # Glucose Reference 
     hc_add_series(
     name = "Glucose Test Result",

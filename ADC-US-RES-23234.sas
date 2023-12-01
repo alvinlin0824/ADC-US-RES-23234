@@ -277,7 +277,7 @@ run;
 data auu_906;
 format dtm_sec datetime16.;
 set out.auu;
-ana_100 = (ANA/100)*1.25;
+ana_100 = (ANA/100);
 if snr = "089CR2FAX" then dtm = dtm + 2*60*60;
 if snr = "089CR2ELD" then dtm = dtm - 1*60*60;
 if snr = "089CR2CRA" and Type = "SENSOR_STARTED (58)" then dtm = dtm - 12*60*60;
@@ -386,9 +386,9 @@ ard=abs(rd);
 /*Drop useless columns*/
 drop lag_dtm--lag_KRSEQ01;
 run;
-
+/*(with 1.25 adj)*/
 options papersize=a3 orientation=portrait;
-ods rtf file="C:\Project\ADC-US-RES-23234\ADC-US-RES-23234-Safety-Report(with 1.25 adj)-%trim(%sysfunc(today(),yymmddn8.)).rtf" startpage=no;
+ods rtf file="C:\Project\ADC-US-RES-23234\ADC-US-RES-23234-Safety-Report-%trim(%sysfunc(today(),yymmddn8.)).rtf" startpage=no;
 
 /*Summary Statistics on Ketone Result*/
 Proc means data = ketone maxdec=2 nonobs;
@@ -476,7 +476,7 @@ run;
 /*Plot distribution of ketone_ref_rate*/
 proc sgplot data = Ap_rate;
 title "Distribution of Ketone Ref Rate";
-histogram rd / binwidth = 0.5;;
+histogram ketone_ref_rate / binwidth = 0.5;;
 xaxis label = 'Ketone Ref Rate (mmol/L/hour)' values = (-10 to 10 by 1);
 run;
 
@@ -519,11 +519,11 @@ abs_pbias = abs(pbias);
 /*Categorize Bias Group*/
 /*Reference < 1*/
 if KRSEQ01 < 1 then do;
-if abs_bias >= 0 and abs_bias <= 0.1 then Group = "Within +- 10%/ +- 0.1 mmol/L"; 
-if abs_bias > 0.1 and abs_bias <= 0.2 then Group = "Within +- 20%/ +- 0.2 mmol/L"; 
-if abs_bias > 0.2 and abs_bias <= 0.3 then Group = "Within +- 30%/ +- 0.3 mmol/L"; 
-if abs_bias > 0.3 and abs_bias <= 0.4 then Group = "Within +- 40%/ +- 0.4 mmol/L"; 
-if abs_bias > 0.4 then Group = "Outside +- 40%/ +- 0.4 mmol/L";
+if round(abs_bias,0.1) >= 0 and round(abs_bias,0.1) <= 0.1 then Group = "Within +- 10%/ +- 0.1 mmol/L"; 
+if round(abs_bias,0.1) > 0.1 and round(abs_bias,0.1) <= 0.2 then Group = "Within +- 20%/ +- 0.2 mmol/L"; 
+if round(abs_bias,0.1) > 0.2 and round(abs_bias,0.1) <= 0.3 then Group = "Within +- 30%/ +- 0.3 mmol/L"; 
+if round(abs_bias,0.1) > 0.3 and round(abs_bias,0.1) <= 0.4 then Group = "Within +- 40%/ +- 0.4 mmol/L"; 
+if round(abs_bias,0.1) > 0.4 then Group = "Outside +- 40%/ +- 0.4 mmol/L";
 /*Assign a Level based on reference*/
 Level = "<1 mmol/L";
 end;
@@ -733,17 +733,17 @@ data concur_ref_vs_km;
  else if concur_ref_group ='5: >3.0' then ref_nam='>3.0'; 
 run;
 /*Ref vs KM*/
-/*/*Concurrence*/*/
+/*/*Concurrence (with 1.25 adj)*/
 
 
 options papersize=a3 orientation=portrait;
-ods rtf file="C:\Project\ADC-US-RES-23234\ADC-US-RES-23234-Accuracy-Report(with 1.25 adj)-%trim(%sysfunc(today(),yymmddn8.)).rtf" startpage=no;
+ods rtf file="C:\Project\ADC-US-RES-23234\ADC-US-RES-23234-Accuracy-Report-%trim(%sysfunc(today(),yymmddn8.)).rtf" startpage=no;
 proc report data=sys_trans1 nofs split='$'
  style(column)=[just=l font=(arial, 10pt)]
  style(header)=[font_weight=bold just=c font=(arial, 10pt)]
  style(lines)=[font_weight=bold just=l];
  title1 ' ';
- columns ("System Agreement Results Split at 1 mmol/L(with 1.25 adj)" Level "Within +- 10%/ +- 0.1 mmol/L"n
+ columns ("System Agreement Results Split at 1 mmol/L" Level "Within +- 10%/ +- 0.1 mmol/L"n
 "Within +- 20%/ +- 0.2 mmol/L"n "Within +- 30%/ +- 0.3 mmol/L"n
 "Within +- 40%/ +- 0.4 mmol/L"n "Outside +- 40%/ +- 0.4 mmol/L"n);
  define Level /"Ketone Ref Level" order=data width=5; 
@@ -752,7 +752,7 @@ run;
 proc report data=bias_table nofs split='$'
  style(column)=[just=l font=(arial, 10pt)] style(header)=[font_weight=bold just=c font=(arial, 10pt)] style(lines)=[font_weight=bold just=l];
  title1 ' ';
- columns ("Bias Measures(with 1.25 adj)" Level ("MARD (%)" abs_pbias_Mean abs_pbias_Median) ("% Bias" pbias_Mean pbias_Median) ("Abs. Bias (mmol/L)" abs_bias_Mean abs_bias_Median) ("Bias (mmol/L)" bias_Mean bias_Median) bias_N);
+ columns ("Bias Measures" Level ("MARD (%)" abs_pbias_Mean abs_pbias_Median) ("% Bias" pbias_Mean pbias_Median) ("Abs. Bias (mmol/L)" abs_bias_Mean abs_bias_Median) ("Bias (mmol/L)" bias_Mean bias_Median) bias_N);
  define abs_pbias_Mean /"Mean" display f=8.1 width=5; 
  define abs_pbias_Median /"Median" display f=8.1 width=5;
  define pbias_Mean /"Mean" display f=8.1 width=5; 
@@ -770,7 +770,7 @@ proc report data=concur_km_vs_ref nofs split='$'
  style(header)=[font_weight=bold just=c font=(arial, 10pt)]
  style(lines)=[font_weight=bold just=l];
  title1 " "; 
- columns ("Concurrence Analysis by Ketone Level (KM vs. Ref)(with 1.25 adj)" ref_nam ("Ref (mmol/L)" 'p1: <0.6'n 'p2: [0.6-1.0)'n 'p3: [1.0-1.5]'n 'p4: (1.5-3]'n 'p5: >3.0'n) nTotal);
+ columns ("Concurrence Analysis by Ketone Level (KM vs. Ref)" ref_nam ("Ref (mmol/L)" 'p1: <0.6'n 'p2: [0.6-1.0)'n 'p3: [1.0-1.5]'n 'p4: (1.5-3]'n 'p5: >3.0'n) nTotal);
  define ref_nam /"KM (mmol/L)" display;
  define 'p1: <0.6'n /"<0.6" display f=8.1 width=5; 
  define 'p2: [0.6-1.0)'n /"[0.6-1.0)" display f=8.1 width=5;
@@ -785,7 +785,7 @@ proc report data=concur_ref_vs_km nofs split='$'
  style(header)=[font_weight=bold just=c font=(arial, 10pt)]
  style(lines)=[font_weight=bold just=l];
  title1 " "; 
- columns ("Concurrence Analysis by Ketone Level (Ref vs. KM)(with 1.25 adj)" ref_nam ("KM (mmol/L)" 'p1: <0.6'n 'p2: [0.6-1.0)'n 'p3: [1.0-1.5]'n 'p4: (1.5-3]'n 'p5: >3.0'n) nTotal);
+ columns ("Concurrence Analysis by Ketone Level (Ref vs. KM)" ref_nam ("KM (mmol/L)" 'p1: <0.6'n 'p2: [0.6-1.0)'n 'p3: [1.0-1.5]'n 'p4: (1.5-3]'n 'p5: >3.0'n) nTotal);
  define ref_nam /"Ref (mmol/L)" display;
  define 'p1: <0.6'n /"<0.6" display f=8.1 width=5; 
  define 'p2: [0.6-1.0)'n /"[0.6-1.0)" display f=8.1 width=5;
