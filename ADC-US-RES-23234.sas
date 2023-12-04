@@ -19,8 +19,8 @@ run;
 
 data iv2;
 set edc.iv2 (where = (^missing(IVID01)));
-IVID01_C = put(IVID01, 5.);
-keep Subject IVID01_C IVTM01 IVVAL01;
+/*IVID01_C = put(IVID01, 5.);*/
+keep Subject IVID01 IVTM01 IVVAL01;
 run;
 
 /*Sort IV1 and IV2*/
@@ -29,7 +29,7 @@ by Subject;
 run;
 
 proc sort data = iv2;
-by Subject IVID01_C;
+by Subject IVID01;
 run;
 
 /*Left Join iv1 and iv2*/
@@ -46,8 +46,8 @@ run;
 
 data kgr2;
 set edc.kgr2;
-KRSEQ02_C = put(KRSEQ02,$5.-L);
-keep Subject KRSEQ01--KRDTC03 KRSEQ02_C;
+/*KRSEQ02_C = put(KRSEQ02,$5.-L);*/
+keep Subject KRSEQ02--KRDTC03;
 run;
 
 /*Sort KGR1 and KGR2*/
@@ -64,17 +64,17 @@ data kgr12;
 merge kgr2 kgr1;
 by Subject;
 /*Manually Change Sample ID*/
-if Subject = 1330001 and length(KRSEQ02_C) = 1 then KRSEQ02_C = cats("1010",KRSEQ02_C);
-if Subject = 1330001 and length(KRSEQ02_C) = 2 then KRSEQ02_C = cats("101",KRSEQ02_C);
-if Subject = 1330002 and length(KRSEQ02_C) = 1 then KRSEQ02_C = cats("1020",KRSEQ02_C);
-if Subject = 1330002 and length(KRSEQ02_C) = 2 then KRSEQ02_C = cats("102",KRSEQ02_C);
-if Subject = 1330004 and KRSEQ02_C = "10730" then KRSEQ02_C = "10430";
-rename KRDTC01 = IVDTC01 KRSEQ02_C = IVID01_C;
+/*if Subject = 1330001 and length(KRSEQ02_C) = 1 then KRSEQ02_C = cats("1010",KRSEQ02_C);*/
+/*if Subject = 1330001 and length(KRSEQ02_C) = 2 then KRSEQ02_C = cats("101",KRSEQ02_C);*/
+/*if Subject = 1330002 and length(KRSEQ02_C) = 1 then KRSEQ02_C = cats("1020",KRSEQ02_C);*/
+/*if Subject = 1330002 and length(KRSEQ02_C) = 2 then KRSEQ02_C = cats("102",KRSEQ02_C);*/
+/*if Subject = 1330004 and KRSEQ02_C = "10730" then KRSEQ02_C = "10430";*/
+rename KRDTC01 = IVDTC01 KRSEQ02 = IVID01;
 run;
 
 /*Sort KGR12*/
 proc sort data = kgr12;
-by Subject IVDTC01 IVID01_C;
+by Subject IVDTC01 IVID01;
 run;
 
 /*Clinic Visit 3*/
@@ -105,7 +105,7 @@ run;
 data kgriv12;
 format dtm datetime14.;
 merge kgr12 iv12;
-by Subject IVDTC01 IVID01_C;
+by Subject IVDTC01 IVID01;
 dtm = dhms(IVDTC01,0,0,input(IVTM01,time5.));
 run;
 
