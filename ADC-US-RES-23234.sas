@@ -355,7 +355,7 @@ else ketone_ref_rate = (KRSEQ01 - lag_KRSEQ01) / ((dtm_ref - lag_dtm_ref)/3600);
 if first.snr then ketone_sensor_rate = .;
 else ketone_sensor_rate = (ana_100 - lag_ana_100) / ((dtm_sec - lag_dtm)/3600);
 /*Calculate rate deviation*/
-rd = round(ketone_ref_rate-ketone_sensor_rate,.00000001);
+rd = round(ketone_ref_rate-ketone_sensor_rate,0.1);
 ard=abs(rd);
 /*Assign category for rd*/
  if rd lt -3 and ^missing(rd) then level = '1: <-3';
@@ -382,7 +382,7 @@ ard=abs(rd);
  if ketone_ref_rate gt 3 then level2 = '8: >3';
 /* Remove missing rd*/
  if missing(rd) then delete;
- if ana_100 >= 0.6 and ana_100 <= 3;
+ where ana_100 >= 0.6 and ana_100 <= 3;
 /*Drop useless columns*/
 drop lag_dtm--lag_KRSEQ01;
 run;
