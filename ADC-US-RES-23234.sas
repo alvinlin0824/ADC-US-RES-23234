@@ -10,6 +10,21 @@
 
 libname edc "M:\ADC-US-RES-23234\OpenClinica\Current";
 libname out "\\oneabbott.com\dept\ADC\Technical_OPS\Clinical_Affairs\Clinical Study Files\Apollo\ADC-US-RES-23234_IDE Pump Suspension Study\Statistics\Programs\Datasets\AL";
+/*libname mydir "C:\Project\ADC-US-RES-23234";*/
+
+/*Randox*/
+%macro read_excel_allsheets(sheet);
+	proc import out= data
+	datafile = "C:\Project\ADC-US-RES-23234\Ranbut 133-101 to 110.xlsx";
+	dbms = xlsx;
+	sheet = "&sheet";
+	getnames = yes;
+	run;
+%mend read_excel_allsheets;
+
+%read_excel_allsheets(133-101);
+/*Randox*/
+
 
 /*IV SAMPLE COLLECTION*/
 data iv1;

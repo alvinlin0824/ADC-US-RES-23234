@@ -304,6 +304,35 @@ ketone |>
   theme(panel.grid.major.y = element_blank(),panel.grid.minor.y = element_blank(),legend.position = "bottom",plot.title = element_text(hjust = 0.5))
 ```
 
+<!-- randox -->
+```{r}
+#| label: Multiple sheet function
+read_excel_allsheets <- function(filename, tibble = FALSE, n, r, col_type) {
+    sheets <- readxl::excel_sheets(filename)
+    x <- lapply(sheets, function(X) readxl::read_excel(filename, sheet = X, skip = n, range = r, col_types = col_type))
+    if(!tibble) x <- lapply(x, as.data.frame)
+    names(x) <- sheets
+    x
+}
+```
+
+```{r}
+#| label: Import Randox data
+#| warning: false
+#| message: false
+read_excel_allsheets("Ranbut 133-101 to 110.xlsx", tibble = T, n = 4, r = cellranger::cell_cols("D:E"), col_type = c("text","numeric")) |>
+  map(\(df) df |> slice(3:n())) |>
+  map(\(df) df |> setNames(c("Sample ID","8uL Result"))) |>
+  list_rbind() |> 
+  bind_cols(
+read_excel_allsheets("Ranbut 133-101 to 110.xlsx", tibble = T, n = 4, r = cellranger::cell_cols("H"), col_type = c("numeric")) |>
+  list_rbind() |> 
+  setNames(c("2uL Result"))) |> 
+  mutate(`Sample ID` = str_extract(`Sample ID`,regex("(?<=[:punct:])[:digit:]+")),
+         `Ref Type` = "Randox") |> View()
+```
+
+<!-- randox -->
 ```{r}
 #| label: Import sa
 # sa <- read_sas(gsub("\\\\", "/", r"(\\wf00168p.oneabbott.com\data1\CDM\ADC-US-RES-23234\OpenClinica\Current\sa.sas7bdat)"))
