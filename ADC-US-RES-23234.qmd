@@ -33,6 +33,7 @@ params:
 
 <!-- Lori Rankin-Grundvig Site 133 Yale. Martin, Pamela Site 009 Rainier -->
 
+<!-- Venous strip vs. Randox -->
 ```{r}
 #| label: Libaray Packages 
 #| message: false
@@ -328,8 +329,49 @@ read_excel_allsheets("Ranbut 133-101 to 110.xlsx", tibble = T, n = 4, r = cellra
 read_excel_allsheets("Ranbut 133-101 to 110.xlsx", tibble = T, n = 4, r = cellranger::cell_cols("H"), col_type = c("numeric")) |>
   list_rbind() |> 
   setNames(c("2uL Result"))) |> 
-  mutate(`Sample ID` = str_extract(`Sample ID`,regex("(?<=[:punct:])[:digit:]+")),
-         `Ref Type` = "Randox") |> View()
+  mutate(`Sample ID` = str_extract(`Sample ID`,regex("(?<=[:punct:])[:digit:]+")))
+```
+
+```{r}
+#| warning: false
+#| message: false
+bind_rows(
+readxl::read_excel("RANBUT ABBOTT STUDY - week 5.xlsx",range = cellranger::cell_cols("E:F"), col_type = c("text","numeric")) |> 
+  setNames(c("Sample ID","8uL Result")) |> 
+  bind_cols(
+    readxl::read_excel("RANBUT ABBOTT STUDY - week 5.xlsx",range = cellranger::cell_cols("B"), col_type = c("numeric")) |> 
+  setNames(c("2uL Result"))),
+
+readxl::read_excel("RANBUT ABBOTT STUDY - week 6.xlsx",range = cellranger::cell_cols("F:G"), col_type = c("text","numeric")) |> 
+  setNames(c("Sample ID","8uL Result")) |> 
+  bind_cols(
+    readxl::read_excel("RANBUT ABBOTT STUDY - week 6.xlsx",range = cellranger::cell_cols("C"), col_type = c("numeric")) |> 
+  setNames(c("2uL Result"))),
+
+readxl::read_excel("Sub_90013.xlsx",range = cellranger::cell_cols("E:F"), col_type = c("text","numeric")) |> 
+  setNames(c("Sample ID","8uL Result")) |> 
+  bind_cols(
+    readxl::read_excel("Sub_90013.xlsx",range = cellranger::cell_cols("B"), col_type = c("numeric")) |> 
+  setNames(c("2uL Result"))),
+
+readxl::read_excel("Ranbut Box Number 14&15.xlsx",range = cellranger::cell_cols("B:C"), col_type = c("text","numeric"),sheet = "Sheet2") |> 
+  slice(3:n()) |> 
+  setNames(c("Sample ID","8uL Result")) |> 
+  bind_cols(
+    readxl::read_excel("Ranbut Box Number 14&15.xlsx",range = cellranger::cell_cols("F"), col_type = c("numeric"),sheet = "Sheet2") |>
+  setNames(c("2uL Result"))),
+
+readxl::read_excel("Ranbut Box Number 14&15.xlsx",range = cellranger::cell_cols("H:I"), col_type = c("text","numeric"),sheet = "Sheet2") |> 
+  slice(3:n()) |> 
+  setNames(c("Sample ID","8uL Result")) |> 
+  bind_cols(
+    readxl::read_excel("Ranbut Box Number 14&15.xlsx",range = cellranger::cell_cols("L"), col_type = c("numeric"),sheet = "Sheet2") |>
+  setNames(c("2uL Result")))) |> 
+  # Remove Gap
+  filter(!is.na(`Sample ID`)) |> 
+  mutate(`Sample ID` = case_when(str_detect(`Sample ID`,"[:punct:]") ~ 
+                    str_extract(`Sample ID`,regex("(?<=[:punct:])[:digit:]+")),
+                    .default = str_extract(`Sample ID`,regex("(?<=9)[:digit:]+"))))
 ```
 
 <!-- randox -->
