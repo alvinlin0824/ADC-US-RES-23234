@@ -52,7 +52,7 @@ library(gt)
 
 <!-- UDP -->
 ```{r}
-#| label: Import csv
+#| label: Directory
 #| eval: false
 file_list <- dir_ls(gsub("\\\\", "/", r"(\\wf00168p.oneabbott.com\data1\CDM\ADC-US-RES-23234\UploadData\UUU\UUU_DataFiles)"),recurse = T)
 ```
@@ -121,11 +121,16 @@ kgr2 <- kgr2 |>
 ```{r}
 #| label: KGR2 left join KGR1
 kgr12 <- kgr2 |> 
-         select(Subject,KRSEQ02:KRDTC03) |> 
+         select(Subject,KRSEQ02:KRSEQ01) |> 
          left_join(kgr1 |> 
                    select(Subject,KRDTC01),
                    by = join_by(Subject == Subject)) |> 
          arrange(Subject,KRDTC01)
+```
+
+```{r}
+#| label: Import Randox rds
+randox <- readRDS(gsub("\\\\", "/", r"(\\oneabbott.com\dept\ADC\Technical_OPS\Clinical_Affairs\Clinical Study Files\Apollo\ADC-US-RES-23234_IDE Pump Suspension Study\Statistics\Programs\Datasets\AL\randox.rds)"))
 ```
 
 ```{r}
@@ -134,12 +139,19 @@ kgriv12 <- kgr12 |>
            filter(!is.na(KRSEQ02)) |> 
            left_join(iv12, 
                      by = join_by(Subject == Subject,KRSEQ02 == IVID01, KRDTC01 == IVDTC01)) |> 
-           mutate(`Ketone Date Time` = ymd_hm(str_c(KRDTC01,IVTM01,sep = " ")),
-                  `Glucose Date Time` = ymd_hm(str_c(KRDTC01,KRDTC03,sep = " ")),
-                  KRDTC02 = NULL
-                  ,.keep = "unused",.before = KRSEQ03) |> 
-           arrange(Subject,`Ketone Date Time`) |> 
-           filter(str_detect(IVVAL01,"Valid"))
+           mutate(`Ref Type` = "Venous strip") |> 
+           bind_rows(
+             iv12 |> 
+                  left_join(randox |> 
+                            summarise(KRSEQ01 = mean(`2uL Result`,na.rm = T)*4,.by = `Sample ID`),
+                            by = join_by(IVID01 == `Sample ID`)) |> 
+              mutate(KRSEQ02 = IVID01,
+                     KRDTC01 = IVDTC01,
+                    `Ref Type` = "Randox",.keep = "unused")) |> 
+           mutate(`Ketone Date Time` = ymd_hm(str_c(KRDTC01,IVTM01,sep = " "))
+                  ,.keep = "unused") |> 
+           arrange(`Ref Type`,Subject,`Ketone Date Time`) |> 
+           filter(IVVAL01 == "Valid")
 ```
 
 ```{r}
@@ -148,15 +160,15 @@ ketone <- kgriv12 |>
           left_join(
             # Find the Peak Time and consider duplicated max values
             kgriv12 |> 
-              slice_max(KRSEQ01,n = 1,with_ties = F,by = Subject) |> 
-              select(Subject, `Peak Time` = `Ketone Date Time`),
-              by = join_by(Subject)) |> 
+              slice_max(KRSEQ01,n = 1,with_ties = F,by = c(Subject,`Ref Type`)) |> 
+              select(Subject,`Ref Type` ,`Peak Time` = `Ketone Date Time`),
+              by = join_by(Subject,`Ref Type`)) |> 
           mutate(`Time < 1 mmol/L` = case_when(max(KRSEQ01) > 1 & 
                                              `Ketone Date Time` > `Peak Time` & 
                                               KRSEQ01 < 1  ~ `Ketone Date Time`),
                  `Time < 1 mmol/L` = first(`Time < 1 mmol/L`,na_rm = T),
                  duration_to_peak = as.numeric(difftime(`Ketone Date Time`,first(`Ketone Date Time`),units = "hours")),
-                 duration_to_below_1mmol = as.numeric(difftime(`Time < 1 mmol/L`,`Peak Time` ,units = "hours")),.by = Subject) 
+                 duration_to_below_1mmol = as.numeric(difftime(`Time < 1 mmol/L`,`Peak Time` ,units = "hours")),.by = c(Subject,`Ref Type`)) 
 ```
 
 ```{r eval = params$analysis}
@@ -168,12 +180,13 @@ summary_calculation <- list(Mean = ~ mean(.x, na.rm = T),
                             Max = ~ max(.x, na.rm = T),
                             N = ~ sum(!is.na(.x),na.rm = T))
 ketone |>
-   group_by(Subject) |>
+   group_by(Subject,`Ref Type`) |>
    summarise_at("KRSEQ01",summary_calculation) |>
    # Fix round half to even
    mutate(across(c(Mean,SD), ~ round(.x + 0.0001,2))) |> 
    gt() |>
    cols_align(align = "center") |>
+   fmt_number(columns = c(Median,Min,Max),decimals = 2) |> 
    opt_stylize(style = 6, color = "blue") |>
    tab_header(title = md("**Ketone Test Result (mmol/L)**"))
 ```
@@ -181,18 +194,18 @@ ketone |>
 ```{r eval = params$analysis}
 #| label: Duration Table
 ketone |> 
-  slice_max(KRSEQ01,n = 1,with_ties = F,by = Subject) |> 
+  slice_max(KRSEQ01,n = 1,with_ties = F,by = c(Subject,`Ref Type`)) |> 
   left_join(
     ketone |> 
-    select(Subject,`Start Time` = `Ketone Date Time`) |> 
-    slice(1,.by = Subject),by = join_by(Subject)) |> 
-  select(Subject,`Start Time`,`Peak Time`,
+    select(Subject,`Start Time` = `Ketone Date Time`,`Ref Type`) |> 
+    slice(1,.by = c(Subject,`Ref Type`)),by = join_by(Subject,`Ref Type`)) |> 
+  select(Subject,`Ref Type`,`Start Time`,`Peak Time`,
          `Max Ketone Reference(mmol/L)` = KRSEQ01,`Time once < 1 mmol/L` = `Time < 1 mmol/L`,
-         `Time to Peak(Hours)` = duration_to_peak, `Time to < 1 mmol/L(Hours)` = duration_to_below_1mmol) |>
+         `Time to Peak(Hours)` = duration_to_peak, `Time to < 1 mmol/L(Hours)` = duration_to_below_1mmol) |> 
   # Fix round half to even
-  mutate(across(c(`Time to Peak(Hours)`,`Time to < 1 mmol/L(Hours)`), ~ round(.x + 0.0001,2))) |> 
-  arrange(Subject) |> 
-  gt() |>
+  mutate(across(c(`Time to Peak(Hours)`,`Time to < 1 mmol/L(Hours)`), ~ round(.x + 0.0001,2))) |>
+  arrange(Subject) |>
+  gt(groupname_col = c("Subject")) |>
   cols_align(align = "center") |>
   opt_stylize(style = 6, color = "blue")
   # tab_header(title = md("**Ketone Test Result (mmol/L)**"))
@@ -202,9 +215,9 @@ ketone |>
 #| label: Summary for Peak
 #| column: body
 ketone |> 
-     filter(KRSEQ01 == max(KRSEQ01) & !is.na(`Time < 1 mmol/L`) ,.by = Subject) |> 
-     slice_min(`Ketone Date Time`, n = 1, with_ties = F,by = Subject) |> 
-     summarise(across(c(KRSEQ01,duration_to_peak,duration_to_below_1mmol),summary_calculation[c(1,3,6)],.names = "{.col} {.fn}")) |> 
+     filter(KRSEQ01 == max(KRSEQ01) & !is.na(`Time < 1 mmol/L`) ,.by = c(Subject,`Ref Type`)) |> 
+     slice_min(`Ketone Date Time`, n = 1, with_ties = F,by = c(Subject,`Ref Type`)) |> 
+     summarise(across(c(KRSEQ01,duration_to_peak,duration_to_below_1mmol),summary_calculation[c(1,3,6)],.names = "{.col} {.fn}"),.by = c(`Ref Type`)) |> 
      gt() |> 
      cols_align(align = "center") |>
      tab_spanner(label = "Maximum Ketone Level Achieved",columns = c("KRSEQ01 Mean","KRSEQ01 SD","KRSEQ01 N")) |>
@@ -224,9 +237,9 @@ ketone |>
 #| label: Summary for Peak all subjects
 #| column: body
 ketone |> 
-     filter(KRSEQ01 == max(KRSEQ01),.by = Subject) |> 
-     slice_min(`Ketone Date Time`, n = 1, with_ties = F,by = Subject) |> 
-     summarise(across(c(KRSEQ01,duration_to_peak,duration_to_below_1mmol),summary_calculation[c(1,3,6)],.names = "{.col} {.fn}")) |> 
+     filter(KRSEQ01 == max(KRSEQ01),.by = c(Subject,`Ref Type`)) |> 
+     slice_min(`Ketone Date Time`, n = 1, with_ties = F,by = c(Subject,`Ref Type`)) |> 
+     summarise(across(c(KRSEQ01,duration_to_peak,duration_to_below_1mmol),summary_calculation[c(1,3,6)],.names = "{.col} {.fn}"), .by = c(`Ref Type`)) |> 
      gt() |> 
      cols_align(align = "center") |>
      tab_spanner(label = "Maximum Ketone Level Achieved",columns = c("KRSEQ01 Mean","KRSEQ01 SD","KRSEQ01 N")) |>
@@ -246,10 +259,11 @@ ketone |>
 #| label: Ketone Reference Plot
 #| fig-align: center
 ketone |>
-   mutate(eTime = as.numeric(difftime(`Ketone Date Time`,first(`Ketone Date Time`),units = "hours")),.by = Subject) |> 
+   mutate(eTime = as.numeric(difftime(`Ketone Date Time`,first(`Ketone Date Time`),units = "hours")),.by = c(Subject,`Ref Type`)) |> 
   ggplot(aes(x = eTime, y = KRSEQ01, color = Subject)) +
   geom_point() + 
   geom_line() + 
+  facet_grid(cols = vars(`Ref Type`)) + 
   scale_x_continuous(expand = c(0,0), breaks = c(seq(0,8,1)), limits = c(0,8)) + 
   scale_y_continuous(expand = c(0,0), limits = c(0,5)) + 
   geom_hline(yintercept = 1,linewidth = 1) + 
@@ -264,10 +278,11 @@ ketone |>
 ketone |>
    mutate(eTime = as.numeric(difftime(`Ketone Date Time`,first(`Ketone Date Time`),units = "hours")),
           lag_diff = KRSEQ01 - lag(KRSEQ01),
-          .by = Subject) |> 
+          .by = c(Subject,`Ref Type`)) |> 
   ggplot(aes(x = eTime, y = lag_diff, color = Subject)) +
   geom_point() + 
   geom_line() + 
+  facet_grid(cols = vars(`Ref Type`)) + 
   labs(title = "Ketone Vary Over Time",x = "Time(Hours)", y = "Ketone Test Result (mmol/L)") +
   scale_x_continuous(expand = c(0,0), breaks = c(seq(1,8,1))) + 
   scale_y_continuous(expand = c(0,0), breaks = c(seq(-1.0,1.0,0.2)),limits = c(-1,1)) +
@@ -279,10 +294,11 @@ ketone |>
 #| label: Time From Baseline To Peak
 #| fig-align: center
 ketone |>
-  filter(`Peak Time` >= `Ketone Date Time`,.by = Subject) |> 
+  filter(`Peak Time` >= `Ketone Date Time`,.by = c(Subject,`Ref Type`)) |> 
   ggplot(aes(x = duration_to_peak, y = KRSEQ01, color = Subject)) +
   geom_point() +
   geom_line() +
+  facet_grid(cols = vars(`Ref Type`)) + 
   scale_x_continuous(expand = c(0,0), limits = c(0,7), breaks = c(seq(0,7,1))) + 
   scale_y_continuous(expand = c(0,0), limits = c(0,5)) + 
   labs(title = "Time From Baseline To Peak",x = "Time(Hours)", y = "Ketone Test Result (mmol/L)") +
@@ -294,10 +310,11 @@ ketone |>
 #| label: Time From Peak To 1 mmol/L
 #| fig-align: center
 ketone |>
-  filter(`Peak Time` <= `Ketone Date Time` & !is.na(duration_to_below_1mmol) >= 1,.by = Subject) |> 
+  filter(`Peak Time` <= `Ketone Date Time` & !is.na(duration_to_below_1mmol) >= 1,.by = c(Subject,`Ref Type`)) |> 
   ggplot(aes(x = as.numeric(difftime(`Ketone Date Time`,`Peak Time`,units = "hours")), y = KRSEQ01, color = Subject)) +
   geom_point() +
   geom_line() +
+  facet_grid(cols = vars(`Ref Type`)) + 
   scale_x_continuous(expand = c(0,0)) + 
   scale_y_continuous(expand = c(0,0)) + 
   labs(title = "Time From Peak To 1 mmol/L",x = "Time(Hours)", y = "Ketone Test Result (mmol/L)") +
@@ -318,59 +335,71 @@ read_excel_allsheets <- function(filename, tibble = FALSE, n, r, col_type) {
 ```
 
 ```{r}
-#| label: Import Randox data
+#| label: Wrangle Randox data
 #| warning: false
 #| message: false
-bind_rows(
-  read_excel_allsheets("Ranbut 133-101 to 110.xlsx", tibble = T, n = 4, r = cellranger::cell_cols("D:E"), col_type = c("text","numeric")) |>
-  map(\(df) df |> slice(3:n())) |>
-  map(\(df) df |> setNames(c("Sample ID","8uL Result"))) |>
-  list_rbind() |> 
-  bind_cols(
-read_excel_allsheets("Ranbut 133-101 to 110.xlsx", tibble = T, n = 4, r = cellranger::cell_cols("H"), col_type = c("numeric")) |>
-  list_rbind() |> 
-  setNames(c("2uL Result"))),
-  
-readxl::read_excel("RANBUT ABBOTT STUDY - week 5.xlsx",range = cellranger::cell_cols("E:F"), col_type = c("text","numeric")) |> 
-  setNames(c("Sample ID","8uL Result")) |> 
-  bind_cols(
-    readxl::read_excel("RANBUT ABBOTT STUDY - week 5.xlsx",range = cellranger::cell_cols("B"), col_type = c("numeric")) |> 
-  setNames(c("2uL Result"))),
-
-readxl::read_excel("RANBUT ABBOTT STUDY - week 6.xlsx",range = cellranger::cell_cols("F:G"), col_type = c("text","numeric")) |> 
-  setNames(c("Sample ID","8uL Result")) |> 
-  bind_cols(
-    readxl::read_excel("RANBUT ABBOTT STUDY - week 6.xlsx",range = cellranger::cell_cols("C"), col_type = c("numeric")) |> 
-  setNames(c("2uL Result"))),
-
-readxl::read_excel("Sub_90013.xlsx",range = cellranger::cell_cols("E:F"), col_type = c("text","numeric")) |> 
-  setNames(c("Sample ID","8uL Result")) |> 
-  bind_cols(
-    readxl::read_excel("Sub_90013.xlsx",range = cellranger::cell_cols("B"), col_type = c("numeric")) |> 
-  setNames(c("2uL Result"))),
-
-readxl::read_excel("Ranbut Box Number 14&15.xlsx",range = cellranger::cell_cols("B:C"), col_type = c("text","numeric"),sheet = "Sheet2") |> 
-  slice(3:n()) |> 
-  setNames(c("Sample ID","8uL Result")) |> 
-  bind_cols(
-    readxl::read_excel("Ranbut Box Number 14&15.xlsx",range = cellranger::cell_cols("F"), col_type = c("numeric"),sheet = "Sheet2") |>
-  setNames(c("2uL Result"))),
-
-readxl::read_excel("Ranbut Box Number 14&15.xlsx",range = cellranger::cell_cols("H:I"), col_type = c("text","numeric"),sheet = "Sheet2") |> 
-  slice(3:n()) |> 
-  setNames(c("Sample ID","8uL Result")) |> 
-  bind_cols(
-    readxl::read_excel("Ranbut Box Number 14&15.xlsx",range = cellranger::cell_cols("L"), col_type = c("numeric"),sheet = "Sheet2") |>
-  setNames(c("2uL Result")))) |> 
-  # Remove Gap
-  filter(!is.na(`Sample ID`)) |> 
-  mutate(`Sample ID` = case_when(str_detect(`Sample ID`,"[:punct:]") ~ 
-                    str_extract(`Sample ID`,regex("(?<=[:punct:])[:digit:]+")),
-                    .default = str_extract(`Sample ID`,regex("(?<=9)[:digit:]+")))) |> 
-  vroom_write("randox.csv",delim = ",")
+# bind_rows(
+#   read_excel_allsheets("Ranbut 133-101 to 110.xlsx", tibble = T, n = 4, r = cellranger::cell_cols("D:E"), col_type = c("text","numeric")) |> 
+#   # Sample ID for Subject 1330007 is wrong
+#   discard_at(7) |> 
+#   map(\(df) df |> slice(3:n())) |> 
+#   map(\(df) df |> setNames(c("Sample ID","8uL Result"))) |>
+# list_rbind() |> 
+#   bind_cols(
+# read_excel_allsheets("Ranbut 133-101 to 110.xlsx", tibble = T, n = 4, r = cellranger::cell_cols("H"), col_type = c("numeric")) |>
+#   discard_at(7) |>
+#   list_rbind() |>
+#   setNames(c("2uL Result"))),
+# 
+#   readxl::read_excel("Ranbut 133-101 to 110.xlsx",range = cellranger::cell_cols("D:E"), col_type = c("text","numeric"),sheet = "133-107") |> 
+#   slice(3:n()) |> 
+#   setNames(c("Sample ID","8uL Result")) |>
+#   bind_cols(
+#     readxl::read_excel("Ranbut 133-101 to 110.xlsx",range = cellranger::cell_cols("H"), col_type = c("numeric"), sheet = "133-107") |>
+#   setNames(c("2uL Result"))) |> 
+#   mutate(`Sample ID` = str_replace(`Sample ID`,"106","107")),
+# 
+# readxl::read_excel("RANBUT ABBOTT STUDY - week 5.xlsx",range = cellranger::cell_cols("E:F"), col_type = c("text","numeric")) |>
+#   setNames(c("Sample ID","8uL Result")) |>
+#   bind_cols(
+#     readxl::read_excel("RANBUT ABBOTT STUDY - week 5.xlsx",range = cellranger::cell_cols("B"), col_type = c("numeric")) |>
+#   setNames(c("2uL Result"))),
+# 
+# readxl::read_excel("RANBUT ABBOTT STUDY - week 6.xlsx",range = cellranger::cell_cols("F:G"), col_type = c("text","numeric")) |>
+#   setNames(c("Sample ID","8uL Result")) |>
+#   bind_cols(
+#     readxl::read_excel("RANBUT ABBOTT STUDY - week 6.xlsx",range = cellranger::cell_cols("C"), col_type = c("numeric")) |>
+#   setNames(c("2uL Result"))),
+# 
+# readxl::read_excel("Sub_90013.xlsx",range = cellranger::cell_cols("E:F"), col_type = c("text","numeric")) |>
+#   setNames(c("Sample ID","8uL Result")) |>
+#   bind_cols(
+#     readxl::read_excel("Sub_90013.xlsx",range = cellranger::cell_cols("B"), col_type = c("numeric")) |>
+#   setNames(c("2uL Result"))),
+# 
+# readxl::read_excel("Ranbut Box Number 14&15.xlsx",range = cellranger::cell_cols("B:C"), col_type = c("text","numeric"),sheet = "Sheet2") |>
+#   slice(3:n()) |>
+#   setNames(c("Sample ID","8uL Result")) |>
+#   bind_cols(
+#     readxl::read_excel("Ranbut Box Number 14&15.xlsx",range = cellranger::cell_cols("F"), col_type = c("numeric"),sheet = "Sheet2") |>
+#   setNames(c("2uL Result"))),
+# 
+# readxl::read_excel("Ranbut Box Number 14&15.xlsx",range = cellranger::cell_cols("H:I"), col_type = c("text","numeric"),sheet = "Sheet2") |>
+#   slice(3:n()) |>
+#   setNames(c("Sample ID","8uL Result")) |>
+#   bind_cols(
+#     readxl::read_excel("Ranbut Box Number 14&15.xlsx",range = cellranger::cell_cols("L"), col_type = c("numeric"),sheet = "Sheet2") |>
+#   setNames(c("2uL Result")))) |>
+#   # Remove Gap
+#   filter(!is.na(`Sample ID`)) |>
+#   mutate(`Sample ID` = case_when(str_detect(`Sample ID`,"[:punct:]") ~
+#                     str_extract(`Sample ID`,regex("(?<=[:punct:])[:digit:]+")),
+#                     .default = str_extract(`Sample ID`,regex("(?<=9)[:digit:]+")))) |> 
+#   arrange(`Sample ID`) |> 
+#        saveRDS(gsub("\\\\", "/", r"(\\oneabbott.com\dept\ADC\Technical_OPS\Clinical_Affairs\Clinical Study Files\Apollo\ADC-US-RES-23234_IDE Pump Suspension Study\Statistics\Programs\Datasets\AL\randox.rds)"))
 ```
-
 <!-- randox -->
+
 ```{r}
 #| label: Import sa
 # sa <- read_sas(gsub("\\\\", "/", r"(\\wf00168p.oneabbott.com\data1\CDM\ADC-US-RES-23234\OpenClinica\Current\sa.sas7bdat)"))
