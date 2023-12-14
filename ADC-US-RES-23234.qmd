@@ -321,21 +321,16 @@ read_excel_allsheets <- function(filename, tibble = FALSE, n, r, col_type) {
 #| label: Import Randox data
 #| warning: false
 #| message: false
-read_excel_allsheets("Ranbut 133-101 to 110.xlsx", tibble = T, n = 4, r = cellranger::cell_cols("D:E"), col_type = c("text","numeric")) |>
+bind_rows(
+  read_excel_allsheets("Ranbut 133-101 to 110.xlsx", tibble = T, n = 4, r = cellranger::cell_cols("D:E"), col_type = c("text","numeric")) |>
   map(\(df) df |> slice(3:n())) |>
   map(\(df) df |> setNames(c("Sample ID","8uL Result"))) |>
   list_rbind() |> 
   bind_cols(
 read_excel_allsheets("Ranbut 133-101 to 110.xlsx", tibble = T, n = 4, r = cellranger::cell_cols("H"), col_type = c("numeric")) |>
   list_rbind() |> 
-  setNames(c("2uL Result"))) |> 
-  mutate(`Sample ID` = str_extract(`Sample ID`,regex("(?<=[:punct:])[:digit:]+")))
-```
-
-```{r}
-#| warning: false
-#| message: false
-bind_rows(
+  setNames(c("2uL Result"))),
+  
 readxl::read_excel("RANBUT ABBOTT STUDY - week 5.xlsx",range = cellranger::cell_cols("E:F"), col_type = c("text","numeric")) |> 
   setNames(c("Sample ID","8uL Result")) |> 
   bind_cols(
@@ -371,7 +366,8 @@ readxl::read_excel("Ranbut Box Number 14&15.xlsx",range = cellranger::cell_cols(
   filter(!is.na(`Sample ID`)) |> 
   mutate(`Sample ID` = case_when(str_detect(`Sample ID`,"[:punct:]") ~ 
                     str_extract(`Sample ID`,regex("(?<=[:punct:])[:digit:]+")),
-                    .default = str_extract(`Sample ID`,regex("(?<=9)[:digit:]+"))))
+                    .default = str_extract(`Sample ID`,regex("(?<=9)[:digit:]+")))) |> 
+  vroom_write("randox.csv",delim = ",")
 ```
 
 <!-- randox -->
