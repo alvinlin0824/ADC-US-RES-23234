@@ -12,20 +12,6 @@ libname edc "M:\ADC-US-RES-23234\OpenClinica\Current";
 libname out "\\oneabbott.com\dept\ADC\Technical_OPS\Clinical_Affairs\Clinical Study Files\Apollo\ADC-US-RES-23234_IDE Pump Suspension Study\Statistics\Programs\Datasets\AL";
 /*libname mydir "C:\Project\ADC-US-RES-23234";*/
 
-/*Randox*/
-%macro read_excel_allsheets(sheet);
-	proc import out= data
-	datafile = "C:\Project\ADC-US-RES-23234\Ranbut 133-101 to 110.xlsx";
-	dbms = xlsx;
-	sheet = "&sheet";
-	getnames = yes;
-	run;
-%mend read_excel_allsheets;
-
-%read_excel_allsheets(133-101);
-/*Randox*/
-
-
 /*IV SAMPLE COLLECTION*/
 data iv1;
 set edc.iv1(where = (IVYN01 ^= "Check Here if no data recorded"));
@@ -34,7 +20,6 @@ run;
 
 data iv2;
 set edc.iv2 (where = (^missing(IVID01)));
-/*IVID01_C = put(IVID01, 5.);*/
 keep Subject IVID01 IVTM01 IVVAL01;
 run;
 
@@ -47,10 +32,40 @@ proc sort data = iv2;
 by Subject IVID01;
 run;
 
-/*Left Join iv1 and iv2*/
+/*full Join iv1 and iv2*/
 data iv12;
 merge iv1 iv2;
 by Subject;
+run;
+
+/*Import Randox.csv*/
+data randox;
+infile "\\oneabbott.com\dept\ADC\Technical_OPS\Clinical_Affairs\Clinical Study Files\Apollo\ADC-US-RES-23234_IDE Pump Suspension Study\Statistics\Programs\Datasets\AL\randox.csv"
+ delimiter = ','
+ missover
+ firstobs = 2
+ DSD;
+input ID uL8 uL2;
+run;
+
+/*Calculate randox average for 2uL*/
+proc sql;
+create table randox_mean as 
+select ID, mean(uL2)*4 as KRSEQ01
+from randox 
+group by ID;
+quit;
+
+/*Left join to get IV draw time*/
+Proc sql;
+create table randox_time as
+select * from IV12 as x left join randox_mean as y
+on x.IVID01 = y.ID;
+run;
+
+data randox_time;
+set randox_time (drop=ID);
+ref_type = "Randox";
 run;
 
 /*Ketone Glucose Results*/
@@ -61,7 +76,6 @@ run;
 
 data kgr2;
 set edc.kgr2;
-/*KRSEQ02_C = put(KRSEQ02,$5.-L);*/
 keep Subject KRSEQ02--KRDTC03;
 run;
 
@@ -74,16 +88,10 @@ proc sort data = kgr2;
 by Subject;
 run;
 
-/*KGR2 left join KGR1*/
+/*KGR2 full join KGR1*/
 data kgr12;
 merge kgr2 kgr1;
 by Subject;
-/*Manually Change Sample ID*/
-/*if Subject = 1330001 and length(KRSEQ02_C) = 1 then KRSEQ02_C = cats("1010",KRSEQ02_C);*/
-/*if Subject = 1330001 and length(KRSEQ02_C) = 2 then KRSEQ02_C = cats("101",KRSEQ02_C);*/
-/*if Subject = 1330002 and length(KRSEQ02_C) = 1 then KRSEQ02_C = cats("1020",KRSEQ02_C);*/
-/*if Subject = 1330002 and length(KRSEQ02_C) = 2 then KRSEQ02_C = cats("102",KRSEQ02_C);*/
-/*if Subject = 1330004 and KRSEQ02_C = "10730" then KRSEQ02_C = "10430";*/
 rename KRDTC01 = IVDTC01 KRSEQ02 = IVID01;
 run;
 
@@ -92,83 +100,57 @@ proc sort data = kgr12;
 by Subject IVDTC01 IVID01;
 run;
 
-/*Clinic Visit 3*/
-data cad3;
-set edc.cad3(where = (DSYN01 ^= "Check Here if no data recorded"));
-Visit = "Visit 3";
-keep Subject dsdtc01 Visit;
-run;
-
-/*Sort CAD3*/
-proc sort data = cad3;
-by Subject dsdtc01;
-run;
-
-/*Diabetes History*/
-data mh1;
-set edc.mh1(where = (MHYN01 ^= "Check Here if no data recorded"));
-if MHORES01 = "Type 1" or "Type 2" then Diabetes = "Yes";
-keep Subject MHORES01 Diabetes;
-run;
-
-/*Sort MH1*/
-proc sort data = mh1;
-by Subject;
-run;
-
 /*KGR12 left join IV12*/
 data kgriv12;
-format dtm datetime14.;
 merge kgr12 iv12;
 by Subject IVDTC01 IVID01;
+ref_type = "Venous strip";
+run;
+
+/*Bind rows with randox*/
+data kgriv;
+format dtm datetime14.;
+set kgriv12 randox_time;
 dtm = dhms(IVDTC01,0,0,input(IVTM01,time5.));
 run;
 
-/*KGR12 left join mh1 and cad3*/
-data kgrivmhcad;
-merge kgriv12 mh1 cad3;
-by Subject;
-subjid = strip(put(Subject,8.));
-drop Subject;
-rename subjid = subject;
-run;
-
-proc sort data = kgrivmhcad;
-by subject dtm;
+/*Valid sample only*/
+proc sort data = kgriv;
+by ref_type subject dtm;
 where ^missing(dtm) and IVVAL01 = "Valid";
 run;
 
 /*Get First Ketone Date and Time*/
 data first_ketone;
-set kgrivmhcad;
-by subject;
+set kgriv;
+by ref_type subject ;
 if first.subject;
-keep subject dtm;
+keep subject dtm ref_type;
 rename dtm = first_test_dtm;
 run;
 
 /*Get Peak Ketone Date and Time*/
-proc sort data = kgrivmhcad out = kgrivmhcad1;
-by subject descending KRSEQ01;
+proc sort data = kgriv out = kgriv1;
+by ref_type subject descending KRSEQ01;
 run;
 
 data peak_ketone;
-set kgrivmhcad1;
-by subject;
+set kgriv1;
+by ref_type subject;
 if first.subject;
-keep subject dtm KRSEQ01;
+keep subject dtm KRSEQ01 ref_type;
 rename dtm = peak_test_dtm KRSEQ01 = Peak;
 run;
 
 /*Get Date and Time once Ketone <1 mmol*/
 data last_ketone;
-merge kgrivmhcad peak_ketone;
-by subject;
+merge kgriv peak_ketone;
+by ref_type subject;
 if KRSEQ01 < 1 and dtm > peak_test_dtm and Peak >= 1;
 run;
 
 proc sort data = last_ketone;
-by subject dtm;
+by ref_type subject dtm;
 run;
 
 data last_ketone1;

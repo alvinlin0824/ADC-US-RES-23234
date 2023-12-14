@@ -194,6 +194,7 @@ ketone |>
 
 ```{r eval = params$analysis}
 #| label: Duration Table
+#| column: page
 ketone |> 
   slice_max(KRSEQ01,n = 1,with_ties = F,by = c(Subject,`Ref Type`)) |> 
   left_join(
@@ -208,13 +209,14 @@ ketone |>
   arrange(Subject) |>
   gt(groupname_col = c("Subject")) |>
   cols_align(align = "center") |>
+  fmt_number(columns = "Max Ketone Reference(mmol/L)", decimals = 2) |> 
   opt_stylize(style = 6, color = "blue")
   # tab_header(title = md("**Ketone Test Result (mmol/L)**"))
 ```
 
 ```{r eval = params$analysis}
 #| label: Summary for Peak
-#| column: body
+#| column: page
 ketone |> 
      filter(KRSEQ01 == max(KRSEQ01) & !is.na(`Time < 1 mmol/L`) ,.by = c(Subject,`Ref Type`)) |> 
      slice_min(`Ketone Date Time`, n = 1, with_ties = F,by = c(Subject,`Ref Type`)) |> 
@@ -236,7 +238,7 @@ ketone |>
 
 ```{r eval = params$analysis}
 #| label: Summary for Peak all subjects
-#| column: body
+#| column: page
 ketone |> 
      filter(KRSEQ01 == max(KRSEQ01),.by = c(Subject,`Ref Type`)) |> 
      slice_min(`Ketone Date Time`, n = 1, with_ties = F,by = c(Subject,`Ref Type`)) |> 
@@ -523,7 +525,7 @@ Ap <- upload_ketone |>
       arrange(`Ref Type`,`Subject ID`)
 ```
 
-```{r}
+```{r eval = params$analysis}
 #| label: Rate Deviation Data
 Ap_rate <- Ap |> 
            filter(between(ANA,0.6,3)) |> 
