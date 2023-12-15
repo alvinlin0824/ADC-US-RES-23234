@@ -32,7 +32,7 @@ proc sort data = iv2;
 by Subject IVID01;
 run;
 
-/*full Join iv1 and iv2*/
+/*Full Join iv1 and iv2*/
 data iv12;
 merge iv1 iv2;
 by Subject;
@@ -61,7 +61,7 @@ Proc sql;
 create table randox_time as
 select * from IV12 as x left join randox_mean as y
 on x.IVID01 = y.ID;
-run;
+quit;
 
 data randox_time;
 set randox_time (drop=ID);
@@ -112,12 +112,15 @@ data kgriv;
 format dtm datetime14.;
 set kgriv12 randox_time;
 dtm = dhms(IVDTC01,0,0,input(IVTM01,time5.));
+subject_C = put(Subject, 7.);
+rename subject_C = subject;
+drop subject;
 run;
 
 /*Valid sample only*/
 proc sort data = kgriv;
 by ref_type subject dtm;
-where ^missing(dtm) and IVVAL01 = "Valid";
+where ^missing(dtm) and IVVAL01 = "Valid" and ^missing(KRSEQ01);
 run;
 
 /*Get First Ketone Date and Time*/
@@ -155,26 +158,26 @@ run;
 
 data last_ketone1;
 set last_ketone;
-by subject;
+by ref_type subject;
 if first.subject;
-keep subject dtm KRSEQ01;
-rename dtm = last_test_dtm KRSEQ01 = first_below;
+keep subject dtm KRSEQ01 ref_type;
+rename dtm = time_below1_dtm KRSEQ01 = first_below;
 run;
 
-/*Left Join first_keton with kgrivmhcad*/
+/*Left Join first_keton with kgriv*/
 data ketone;
-merge kgrivmhcad first_ketone last_ketone1 peak_ketone;
-by subject;
+merge kgriv first_ketone last_ketone1 peak_ketone;
+by ref_type subject;
 time_diff = (dtm - first_test_dtm)/3600;
-time_diif1 = (dtm - peak_test_dtm)/3600;
+time_diff1 = (dtm - peak_test_dtm)/3600;
 duration_to_peak = (peak_test_dtm - first_test_dtm)/3600;
-duration_to_last = (last_test_dtm - peak_test_dtm)/3600;
+duration_to_below1 = (time_below1_dtm - peak_test_dtm)/3600;
 run;
 
 /*Lag by Subject*/
 data ketone_lag;
 set ketone;
-by subject;
+by ref_type subject;
 KRSEQ01_lag = lag(KRSEQ01);
 if first.subject then KRSEQ01_lag = .;
 KRSEQ01_diff = KRSEQ01 - KRSEQ01_lag;
@@ -182,12 +185,12 @@ run;
 
 /*Filter the peak ketone results*/
 proc sort data = ketone out = ketone1;
-by subject descending KRSEQ01;
+by ref_type subject descending KRSEQ01;
 run;
 
 data analysis_ketone;
 set ketone1;
-by subject;
+by ref_type subject;
 if first.subject;
 run;
 
@@ -289,7 +292,7 @@ run;
 data ketone_reference;
 set ketone;
 /*where IVVAL01 = "Valid" and ^missing(dtm);*/
-keep subject dtm IVID01 KRSEQ01;
+keep subject dtm IVID01 KRSEQ01 ref_type;
 rename dtm = dtm_ref;
 run;
 
@@ -298,9 +301,9 @@ proc sql;
  create table paired_ketone as
  select a.*, b.*
  from auu_906 a, ketone_reference b
- where a.subject = b.subject and a.dtm-300 <= b.dtm_ref <= a.dtm+300
- group by b.subject, dtm_ref
- order by b.subject, dtm_ref;
+ where a.subject = b.Subject and a.dtm-300 <= b.dtm_ref <= a.dtm+300
+ group by b.Subject, dtm_ref,
+ order by b.Subject, dtm_ref;
 quit;
 
 data paired_ketone1;
@@ -391,29 +394,29 @@ ods rtf file="C:\Project\ADC-US-RES-23234\ADC-US-RES-23234-Safety-Report(with 1.
 Proc means data = ketone maxdec=2 nonobs;
 title;
 var KRSEQ01;
-class Subject;
+class Subject ref_type;
 run;
 
-proc print data = analysis_ketone(rename = (subject = Subject first_test_dtm = 'Start Time'n peak_test_dtm = 'Peak Time'n Peak = 'Max Ketone Reference(mmol/L)'n last_test_dtm = 'Time once < 1 mmol/L'n duration_to_peak = 'Time to Peak(Hours)'n duration_to_last = 'Time to < 1 mmol/L(Hours)'n)) noobs;
-format 'Time to Peak(Hours)'n 'Time to < 1 mmol/L(Hours)'n 8.2;
+proc print data = analysis_ketone(rename = (ref_type = "Ref Type"n subject = Subject first_test_dtm = 'Start Time'n peak_test_dtm = 'Peak Time'n Peak = 'Max Ketone Reference(mmol/L)'n time_below1_dtm = 'Time once < 1 mmol/L'n duration_to_peak = 'Time to Peak(Hours)'n duration_to_below1 = 'Time to < 1 mmol/L(Hours)'n)) noobs;
+format 'Max Ketone Reference(mmol/L)'n 'Time to Peak(Hours)'n 'Time to < 1 mmol/L(Hours)'n 8.2;
 where ^missing('Max Ketone Reference(mmol/L)'n);
-var Subject 'Start Time'n 'Peak Time'n 'Max Ketone Reference(mmol/L)'n 'Time once < 1 mmol/L'n 'Time to Peak(Hours)'n 'Time to < 1 mmol/L(Hours)'n;
+var "Ref Type"n Subject 'Start Time'n 'Peak Time'n 'Max Ketone Reference(mmol/L)'n 'Time once < 1 mmol/L'n 'Time to Peak(Hours)'n 'Time to < 1 mmol/L(Hours)'n;
 run;
 
 proc tabulate data = analysis_ketone;
 where ^missing(first_below);
-class Visit;
-var KRSEQ01 duration_to_peak duration_to_last;
-table  Visit, KRSEQ01 = "Maximum Ketone Level Achieved"*(n mean stddev) duration_to_peak = "Time(Hours) To Peak Ketone Level From First Test"*(n mean stddev)
-duration_to_last = "Time(Hours) From Peak Ketone Level to Ketone Level < 1 mmol/L"*(n mean stddev);
+class ref_type;
+var KRSEQ01 duration_to_peak duration_to_below1;
+table  ref_type = "Ref Type", KRSEQ01 = "Maximum Ketone Level Achieved"*(n mean stddev) duration_to_peak = "Time(Hours) To Peak Ketone Level From First Test"*(n mean stddev)
+duration_to_below1 = "Time(Hours) From Peak Ketone Level to Ketone Level < 1 mmol/L"*(n mean stddev);
 run;
 
 proc tabulate data = analysis_ketone;
 /*where ^missing(first_below);*/
-class Visit;
-var KRSEQ01 duration_to_peak duration_to_last;
-table  Visit, KRSEQ01 = "Maximum Ketone Level Achieved"*(n mean stddev) duration_to_peak = "Time(Hours) To Peak Ketone Level From First Test"*(n mean stddev)
-duration_to_last = "Time(Hours) From Peak Ketone Level to Ketone Level < 1 mmol/L"*(n mean stddev);
+class ref_type;
+var KRSEQ01 duration_to_peak duration_to_below1;
+table  ref_type = "Ref Type", KRSEQ01 = "Maximum Ketone Level Achieved"*(n mean stddev) duration_to_peak = "Time(Hours) To Peak Ketone Level From First Test"*(n mean stddev)
+duration_to_below1 = "Time(Hours) From Peak Ketone Level to Ketone Level < 1 mmol/L"*(n mean stddev);
 run;
 
 goptions device=png target=png rotate=landscape hpos=90 vpos=40 gwait=0 aspect=0.5
@@ -421,48 +424,96 @@ ftext='arial' htext=9pt hby=16pt gsfname=exfile gsfmode=replace xmax=16in hsize=
 
 ods graphics on / reset attrpriority=color width=8in height=5in;
 /*Reference Plot*/
-proc sgplot data = ketone noautolegend cycleattrs;
+proc sgpanel data = ketone;
 where ^missing(dtm);
 title1 "Ketone Reference";
-styleattrs datacontrastcolors = (magenta green blue orange lilac lime marron olive steel violet yellow);
-	series x = time_diff y = krseq01 / group = subject groupdisplay = overlay markers markerattrs = (size = 3 symbol = dot) name = "REAL";
-	yaxis label = "Ketone Test Result (mmol/L)" values=(0 to 5 by 0.5);
-	xaxis label = "Time(Hours)" values=(0 to 8 by 1) INTERVAL = HOUR VALUESROTATE=DIAGONAL2;
-	keylegend / title = "Subject ID";
+panelby ref_type / spacing=5 novarname;
+series x = time_diff y = krseq01 / group = subject groupdisplay = overlay markers markerattrs = (size = 3 symbol = dot);
+colaxis label = "Time(Hours)"
+	values=(0 to 8 by 1) INTERVAL = HOUR VALUESROTATE=DIAGONAL2;
+rowaxis label = "Ketone Test Result (mmol/L)"
+    values=(0 to 5 by 0.5);
+keylegend / title = "Subject ID";
 run;
+
+/*proc sgplot data = ketone noautolegend cycleattrs;*/
+/*where ^missing(dtm);*/
+/*title1 "Ketone Reference";*/
+/*styleattrs datacontrastcolors = (magenta green blue orange lilac lime marron olive steel violet yellow);*/
+/*	series x = time_diff y = krseq01 / group = subject groupdisplay = overlay markers markerattrs = (size = 3 symbol = dot) name = "REAL";*/
+/*	yaxis label = "Ketone Test Result (mmol/L)" values=(0 to 5 by 0.5);*/
+/*	xaxis label = "Time(Hours)" values=(0 to 8 by 1) INTERVAL = HOUR VALUESROTATE=DIAGONAL2;*/
+/*	keylegend / title = "Subject ID";*/
+/*run;*/
 
 /*Delta*/
-proc sgplot data = ketone_lag noautolegend cycleattrs;
+proc sgpanel data = ketone_lag;
 where ^missing(dtm);
 title1 "Ketone Vary Over Time";
-styleattrs datacontrastcolors = (magenta green blue orange lilac lime marron olive steel violet yellow);
-	series x = time_diff y = krseq01_diff / group = subject groupdisplay = overlay markers markerattrs = (size = 3 symbol = dot) name = "REAL";
-	yaxis label = "Ketone Test Result (mmol/L)" values=(-1 to 1 by 0.1);
-	xaxis label = "Time(Hours)" values=(0 to 8 by 1) INTERVAL = HOUR VALUESROTATE=DIAGONAL2;
-	keylegend / title = "Subject ID";
+panelby ref_type / spacing=5 novarname;
+series x = time_diff y = krseq01_diff / group = subject groupdisplay = overlay markers markerattrs = (size = 3 symbol = dot);
+colaxis label = "Time(Hours)"
+	values=(0 to 8 by 1) INTERVAL = HOUR VALUESROTATE=DIAGONAL2;
+rowaxis label = "Ketone Test Result (mmol/L)"
+    values=(-2 to 2 by 0.5);
+keylegend / title = "Subject ID";
 run;
+
+/*proc sgplot data = ketone_lag noautolegend cycleattrs;*/
+/*where ^missing(dtm);*/
+/*title1 "Ketone Vary Over Time";*/
+/*styleattrs datacontrastcolors = (magenta green blue orange lilac lime marron olive steel violet yellow);*/
+/*	series x = time_diff y = krseq01_diff / group = subject groupdisplay = overlay markers markerattrs = (size = 3 symbol = dot) name = "REAL";*/
+/*	yaxis label = "Ketone Test Result (mmol/L)" values=(-1 to 1 by 0.1);*/
+/*	xaxis label = "Time(Hours)" values=(0 to 8 by 1) INTERVAL = HOUR VALUESROTATE=DIAGONAL2;*/
+/*	keylegend / title = "Subject ID";*/
+/*run;*/
 
 /*Time from baseline to peak*/
-proc sgplot data = ketone noautolegend cycleattrs;
+proc sgpanel data = ketone;
 where ^missing(dtm) and dtm <= peak_test_dtm;
 title1 "Time From Baseline To Peak";
-styleattrs datacontrastcolors = (magenta green blue orange lilac lime marron olive steel violet yellow);
-	series x = time_diff y = krseq01 / group = subject groupdisplay = overlay markers markerattrs = (size = 3 symbol = dot) name = "REAL";
-	yaxis label = "Ketone Test Result (mmol/L)" values=(0 to 5 by 0.5);
-	xaxis label = "Time(Hours)" values=(0 to 8 by 1) INTERVAL = HOUR VALUESROTATE=DIAGONAL2;
-	keylegend / title = "Subject ID";
+panelby ref_type / spacing=5 novarname;
+series x = time_diff y = krseq01 / group = subject groupdisplay = overlay markers markerattrs = (size = 3 symbol = dot);
+colaxis label = "Time(Hours)"
+	values=(0 to 7 by 1) INTERVAL = HOUR VALUESROTATE=DIAGONAL2;
+rowaxis label = "Ketone Test Result (mmol/L)"
+    values=(0 to 5 by 0.5);
+keylegend / title = "Subject ID";
 run;
 
+/*proc sgplot data = ketone noautolegend cycleattrs;*/
+/*where ^missing(dtm) and dtm <= peak_test_dtm;*/
+/*title1 "Time From Baseline To Peak";*/
+/*styleattrs datacontrastcolors = (magenta green blue orange lilac lime marron olive steel violet yellow);*/
+/*	series x = time_diff y = krseq01 / group = subject groupdisplay = overlay markers markerattrs = (size = 3 symbol = dot) name = "REAL";*/
+/*	yaxis label = "Ketone Test Result (mmol/L)" values=(0 to 5 by 0.5);*/
+/*	xaxis label = "Time(Hours)" values=(0 to 8 by 1) INTERVAL = HOUR VALUESROTATE=DIAGONAL2;*/
+/*	keylegend / title = "Subject ID";*/
+/*run;*/
+
 /*Time from peak to 1 mmol*/
-proc sgplot data = ketone noautolegend cycleattrs;
-where ^missing(dtm) and ^missing(duration_to_last);
+proc sgpanel data = ketone;
+where ^missing(dtm) and ^missing(duration_to_below1);
 title1 "Time From Peak To < 1 mmol/L";
-styleattrs datacontrastcolors = (magenta green blue orange lilac lime marron olive steel violet yellow);
-	series x = time_diif1 y = krseq01 / group = subject groupdisplay = overlay markers markerattrs = (size = 3 symbol = dot) name = "REAL";
-	yaxis label = "Ketone Test Result (mmol/L)" values=(0 to 5 by 0.5);
-	xaxis label = "Time(Hours)" values=(0 to 8 by 1) INTERVAL = HOUR VALUESROTATE=DIAGONAL2;
-	keylegend / title = "Subject ID";
+panelby ref_type / spacing=5 novarname;
+series x = time_diff1 y = krseq01 / group = subject groupdisplay = overlay markers markerattrs = (size = 3 symbol = dot);
+colaxis label = "Time(Hours)"
+	values=(0 to 3 by 1) INTERVAL = HOUR VALUESROTATE=DIAGONAL2;
+rowaxis label = "Ketone Test Result (mmol/L)"
+    values=(0 to 5 by 0.5);
+keylegend / title = "Subject ID";
 run;
+
+/*proc sgplot data = ketone noautolegend cycleattrs;*/
+/*where ^missing(dtm) and ^missing(duration_to_below1);*/
+/*title1 "Time From Peak To < 1 mmol/L";*/
+/*styleattrs datacontrastcolors = (magenta green blue orange lilac lime marron olive steel violet yellow);*/
+/*	series x = time_diff1 y = krseq01 / group = subject groupdisplay = overlay markers markerattrs = (size = 3 symbol = dot) name = "REAL";*/
+/*	yaxis label = "Ketone Test Result (mmol/L)" values=(0 to 4 by 0.5);*/
+/*	xaxis label = "Time(Hours)" values=(0 to 3 by 1) INTERVAL = HOUR VALUESROTATE=DIAGONAL2;*/
+/*	keylegend / title = "Subject ID";*/
+/*run;*/
 
 /*Ketone Reference Rate*/
 proc tabulate data = Ap_rate format=8.1 style=[cellwidth=2.0cm just=c];

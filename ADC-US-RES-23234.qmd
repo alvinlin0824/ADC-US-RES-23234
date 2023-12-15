@@ -150,9 +150,11 @@ kgriv12 <- kgr12 |>
                     `Ref Type` = "Randox",.keep = "unused")) |> 
            mutate(`Ketone Date Time` = ymd_hm(str_c(KRDTC01,IVTM01,sep = " ")),
                   `Glucose Date Time` = ymd_hm(str_c(KRDTC01,KRDTC03,sep = " ")),
+                  KRDTC02 = NULL,
                   .keep = "unused") |> 
            arrange(`Ref Type`,Subject,`Ketone Date Time`) |> 
-           filter(IVVAL01 == "Valid")
+           filter(IVVAL01 == "Valid") |> 
+           filter(!is.na(KRSEQ01))
 ```
 
 ```{r}
@@ -164,12 +166,13 @@ ketone <- kgriv12 |>
               slice_max(KRSEQ01,n = 1,with_ties = F,by = c(Subject,`Ref Type`)) |> 
               select(Subject,`Ref Type` ,`Peak Time` = `Ketone Date Time`),
               by = join_by(Subject,`Ref Type`)) |> 
-          mutate(`Time < 1 mmol/L` = case_when(max(KRSEQ01) > 1 & 
+          mutate(`Time < 1 mmol/L` = case_when(max(KRSEQ01,na.rm = T) > 1 & 
                                              `Ketone Date Time` > `Peak Time` & 
                                               KRSEQ01 < 1  ~ `Ketone Date Time`),
                  `Time < 1 mmol/L` = first(`Time < 1 mmol/L`,na_rm = T),
+
                  duration_to_peak = as.numeric(difftime(`Ketone Date Time`,first(`Ketone Date Time`),units = "hours")),
-                 duration_to_below_1mmol = as.numeric(difftime(`Time < 1 mmol/L`,`Peak Time` ,units = "hours")),.by = c(Subject,`Ref Type`)) 
+                 duration_to_below_1mmol = as.numeric(difftime(`Time < 1 mmol/L`,`Peak Time` ,units = "hours")),.by = c(Subject,`Ref Type`))
 ```
 
 ```{r eval = params$analysis}
@@ -218,7 +221,7 @@ ketone |>
 #| label: Summary for Peak
 #| column: page
 ketone |> 
-     filter(KRSEQ01 == max(KRSEQ01) & !is.na(`Time < 1 mmol/L`) ,.by = c(Subject,`Ref Type`)) |> 
+     filter(KRSEQ01 == max(KRSEQ01,na.rm = T) & !is.na(`Time < 1 mmol/L`) ,.by = c(Subject,`Ref Type`)) |> 
      slice_min(`Ketone Date Time`, n = 1, with_ties = F,by = c(Subject,`Ref Type`)) |> 
      summarise(across(c(KRSEQ01,duration_to_peak,duration_to_below_1mmol),summary_calculation[c(1,3,6)],.names = "{.col} {.fn}"),.by = c(`Ref Type`)) |> 
      gt() |> 
@@ -240,7 +243,7 @@ ketone |>
 #| label: Summary for Peak all subjects
 #| column: page
 ketone |> 
-     filter(KRSEQ01 == max(KRSEQ01),.by = c(Subject,`Ref Type`)) |> 
+     filter(KRSEQ01 == max(KRSEQ01,na.rm = T),.by = c(Subject,`Ref Type`)) |> 
      slice_min(`Ketone Date Time`, n = 1, with_ties = F,by = c(Subject,`Ref Type`)) |> 
      summarise(across(c(KRSEQ01,duration_to_peak,duration_to_below_1mmol),summary_calculation[c(1,3,6)],.names = "{.col} {.fn}"), .by = c(`Ref Type`)) |> 
      gt() |> 
@@ -313,13 +316,13 @@ ketone |>
 #| label: Time From Peak To 1 mmol/L
 #| fig-align: center
 ketone |>
-  filter(`Peak Time` <= `Ketone Date Time` & !is.na(duration_to_below_1mmol) >= 1,.by = c(Subject,`Ref Type`)) |> 
+  filter(`Peak Time` <= `Ketone Date Time` & !is.na(duration_to_below_1mmol),.by = c(Subject,`Ref Type`)) |> 
   ggplot(aes(x = as.numeric(difftime(`Ketone Date Time`,`Peak Time`,units = "hours")), y = KRSEQ01, color = Subject)) +
   geom_point() +
   geom_line() +
   facet_grid(cols = vars(`Ref Type`)) + 
   scale_x_continuous(expand = c(0,0)) + 
-  scale_y_continuous(expand = c(0,0)) + 
+  scale_y_continuous(expand = c(0,0),breaks = c(seq(0,5,1)),limits = c(0,5)) + 
   labs(title = "Time From Peak To 1 mmol/L",x = "Time(Hours)", y = "Ketone Test Result (mmol/L)") +
   theme_bw() +
   theme(panel.grid.major.y = element_blank(),panel.grid.minor.y = element_blank(),legend.position = "bottom",plot.title = element_text(hjust = 0.5))
@@ -342,24 +345,24 @@ read_excel_allsheets <- function(filename, tibble = FALSE, n, r, col_type) {
 #| warning: false
 #| message: false
 # bind_rows(
-#   read_excel_allsheets("Ranbut 133-101 to 110.xlsx", tibble = T, n = 4, r = cellranger::cell_cols("D:E"), col_type = c("text","numeric")) |> 
+#   read_excel_allsheets("Ranbut 133-101 to 110.xlsx", tibble = T, n = 4, r = cellranger::cell_cols("D:E"), col_type = c("text","numeric")) |>
 #   # Sample ID for Subject 1330007 is wrong
-#   discard_at(7) |> 
-#   map(\(df) df |> slice(3:n())) |> 
+#   discard_at(7) |>
+#   map(\(df) df |> slice(3:n())) |>
 #   map(\(df) df |> setNames(c("Sample ID","8uL Result"))) |>
-# list_rbind() |> 
+# list_rbind() |>
 #   bind_cols(
 # read_excel_allsheets("Ranbut 133-101 to 110.xlsx", tibble = T, n = 4, r = cellranger::cell_cols("H"), col_type = c("numeric")) |>
 #   discard_at(7) |>
 #   list_rbind() |>
 #   setNames(c("2uL Result"))),
 # 
-#   readxl::read_excel("Ranbut 133-101 to 110.xlsx",range = cellranger::cell_cols("D:E"), col_type = c("text","numeric"),sheet = "133-107") |> 
-#   slice(3:n()) |> 
+#   readxl::read_excel("Ranbut 133-101 to 110.xlsx",range = cellranger::cell_cols("D:E"), col_type = c("text","numeric"),sheet = "133-107") |>
+#   slice(3:n()) |>
 #   setNames(c("Sample ID","8uL Result")) |>
 #   bind_cols(
 #     readxl::read_excel("Ranbut 133-101 to 110.xlsx",range = cellranger::cell_cols("H"), col_type = c("numeric"), sheet = "133-107") |>
-#   setNames(c("2uL Result"))) |> 
+#   setNames(c("2uL Result"))) |>
 #   mutate(`Sample ID` = str_replace(`Sample ID`,"106","107")),
 # 
 # readxl::read_excel("RANBUT ABBOTT STUDY - week 5.xlsx",range = cellranger::cell_cols("E:F"), col_type = c("text","numeric")) |>
@@ -397,8 +400,9 @@ read_excel_allsheets <- function(filename, tibble = FALSE, n, r, col_type) {
 #   filter(!is.na(`Sample ID`)) |>
 #   mutate(`Sample ID` = case_when(str_detect(`Sample ID`,"[:punct:]") ~
 #                     str_extract(`Sample ID`,regex("(?<=[:punct:])[:digit:]+")),
-#                     .default = str_extract(`Sample ID`,regex("(?<=9)[:digit:]+")))) |> 
-#   arrange(`Sample ID`) |> 
+#                     .default = str_extract(`Sample ID`,regex("(?<=9)[:digit:]+"))),
+#          across(c(`8uL Result`,`2uL Result`), ~ replace_na(.x,0))) |>
+#   arrange(`Sample ID`) |> View()
 #        saveRDS(gsub("\\\\", "/", r"(\\oneabbott.com\dept\ADC\Technical_OPS\Clinical_Affairs\Clinical Study Files\Apollo\ADC-US-RES-23234_IDE Pump Suspension Study\Statistics\Programs\Datasets\AL\randox.rds)"))
 ```
 <!-- randox -->
