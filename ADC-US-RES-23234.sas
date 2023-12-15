@@ -112,7 +112,7 @@ data kgriv;
 format dtm datetime14.;
 set kgriv12 randox_time;
 dtm = dhms(IVDTC01,0,0,input(IVTM01,time5.));
-subject_C = put(Subject, 7.);
+subject_C = strip(put(Subject,7.));
 rename subject_C = subject;
 drop subject;
 run;
@@ -277,7 +277,7 @@ run;
 data auu_906;
 format dtm_sec datetime16.;
 set out.auu;
-ana_100 = (ANA/100)*1.25;
+ana_100 = (ANA/100);
 if snr = "089CR2FAX" then dtm = dtm + 2*60*60;
 if snr = "089CR2ELD" then dtm = dtm - 1*60*60;
 if snr = "089CR2CRA" and Type = "SENSOR_STARTED (58)" then dtm = dtm - 12*60*60;
@@ -302,7 +302,7 @@ proc sql;
  select a.*, b.*
  from auu_906 a, ketone_reference b
  where a.subject = b.Subject and a.dtm-300 <= b.dtm_ref <= a.dtm+300
- group by b.Subject, dtm_ref,
+ group by b.Subject, dtm_ref,b.ref_type
  order by b.Subject, dtm_ref;
 quit;
 
@@ -312,37 +312,37 @@ data paired_ketone1;
 run;
 
 proc sort data = paired_ketone1; 
-by subject condition_id dtm_ref abstimediff KRSEQ01 descending dtm_sec; 
+by ref_type subject condition_id dtm_ref abstimediff KRSEQ01 descending dtm_sec; 
 run;
 
 data paired_ketone2;
  set paired_ketone1;
- by subject condition_id dtm_ref abstimediff KRSEQ01 descending dtm_sec;
+ by ref_type subject condition_id dtm_ref abstimediff KRSEQ01 descending dtm_sec;
  if first.dtm_ref; *Choose pair that is closest in time when Ketone paired with multiple GM;
 run;
 
 proc sort data = paired_ketone2; 
-by subject condition_id dtm_sec abstimediff dtm_ref; 
+by ref_type subject condition_id dtm_sec abstimediff dtm_ref; 
 run;
 
 data Ap;
  set paired_ketone2;
- by subject condition_id dtm_sec abstimediff dtm_ref;
+ by ref_type subject condition_id dtm_sec abstimediff dtm_ref;
  if first.dtm_sec; *Choose pair that is closest in time when GM paired with multiple Ketone;
  drop abstimediff dtm;
 run;
 
 /*Rate Deviation*/
 proc sort data = Ap;
-by subject snr;
+by ref_type subject snr;
 run;
-/*(where = (ana_100 between 0.6 and 3.0))*/
+
 data Ap_rate;
-set Ap;
+set Ap (where = (ana_100 >= 0.6 and ana_100 <= 3));
 length level level1 level2 $25.;
 format lag_dtm datetime16. lag_dtm_ref datetime14;
 /*Consider individual sensor*/
-by subject snr;
+by ref_type subject snr;
 lag_dtm = lag(dtm_sec); lag_dtm_ref = lag(dtm_ref);
 lag_ana_100 = lag(ana_100); lag_KRSEQ01 = lag(KRSEQ01);
 if first.snr then do;
@@ -382,13 +382,12 @@ ard=abs(rd);
  if ketone_ref_rate gt 3 then level2 = '8: >3';
 /* Remove missing rd*/
  if missing(rd) then delete;
- where ana_100 >= 0.6 and ana_100 <= 3;
 /*Drop useless columns*/
 drop lag_dtm--lag_KRSEQ01;
 run;
 /*(with 1.25 adj)*/
 options papersize=a3 orientation=portrait;
-ods rtf file="C:\Project\ADC-US-RES-23234\ADC-US-RES-23234-Safety-Report(with 1.25 adj)-%trim(%sysfunc(today(),yymmddn8.)).rtf" startpage=no;
+ods rtf file="C:\Project\ADC-US-RES-23234\ADC-US-RES-23234-Safety-Report-%trim(%sysfunc(today(),yymmddn8.)).rtf" startpage=no;
 
 /*Summary Statistics on Ketone Result*/
 Proc means data = ketone maxdec=2 nonobs;
@@ -517,52 +516,61 @@ run;
 
 /*Ketone Reference Rate*/
 proc tabulate data = Ap_rate format=8.1 style=[cellwidth=2.0cm just=c];
- title1 " ";
- class level2;
- table level2 = 'Ketone Ref Rate (mmol/L/hour)', n pctn='%' / rts=25;
+ title1 "Ketone Reference Rate";
+ class ref_type level2;
+ table ref_type = "Ref Type",level2 = 'Ketone Ref Rate (mmol/L/hour)', n pctn='%' / rts=25;
 run;
-
-/*Summary on Ketone Reference Rate*/
-/*proc means data = Ap_rate maxdec=2 nonobs;*/
-/* title1 " "; */
-/* var ketone_ref_rate;*/
-/* output out=_null_ mean= std= min= max= n= / autoname;*/
-/*run;*/
 
 /*Plot distribution of ketone_ref_rate*/
-proc sgplot data = Ap_rate;
-title "Distribution of Ketone Ref Rate";
-histogram ketone_ref_rate / binwidth = 0.5;;
-xaxis label = 'Ketone Ref Rate (mmol/L/hour)' values = (-10 to 10 by 1);
+proc sgpanel data = Ap_rate;
+title1 "Distribution of Ketone Ref Rate";
+panelby ref_type / spacing=5 novarname;
+histogram ketone_ref_rate / binwidth = 0.5;
+colaxis label = "Ketone Ref Rate (mmol/L/hour)"
+	values=(-10 to 10 by 1) INTERVAL = HOUR VALUESROTATE=DIAGONAL2;
 run;
+
+/*proc sgplot data = Ap_rate;*/
+/*title "Distribution of Ketone Ref Rate";*/
+/*histogram ketone_ref_rate / binwidth = 0.5;*/
+/*xaxis label = 'Ketone Ref Rate (mmol/L/hour)' values = (-10 to 10 by 1);*/
+/*run;*/
 
 /*Rate Deviation*/
 proc tabulate data = Ap_rate format=8.1 style=[cellwidth=2.0cm just=c];
- title1 " ";
- class level;
- table level = 'Rate Deviation (mmol/L/hour)', n pctn='%' / rts=25;
+ title1 "Rate Deviation";
+ class ref_type level;
+ table ref_type = "Ref Type", level = 'Rate Deviation (mmol/L/hour)', n pctn='%' / rts=25;
 run;
 
 /*Absoulte Rate Deviation*/
 proc tabulate data = Ap_rate format=8.1 style=[cellwidth=2.0cm just=c];
  title1 " ";
- class level1;
- table level1 = 'Absoulte Rate Deviation (mmol/L/hour)', n pctn='%' / rts=25;
+ class ref_type level1;
+ table ref_type = "Ref Type", level1 = 'Absoulte Rate Deviation (mmol/L/hour)', n pctn='%' / rts=25;
 run;
 
 /*Summary on Rate deviation and absolute rate deviation ketone_ref_rate*/
 proc means data = Ap_rate maxdec=2 nonobs;
  title1 " "; 
+ by ref_type;
  var rd ard ketone_ref_rate;
  output out=_null_ mean= std= min= max= n= / autoname;
 run;
 
 /*Plot distribution of rd*/
-proc sgplot data = Ap_rate;
-title "Distribution of Rate Deviation";
-histogram rd / binwidth = 0.5;;
-xaxis label = 'Rate Deviation (mmol/L/hour)' values = (-10 to 10 by 1);
+proc sgpanel data = Ap_rate;
+title1 "Distribution of Rate Deviation";
+panelby ref_type / spacing=5 novarname;
+histogram rd / binwidth = 0.5;
+colaxis label = "Rate Deviation (mmol/L/hour)"
+	values=(-10 to 10 by 1) INTERVAL = HOUR VALUESROTATE=DIAGONAL2;
 run;
+/*proc sgplot data = Ap_rate;*/
+/*title "Distribution of Rate Deviation";*/
+/*histogram rd / binwidth = 0.5;*/
+/*xaxis label = 'Rate Deviation (mmol/L/hour)' values = (-10 to 10 by 1);*/
+/*run;*/
 ODS RTF CLOSE;
 
 data Ap_accuracy;
@@ -605,6 +613,9 @@ if ana_100 >= 0.6 and ana_100 < 1.0 then concur_upload_group = "2: [0.6-1.0)";
 if ana_100 >= 1.0 and ana_100 <= 1.5 then concur_upload_group = "3: [1.0-1.5]";
 if ana_100 > 1.5 and ana_100 <= 3 then concur_upload_group = "4: (1.5-3]";
 if ana_100 > 3.0 then concur_upload_group = "5: >3.0";
+/*Site*/
+if find(subject,"133") then Site = "Yale";
+if find(subject,"900") then Site = "RCR";
 run;
 
 /*/*System Agreement*/
@@ -619,25 +630,25 @@ run;
 
 /*Count Each Group*/
 proc freq data = Ap_overall(where = (ana_100 between 0.6 and 3.0)) noprint;
-tables Level*Group/ out = freq;
+tables Site*ref_type*Level*Group/ out = freq sparse;
 run;
 
 /*Global Sum*/
 proc sql;
 create table sql_freq as 
-select Level,Group,COUNT, sum(COUNT) as global_sum
+select Site,ref_type,Level,Group,COUNT, sum(COUNT) as global_sum
 from freq 
-group by Level;
+group by Site,ref_type,Level;
 quit;
 
 /*Cumulative Sum per Group*/
 proc sort data = sql_freq;
-by Level Group;
+by Site ref_type Level Group;
 run;
 
 data sys_freq;
 set sql_freq;
-by Level;
+by Site ref_type Level;
 if first.Level then local_sum = .;
 else local_sum + COUNT;
 run;
@@ -652,13 +663,13 @@ run;
 
 /*Transpose*/
 proc transpose data = sys_freq1 out = sys_trans(drop=_name_);
-by Level;
+by Site ref_type Level;
 ID Group;
 VAR N;
 run;
 
 data sys_trans1;
-retain Level "Within +- 10%/ +- 0.1 mmol/L"n
+retain Site ref_type Level "Within +- 10%/ +- 0.1 mmol/L"n
 "Within +- 20%/ +- 0.2 mmol/L"n "Within +- 30%/ +- 0.3 mmol/L"n
 "Within +- 40%/ +- 0.4 mmol/L"n "Outside +- 40%/ +- 0.4 mmol/L"n;
 set sys_trans;
@@ -667,22 +678,21 @@ run;
 
 /*Difference Measure*/
 proc means data = Ap_overall(where = (ana_100 between 0.6 and 3.0)) noprint;
-class Level;
+class Site ref_type Level;
 var abs_pbias pbias abs_bias bias;
 output out = bias_mean(drop = _TYPE_ _FREQ_) mean =  median =  n = / autoname ;
 run;
 
 /*Change Column names and order*/
 data bias_table;
-retain Level abs_pbias_Mean abs_pbias_Median
+retain Site ref_type Level abs_pbias_Mean abs_pbias_Median
 pbias_Mean pbias_Median abs_bias_Mean abs_bias_Median bias_Mean bias_Median;
 set bias_mean(drop = abs_pbias_N pbias_N abs_bias_N);
-where ^missing(Level);
+where ^missing(Site) and ^missing(ref_type) and ^missing(Level) ;
 run;
 /*Difference Measure*/
 
 /*Concurrence*/
-/*KM vs Ref*/
 ods select none;
 proc tabulate data=Ap_accuracy format=8.1 style=[cellwidth=1.0cm just=c] out = upload_count;
  title1 ' ';
@@ -791,24 +801,27 @@ run;
 /*Ref vs KM*/
 /*/*Concurrence (with 1.25 adj)*/
 
-
 options papersize=a3 orientation=portrait;
-ods rtf file="C:\Project\ADC-US-RES-23234\ADC-US-RES-23234-Accuracy-Report(with 1.25 adj)-%trim(%sysfunc(today(),yymmddn8.)).rtf" startpage=no;
+ods rtf file="C:\Project\ADC-US-RES-23234\ADC-US-RES-23234-Accuracy-Report-%trim(%sysfunc(today(),yymmddn8.)).rtf" startpage=no;
 proc report data=sys_trans1 nofs split='$'
  style(column)=[just=l font=(arial, 10pt)]
  style(header)=[font_weight=bold just=c font=(arial, 10pt)]
  style(lines)=[font_weight=bold just=l];
  title1 ' ';
- columns ("System Agreement Results Split at 1 mmol/L(with 1.25 adj)" Level "Within +- 10%/ +- 0.1 mmol/L"n
+ columns ("System Agreement Results Split at 1 mmol/L" Site ref_type Level "Within +- 10%/ +- 0.1 mmol/L"n
 "Within +- 20%/ +- 0.2 mmol/L"n "Within +- 30%/ +- 0.3 mmol/L"n
 "Within +- 40%/ +- 0.4 mmol/L"n "Outside +- 40%/ +- 0.4 mmol/L"n);
+ define Site / Group width=5; 
+ define ref_type / Group "Ref Type" width=5; 
  define Level /"Ketone Ref Level" order=data width=5; 
 run;
 
 proc report data=bias_table nofs split='$'
  style(column)=[just=l font=(arial, 10pt)] style(header)=[font_weight=bold just=c font=(arial, 10pt)] style(lines)=[font_weight=bold just=l];
  title1 ' ';
- columns ("Bias Measures(with 1.25 adj)" Level ("MARD (%)" abs_pbias_Mean abs_pbias_Median) ("% Bias" pbias_Mean pbias_Median) ("Abs. Bias (mmol/L)" abs_bias_Mean abs_bias_Median) ("Bias (mmol/L)" bias_Mean bias_Median) bias_N);
+ columns ("Bias Measures" Site ref_type Level ("MARD (%)" abs_pbias_Mean abs_pbias_Median) ("% Bias" pbias_Mean pbias_Median) ("Abs. Bias (mmol/L)" abs_bias_Mean abs_bias_Median) ("Bias (mmol/L)" bias_Mean bias_Median) bias_N);
+ define Site / Group width=5; 
+ define ref_type / Group "Ref Type" width=5;
  define abs_pbias_Mean /"Mean" display f=8.1 width=5; 
  define abs_pbias_Median /"Median" display f=8.1 width=5;
  define pbias_Mean /"Mean" display f=8.1 width=5; 
@@ -826,7 +839,7 @@ proc report data=concur_km_vs_ref nofs split='$'
  style(header)=[font_weight=bold just=c font=(arial, 10pt)]
  style(lines)=[font_weight=bold just=l];
  title1 " "; 
- columns ("Concurrence Analysis by Ketone Level (KM vs. Ref)(with 1.25 adj)" ref_nam ("Ref (mmol/L)" 'p1: <0.6'n 'p2: [0.6-1.0)'n 'p3: [1.0-1.5]'n 'p4: (1.5-3]'n 'p5: >3.0'n) nTotal);
+ columns ("Concurrence Analysis by Ketone Level (KM vs. Ref)" ref_nam ("Ref (mmol/L)" 'p1: <0.6'n 'p2: [0.6-1.0)'n 'p3: [1.0-1.5]'n 'p4: (1.5-3]'n 'p5: >3.0'n) nTotal);
  define ref_nam /"KM (mmol/L)" display;
  define 'p1: <0.6'n /"<0.6" display f=8.1 width=5; 
  define 'p2: [0.6-1.0)'n /"[0.6-1.0)" display f=8.1 width=5;
@@ -841,7 +854,7 @@ proc report data=concur_ref_vs_km nofs split='$'
  style(header)=[font_weight=bold just=c font=(arial, 10pt)]
  style(lines)=[font_weight=bold just=l];
  title1 " "; 
- columns ("Concurrence Analysis by Ketone Level (Ref vs. KM)(with 1.25 adj)" ref_nam ("KM (mmol/L)" 'p1: <0.6'n 'p2: [0.6-1.0)'n 'p3: [1.0-1.5]'n 'p4: (1.5-3]'n 'p5: >3.0'n) nTotal);
+ columns ("Concurrence Analysis by Ketone Level (Ref vs. KM)" ref_nam ("KM (mmol/L)" 'p1: <0.6'n 'p2: [0.6-1.0)'n 'p3: [1.0-1.5]'n 'p4: (1.5-3]'n 'p5: >3.0'n) nTotal);
  define ref_nam /"Ref (mmol/L)" display;
  define 'p1: <0.6'n /"<0.6" display f=8.1 width=5; 
  define 'p2: [0.6-1.0)'n /"[0.6-1.0)" display f=8.1 width=5;
