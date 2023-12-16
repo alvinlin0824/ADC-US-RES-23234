@@ -722,56 +722,71 @@ Ap |>
 
 ```{r eval = params$analysis}
 #| label: Concurrence function
-concur_fun <- function(data, trans = FALSE){
-  
-
-data %>%  
-   # Create YSI and GM Category
-                                  # Round half to even, so add noise
-   mutate(`KM (mmol/L)` =  
-                        fct_case_when(ANA < 0.6 ~ "<0.6",
-                                      ANA >= 0.6 & ANA < 1.0 ~ "[0.6-1.0)",
-                                      ANA >= 1.0 & ANA <= 1.5 ~ "[1.0-1.5]",
-                                      ANA > 1.5 & ANA <= 3.0 ~ "(1.5-3.0]",
-                                      ANA > 3.0 ~ ">3.0"),
-          `Ref (mmol/L)` =  
-                      fct_case_when(KRSEQ01 < 0.6 ~ "<0.6",
-                                    KRSEQ01 >= 0.6 & KRSEQ01 < 1.0 ~ "[0.6-1.0)",
-                                    KRSEQ01 >= 1.0 & KRSEQ01 <= 1.5 ~ "[1.0-1.5]",
-                                    KRSEQ01 > 1.5 & KRSEQ01 <= 3.0 ~ "(1.5-3.0]",
-                                    KRSEQ01 > 3.0 ~ ">3.0")) %>% 
-    # Three Way contingency Table
-    {if (trans == FALSE) tabyl(.,`KM (mmol/L)`,`Ref (mmol/L)`,`Ref Type`) 
-     else tabyl(.,`Ref (mmol/L)`,`KM (mmol/L)`,`Ref Type`)} %>% 
-    adorn_totals("col") %>% 
-    adorn_percentages("row") %>%  
-    adorn_pct_formatting(digits = 1) %>%
-    adorn_ns() %>% 
-    list_rbind(names_to = "Ref Type") %>%
-    mutate(Total = str_remove_all(Total,"100.0%|\\(|\\)")) 
-    # gt() %>% 
-    # cols_align(align = "center") %>%
-    # sub_missing(columns = everything(),missing_text = "") %>%
-    # opt_stylize(style = 6, color = "blue") %>%
-    # {if (trans == FALSE) tab_spanner(.,label = "Ref (mmol/L)",columns = !contains("Total"))
-    # else tab_spanner(.,label = "KM (mmol/L)",columns = -contains("Total"))} %>%
-    # # Add Header
-    # {if (trans == FALSE ) tab_header(.,title = md("Concurrence Analysis by Ketone Level (KM vs. Ref)"))
-    # else (tab_header(.,title = md("Concurrence Analysis by Glucose Level (Ref vs. KM)")))}
+concur_fun <- function(data, group_var, trans = FALSE){
+    if (trans == FALSE){
+    map2(data %>%
+          group_split(pick({{group_var}})) %>% 
+          map(\(df) df %>% select({{group_var}})) %>% 
+          map(\(df) df %>% slice(1:5)),
+          data %>%
+                   # Create YSI and GM Category
+                   # Round half to even, so add noise
+          mutate(`KM (mmol/L)` =
+                              fct_case_when(ANA < 0.6 ~ "<0.6",
+                                            ANA >= 0.6 & ANA < 1.0 ~ "[0.6-1.0)",
+                                            ANA >= 1.0 & ANA <= 1.5 ~ "[1.0-1.5]",
+                                            ANA > 1.5 & ANA <= 3.0 ~ "(1.5-3.0]",
+                                            ANA > 3.0 ~ ">3.0"),
+                `Ref (mmol/L)` =
+                            fct_case_when(KRSEQ01 < 0.6 ~ "<0.6",
+                                          KRSEQ01 >= 0.6 & KRSEQ01 < 1.0 ~ "[0.6-1.0)",
+                                          KRSEQ01 >= 1.0 & KRSEQ01 <= 1.5 ~ "[1.0-1.5]",
+                                          KRSEQ01 > 1.5 & KRSEQ01 <= 3.0 ~ "(1.5-3.0]",
+                                          KRSEQ01 > 3.0 ~ ">3.0")) %>%
+          group_split(pick({{group_var}})) %>%
+          map(\(df) tabyl(df,`KM (mmol/L)`,`Ref (mmol/L)`)) %>% 
+          adorn_totals("col") %>%
+          adorn_percentages("row") %>%
+          adorn_pct_formatting(digits = 1) %>%
+          adorn_ns(),bind_cols) %>% 
+          list_rbind() %>% 
+          mutate(Total = str_remove_all(Total,"100.0%|\\(|\\)"))}
+    else {
+          map2(data %>%
+          group_split(pick({{group_var}})) %>% 
+          map(\(df) df %>% select({{group_var}})) %>% 
+          map(\(df) df %>% slice(1:5)),
+          data %>%
+                          # Create YSI and GM Category
+                        # Round half to even, so add noise
+          mutate(`KM (mmol/L)` =
+                              fct_case_when(ANA < 0.6 ~ "<0.6",
+                                            ANA >= 0.6 & ANA < 1.0 ~ "[0.6-1.0)",
+                                            ANA >= 1.0 & ANA <= 1.5 ~ "[1.0-1.5]",
+                                            ANA > 1.5 & ANA <= 3.0 ~ "(1.5-3.0]",
+                                            ANA > 3.0 ~ ">3.0"),
+                `Ref (mmol/L)` =
+                            fct_case_when(KRSEQ01 < 0.6 ~ "<0.6",
+                                          KRSEQ01 >= 0.6 & KRSEQ01 < 1.0 ~ "[0.6-1.0)",
+                                          KRSEQ01 >= 1.0 & KRSEQ01 <= 1.5 ~ "[1.0-1.5]",
+                                          KRSEQ01 > 1.5 & KRSEQ01 <= 3.0 ~ "(1.5-3.0]",
+                                          KRSEQ01 > 3.0 ~ ">3.0")) %>%
+          group_split(pick({{group_var}})) %>%
+          map(\(df) tabyl(df,`Ref (mmol/L)`,`KM (mmol/L)`)) %>% 
+          adorn_totals("col") %>%
+          adorn_percentages("row") %>%
+          adorn_pct_formatting(digits = 1) %>%
+          adorn_ns(),bind_cols) %>% 
+          list_rbind() %>% 
+          mutate(Total = str_remove_all(Total,"100.0%|\\(|\\)"))
+    }
 }
 ```
 
 ```{r eval = params$analysis}
 #| label: KM vs Ref
 Ap |> 
-   filter(Site == "RCR") |> 
-   concur_fun(trans = F) |> 
-   mutate(Site = "RCR",.before = `Ref Type`) |> 
-bind_rows(
-Ap |> 
-   filter(Site == "Yale") |> 
-   concur_fun(trans = F) |> 
-   mutate(Site = "Yale",.before = `Ref Type`)) |> 
+   concur_fun(group_var = c(Site,`Ref Type`),trans = F) |> 
    gt(groupname_col = c("Site","Ref Type")) |> 
    cols_align(align = "center") |>
    sub_missing(columns = everything(),missing_text = "") |>
@@ -783,14 +798,7 @@ Ap |>
 ```{r eval = params$analysis}
 #| label: Ref vs KM
 Ap |> 
-   filter(Site == "RCR") |> 
-   concur_fun(trans = T) |> 
-   mutate(Site = "RCR",.before = `Ref Type`) |> 
-bind_rows(
-Ap |> 
-   filter(Site == "Yale") |> 
-   concur_fun(trans = T) |> 
-   mutate(Site = "Yale",.before = `Ref Type`)) |> 
+   concur_fun(group_var = c(Site,`Ref Type`),trans = T) |>
    gt(groupname_col = c("Site","Ref Type")) |> 
    cols_align(align = "center") |>
    sub_missing(columns = everything(),missing_text = "") |>
