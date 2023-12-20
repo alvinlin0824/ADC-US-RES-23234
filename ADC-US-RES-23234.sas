@@ -195,7 +195,7 @@ if first.subject;
 run;
 
 /*Upload Data*/
-/*filename dir pipe "dir /b/l/s  ""C:\UDP\OutputFiles\Output_2023-11-02-13-54\outputs\*.csv""";*/
+/*filename dir pipe "dir /b/l/s  ""C:\UDP\OutputFiles\Output_2023-12-20-08-11\outputs\*.csv""";*/
 /*/**/*/
 /*data list;*/
 /*	infile dir truncover;*/
@@ -208,13 +208,13 @@ run;
 /*/*	Extract Condition ID*/*/
 /*	if find(path,"Mobi","i") then condition_id = upcase(substr(path,find(path,"Mobi","i")+18,3));*/
 /*run;*/
-/**/
+
 /*data events_list anaplus_list;*/
 /*	set list;*/
 /*	if find(path,"events.csv","i") then output events_list;*/
 /*    if find(path,"anaPlus.csv","i")  then output anaplus_list;*/
 /*run;*/
-/**/
+
 /*Loop events.csv Data*/
 /*data events;*/
 /*	set events_list;*/
@@ -228,7 +228,7 @@ run;
 /*        output;*/
 /*	end;*/
 /*run;*/
-/**/
+
 /*Multiple Sensor Start*/
 /*proc sort data = events;*/
 /*by filename subject condition_id date time;*/
@@ -238,7 +238,7 @@ run;
 /*	by filename subject condition_id;*/
 /*    if last.condition_id;*/
 /*run;*/
-/**/
+
 /*Loop anaplus.csv Data*/
 /*data anaplus;*/
 /*	set anaplus_list;*/
@@ -265,12 +265,12 @@ run;
 /*format dtm datetime16.;*/
 /*dtm = dhms(date,0,0,time);*/
 /*drop date time filename;*/
-/*run;
+/*run;*/
 
 /*Remove Duplicated uploads*/
 /*proc sort data = auu NODUP out = out.AUU; */
 /*by subject condition_id dtm;*/
-/*run;*/
+/*run;
 
 /*Paired Data Point*/
 /*Filter Type = 906 for sensor data*/

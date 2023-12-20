@@ -198,6 +198,7 @@ ketone |>
 ```{r eval = params$analysis}
 #| label: Duration Table
 #| column: page
+#| tbl-cap: "Duration Table"
 ketone |> 
   slice_max(KRSEQ01,n = 1,with_ties = F,by = c(Subject,`Ref Type`)) |> 
   left_join(
@@ -214,12 +215,12 @@ ketone |>
   cols_align(align = "center") |>
   fmt_number(columns = "Max Ketone Reference(mmol/L)", decimals = 2) |> 
   opt_stylize(style = 6, color = "blue")
-  # tab_header(title = md("**Ketone Test Result (mmol/L)**"))
 ```
 
 ```{r eval = params$analysis}
 #| label: Summary for Peak
 #| column: page
+#| tbl-cap: "Summary for Peak"
 ketone |> 
      filter(KRSEQ01 == max(KRSEQ01,na.rm = T) & !is.na(`Time < 1 mmol/L`) ,.by = c(Subject,`Ref Type`)) |> 
      slice_min(`Ketone Date Time`, n = 1, with_ties = F,by = c(Subject,`Ref Type`)) |> 
@@ -242,6 +243,7 @@ ketone |>
 ```{r eval = params$analysis}
 #| label: Summary for Peak all subjects
 #| column: page
+#| tbl-cap: "Summary for Peak all subjects"
 ketone |> 
      filter(KRSEQ01 == max(KRSEQ01,na.rm = T),.by = c(Subject,`Ref Type`)) |> 
      slice_min(`Ketone Date Time`, n = 1, with_ties = F,by = c(Subject,`Ref Type`)) |> 
@@ -291,7 +293,7 @@ ketone |>
   facet_grid(cols = vars(`Ref Type`)) + 
   labs(title = "Ketone Vary Over Time",x = "Time(Hours)", y = "Ketone Test Result (mmol/L)") +
   scale_x_continuous(expand = c(0,0), breaks = c(seq(1,8,1))) + 
-  scale_y_continuous(expand = c(0,0), breaks = c(seq(-1.0,1.0,0.2)),limits = c(-1,1)) +
+  scale_y_continuous(expand = c(0,0), breaks = c(seq(-2.0,2.0,0.5)),limits = c(-2,2)) +
   theme_bw() +
   theme(panel.grid.major.y = element_blank(),panel.grid.minor.y = element_blank(),legend.position = "bottom",plot.title = element_text(hjust = 0.5))
 ```
@@ -408,7 +410,7 @@ read_excel_allsheets <- function(filename, tibble = FALSE, n, r, col_type) {
 <!-- randox -->
 
 ```{r}
-#| label: Import sa
+#| label: Import SA
 # sa <- read_sas(gsub("\\\\", "/", r"(\\wf00168p.oneabbott.com\data1\CDM\ADC-US-RES-23234\OpenClinica\Current\sa.sas7bdat)"))
 ```
 
@@ -422,7 +424,7 @@ read_excel_allsheets <- function(filename, tibble = FALSE, n, r, col_type) {
 ```
 
 ```{r}
-#| label: Import du2
+# | label: Import DU2
 # du2 <- read_sas(gsub("\\\\", "/", r"(\\wf00168p.oneabbott.com\data1\CDM\ADC-US-RES-23234\OpenClinica\Current\du2.sas7bdat)"))
 ```
 
@@ -438,7 +440,7 @@ read_excel_allsheets <- function(filename, tibble = FALSE, n, r, col_type) {
 ```{r}
 #| label: Import ketone events, anaplus files csv
 #| eval: false
-file_list_ketone <- dir_ls(gsub("\\\\", "/", r"(C:\UDP\OutputFiles\Output_2023-11-02-13-54\outputs)"),recurse = T,glob = "*events.csv|*anaPlus.csv")
+file_list_ketone <- dir_ls(gsub("\\\\", "/", r"(C:\UDP\OutputFiles\Output_2023-12-20-08-11\outputs)"),recurse = T,glob = "*events.csv|*anaPlus.csv")
 ```
 
 ```{r}
@@ -509,12 +511,22 @@ PairKetone <- function(sensor_data){
 #| label: Pair Ketone
 Ap <- upload_ketone |> 
       select(!c(Path, Tr)) |> 
-      filter(Type == "906",year(`Date Time`) == 2023) |>  
+      # Handle Date Time is earlier than sensor start time
+      left_join(upload_ketone |> 
+                  filter(Type == "SENSOR_STARTED (58)") |> 
+                  select(`Sensor Serial Number`, `Start Date Time` = `Date Time`),
+                   by = join_by(`Sensor Serial Number`)) |> 
+      filter(`Date Time` >= `Start Date Time`) |> 
+      mutate(eTime = as.numeric(difftime(`Date Time`,first(`Date Time`),units = "days")),
+             Day = floor(eTime) + 1,
+             `Start Date Time` = NULL,
+             .by = c(`Sensor Serial Number`)) |> 
+      filter(Type == "906") |>
       # filter(`Subject ID` == "1330005", `Condition ID` == "LL1") |>
-      group_split(`Subject ID`,`Condition ID`,`Sensor Serial Number`) |>  
+      group_split(`Subject ID`,`Condition ID`,`Sensor Serial Number`) |>
       # New anonymous function
       map(\(df) PairKetone(sensor_data = df),.progress = T) |>
-      list_rbind() |> 
+      list_rbind() |>
       # Rate
       mutate(Site = case_when(str_starts(`Subject ID`,"133") ~ "Yale",
                               .default = "RCR"),
@@ -525,7 +537,7 @@ Ap <- upload_ketone |>
             `Difference(mmol/L)` = ANA - KRSEQ01,
             `Absolute Difference(mmol/L)` = abs(`Difference(mmol/L)`),
             `Relative Difference(%)` = (`Difference(mmol/L)`/KRSEQ01)*100,
-            `Absolute Relative Difference(%)` = abs(`Relative Difference(%)`)) |> 
+            `Absolute Relative Difference(%)` = abs(`Relative Difference(%)`)) |>
       arrange(`Ref Type`,`Subject ID`)
 ```
 
@@ -558,6 +570,7 @@ Ap_rate <- Ap |>
 
 ```{r eval = params$analysis}
 #| label: Summary for Rate Deviation
+#| tbl-cap: "Summary for Rate Deviation"
 Ap_rate |> 
    filter(!is.na(`Rate Deviation`)) |> 
    group_split(`Ref Type`) |> 
@@ -574,6 +587,7 @@ Ap_rate |>
 
 ```{r eval = params$analysis}
 #| label: Summary for Absolute Rate Deviation
+#| tbl-cap: "Summary for Absolute Rate Deviation"
 Ap_rate |> 
    filter(!is.na(`Rate Deviation`)) |> 
    group_split(`Ref Type`) |>
@@ -590,6 +604,7 @@ Ap_rate |>
 
 ```{r eval = params$analysis}
 #| label: Summary statistics for rate deviation
+#| tbl-cap: "Summary statistics for Rate Deviation"
 diff_calculation <- list(Mean = ~ mean(.x, na.rm = T),
                           Median = ~ median(.x, na.rm = T),
                           SD = ~ sd(.x, na.rm = T),
@@ -609,6 +624,7 @@ Ap_rate |>
 
 ```{r eval = params$analysis}
 #| label: Histogram of Rate Deviation
+#| fig-cap: "Histogram of Rate Deviation"
 Ap_rate |>
    filter(!is.na(`Rate Deviation`)) |>
    ggplot() +
@@ -671,9 +687,22 @@ ketone_breaks_percent <- c(0,10,20,30,40,Inf)
 ```{r eval = params$analysis}
 #| label: System Agreement group by Site and Reference type
 #| column: page
+#| tbl-cap: "System Agreement group by Site and Reference Type"
 Ap |> 
    system_agreement_fun(wider_name = NULL,group_var = c(Site,`Ref Type`,Level)) |> 
    gt(groupname_col = c("Site","Ref Type")) |>
+   cols_align(align = "center") |>
+   cols_width(everything() ~ px(200)) |>
+   opt_stylize(style = 6, color = "blue")
+```
+
+```{r eval = params$analysis}
+#| label: System Agreement group by Reference type
+#| column: page
+#| tbl-cap: "System Agreement group by Reference Type"
+Ap |> 
+   system_agreement_fun(wider_name = NULL,group_var = c(`Ref Type`,Level)) |> 
+   gt(groupname_col = c("Ref Type")) |>
    cols_align(align = "center") |>
    cols_width(everything() ~ px(200)) |>
    opt_stylize(style = 6, color = "blue")
@@ -714,8 +743,39 @@ data |>
 ```
 
 ```{r eval = params$analysis}
+#| label: Bias(%) plot by day
+#| fig-align: center
+Ap |> 
+   group_by(Site,`Ref Type`,Day) |> 
+   summarise(`Mean Bias(%)` = mean(`Relative Difference(%)`,na.rm = T),
+             N = n(),.groups = "drop") |> 
+    ggplot(aes(x = Day, y = `Mean Bias(%)`, color = Site, shape = Site)) +
+    geom_line() +
+    geom_point(aes(size = N)) +
+    facet_grid(cols = vars(`Ref Type`)) +
+    labs(title = "Mean Bias(%) by Day") +
+    scale_x_continuous(breaks = seq(1,10,1),limits = c(1,10)) +
+    theme_bw() +
+    theme(panel.grid.major.y = element_blank(),panel.grid.minor.y = element_blank(),legend.position = "bottom",plot.title = element_text(hjust = 0.5),legend.text = element_text(size = 8)) +
+    guides(size = guide_legend(title = "Number of Pairing"))
+```
+
+```{r eval = params$analysis}
+#| label: Bias plot by Reference
+#| fig-align: center
+Ap |> 
+    ggplot(aes(x = KRSEQ01, y = `Difference(mmol/L)`, color = Site, shape = Site)) +
+    geom_point() +
+    facet_grid(cols = vars(`Ref Type`)) +
+    labs(title = "Bias Plot", x = "Reference (mmol/L)", y = "Bias (mmol/L)") +
+    theme_bw() +
+    theme(panel.grid.major.y = element_blank(),panel.grid.minor.y = element_blank(),legend.position = "bottom",plot.title = element_text(hjust = 0.5),legend.text = element_text(size = 8))
+```
+
+```{r eval = params$analysis}
 #| label: Difference Measures group by Site and Reference type
 #| column: page
+#| tbl-cap: "Difference Measures group by Site and Reference Type"
 Ap |> 
    diff_measure_fun(group_var = c(Site,`Ref Type`,Level))
 ```
@@ -785,6 +845,7 @@ concur_fun <- function(data, group_var, trans = FALSE){
 
 ```{r eval = params$analysis}
 #| label: KM vs Ref
+#| tbl-cap: "KM vs Ref"
 Ap |> 
    concur_fun(group_var = c(Site,`Ref Type`),trans = F) |> 
    gt(groupname_col = c("Site","Ref Type")) |> 
@@ -797,6 +858,7 @@ Ap |>
 
 ```{r eval = params$analysis}
 #| label: Ref vs KM
+#| tbl-cap: "Ref vs KM"
 Ap |> 
    concur_fun(group_var = c(Site,`Ref Type`),trans = T) |>
    gt(groupname_col = c("Site","Ref Type")) |> 
