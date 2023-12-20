@@ -408,7 +408,7 @@ drop lag_dtm--lag_KRSEQ01;
 run;
 /*(with 1.25 adj)*/
 options papersize=a3 orientation=portrait;
-/*ods rtf file="C:\Project\ADC-US-RES-23234\ADC-US-RES-23234-Safety-Report-%trim(%sysfunc(today(),yymmddn8.)).rtf" startpage=no;*/
+ods rtf file="C:\Project\ADC-US-RES-23234\ADC-US-RES-23234-Safety-Report(with 1.25 adj)-%trim(%sysfunc(today(),yymmddn8.)).rtf" startpage=no;
 
 /*Summary Statistics on Ketone Result*/
 Proc means data = ketone maxdec=2 nonobs;
@@ -592,7 +592,7 @@ run;
 /*histogram rd / binwidth = 0.5;*/
 /*xaxis label = 'Rate Deviation (mmol/L/hour)' values = (-10 to 10 by 1);*/
 /*run;*/
-/*ODS RTF CLOSE;*/
+ODS RTF CLOSE;
 
 data Ap_accuracy;
 set Ap;
@@ -727,52 +727,52 @@ run;
 /*Difference Measure*/
 
 /*Concurrence*/
-/*Randox*/
+/*Randox (where = (ref_type = "Randox"))*/
 ods select none;
-proc tabulate data=Ap_accuracy(where = (ref_type = "Randox")) format=8.1 style=[cellwidth=1.0cm just=c] out = upload_count_randox;
+proc tabulate data=Ap_accuracy format=8.1 style=[cellwidth=1.0cm just=c] out = upload_count;
  title1 ' ';
- class concur_upload_group concur_ref_group;
- table concur_upload_group, (concur_ref_group='' all='Total')*(N*f=8.0)  / box='Zone';
+ class ref_type concur_upload_group concur_ref_group;
+ table ref_type, concur_upload_group, (concur_ref_group='' all='Total')*(N*f=8.0)  / box='Zone';
 run;
 ods select all;
 
-data upload_count_randox;
- set upload_count_randox;
+data upload_count;
+ set upload_count;
  if missing(concur_ref_group) then concur_ref_group='Total';
 run;
 
-proc sort data=upload_count_randox; by concur_upload_group; run;
+proc sort data=upload_count; by ref_type concur_upload_group; run;
 
-proc transpose data=upload_count_randox out=upload_count_tran_randox(drop=_name_) prefix=n;
- by concur_upload_group;
+proc transpose data=upload_count out=upload_count_tran(drop=_name_) prefix=n;
+ by ref_type concur_upload_group;
  var n;
  id concur_ref_group;
 run;
 
 ods select none;
-proc tabulate data=Ap_accuracy(where = (ref_type = "Randox")) format=8.1 style=[cellwidth=1.0cm just=c] out = upload_percent_randox;
+proc tabulate data=Ap_accuracy format=8.1 style=[cellwidth=1.0cm just=c] out = upload_percent;
  title1 ' ';
- class concur_upload_group concur_ref_group;
- table concur_upload_group, (concur_ref_group='' all='Total')*(rowpctn='%')  / box='Zone';
+ class ref_type concur_upload_group concur_ref_group;
+ table ref_type, concur_upload_group, (concur_ref_group='' all='Total')*(rowpctn='%')  / box='Zone';
 run;
 ods select all;
 
-data upload_percent_randox;
- set upload_percent_randox;
+data upload_percent;
+ set upload_percent;
  if missing(concur_ref_group) then concur_ref_group='Total';
 run; 
 
-proc sort data=upload_percent_randox; by concur_upload_group; run;
+proc sort data=upload_percent; by ref_type concur_upload_group; run;
 
-proc transpose data=upload_percent_randox out=upload_percent_tran_randox(drop=_name_) prefix=p;
- by concur_upload_group;
- var pctn_10;
+proc transpose data=upload_percent out=upload_percent_tran(drop=_name_) prefix=p;
+ by ref_type concur_upload_group;
+ var pctn_110;
  id concur_ref_group;
 run;
 
 data concur_km_vs_ref;
- merge upload_count_tran_randox upload_percent_tran_randox;
- by concur_upload_group;
+ merge upload_count_tran upload_percent_tran;
+ by ref_type concur_upload_group;
  if concur_upload_group = '1: <0.6' then ref_nam = '<0.6      '; 
  else if concur_upload_group ='2: [0.6-1.0)' then ref_nam = '[0.6-1.0)'; 
  else if concur_upload_group ='3: [1.0-1.5]' then ref_nam = '[1.0-1.5]';
@@ -786,8 +786,8 @@ run;
 ods select none;
 proc tabulate data=Ap_accuracy format=8.1 style=[cellwidth=1.0cm just=c] out = ref_count;
  title1 ' ';
- class concur_upload_group concur_ref_group;
- table concur_ref_group, (concur_upload_group='' all='Total')*(N*f=8.0)  / box='Zone';
+ class ref_type concur_upload_group concur_ref_group;
+ table ref_type, concur_ref_group, (concur_upload_group='' all='Total')*(N*f=8.0)  / box='Zone';
 run;
 ods select all;
 
@@ -796,10 +796,10 @@ data ref_count;
  if missing(concur_upload_group) then concur_upload_group='Total';
 run;
 
-proc sort data=ref_count; by concur_ref_group; run;
+proc sort data=ref_count; by ref_type concur_ref_group; run;
 
 proc transpose data=ref_count out=ref_count_tran(drop=_name_) prefix=n;
- by concur_ref_group;
+ by ref_type concur_ref_group;
  var n;
  id concur_upload_group;
 run;
@@ -807,8 +807,8 @@ run;
 ods select none;
 proc tabulate data=Ap_accuracy format=8.1 style=[cellwidth=1.0cm just=c] out = ref_percent;
  title1 ' ';
- class concur_upload_group concur_ref_group;
- table concur_ref_group, (concur_upload_group='' all='Total')*(rowpctn='%')  / box='Zone';
+ class ref_type concur_upload_group concur_ref_group;
+ table ref_type, concur_ref_group, (concur_upload_group='' all='Total')*(rowpctn='%')  / box='Zone';
 run;
 ods select all;
 
@@ -817,17 +817,17 @@ data ref_percent;
  if missing(concur_upload_group) then concur_upload_group='Total';
 run; 
 
-proc sort data=ref_percent; by concur_ref_group; run;
+proc sort data=ref_percent; by ref_type concur_ref_group; run;
 
 proc transpose data=ref_percent out=ref_percent_tran(drop=_name_) prefix=p;
- by concur_ref_group;
- var pctn_01;
+ by ref_type concur_ref_group;
+ var pctn_101;
  id concur_upload_group;
 run;
 
 data concur_ref_vs_km;
  merge ref_count_tran ref_percent_tran;
- by concur_ref_group;
+ by ref_type concur_ref_group;
  if concur_ref_group = '1: <0.6' then ref_nam = '<0.6      '; 
  else if concur_ref_group ='2: [0.6-1.0)' then ref_nam = '[0.6-1.0)'; 
  else if concur_ref_group ='3: [1.0-1.5]' then ref_nam = '[1.0-1.5]';
@@ -838,7 +838,7 @@ run;
 /*/*Concurrence (with 1.25 adj)*/
 
 options papersize=a3 orientation=portrait;
-/*ods rtf file="C:\Project\ADC-US-RES-23234\ADC-US-RES-23234-Accuracy-Report-%trim(%sysfunc(today(),yymmddn8.)).rtf" startpage=no;*/
+ods rtf file="C:\Project\ADC-US-RES-23234\ADC-US-RES-23234-Accuracy-Report(with 1.25 adj)-%trim(%sysfunc(today(),yymmddn8.)).rtf" startpage=no;
 
 /*System Agreement plot of Difference between CGM and Reference*/
 proc sgpanel data = Ap_accuracy;
@@ -858,7 +858,7 @@ proc report data=sys_trans nofs split='$'
  style(header)=[font_weight=bold just=c font=(arial, 10pt)]
  style(lines)=[font_weight=bold just=l];
  title1 ' ';
- columns ("System Agreement Results Split at 1 mmol/L by Site and Reference Type" Site ref_type Level "Within +- 10%/ +- 0.1 mmol/L"n
+ columns ("System Agreement Results Split at 1 mmol/L(with 1.25 adj) by Site and Reference Type" Site ref_type Level "Within +- 10%/ +- 0.1 mmol/L"n
 "Within +- 20%/ +- 0.2 mmol/L"n "Within +- 30%/ +- 0.3 mmol/L"n
 "Within +- 40%/ +- 0.4 mmol/L"n "Outside +- 40%/ +- 0.4 mmol/L"n);
  define Site / Group order order=internal descending width=5; 
@@ -881,7 +881,7 @@ run;
 proc report data=bias_table nofs split='$'
  style(column)=[just=l font=(arial, 10pt)] style(header)=[font_weight=bold just=c font=(arial, 10pt)] style(lines)=[font_weight=bold just=l];
  title1 ' ';
- columns ("Bias Measures" Site ref_type Level ("MARD (%)" abs_pbias_Mean abs_pbias_Median) ("% Bias" pbias_Mean pbias_Median) ("Abs. Bias (mmol/L)" abs_bias_Mean abs_bias_Median) ("Bias (mmol/L)" bias_Mean bias_Median) bias_N);
+ columns ("Bias Measures(with 1.25 adj)" Site ref_type Level ("MARD (%)" abs_pbias_Mean abs_pbias_Median) ("% Bias" pbias_Mean pbias_Median) ("Abs. Bias (mmol/L)" abs_bias_Mean abs_bias_Median) ("Bias (mmol/L)" bias_Mean bias_Median) bias_N);
  define Site / Group order order=internal descending width=5; 
  define ref_type / Group "Ref Type" width=5;
  define abs_pbias_Mean /"Mean" display f=8.1 width=5; 
@@ -901,7 +901,8 @@ proc report data=concur_km_vs_ref nofs split='$'
  style(header)=[font_weight=bold just=c font=(arial, 10pt)]
  style(lines)=[font_weight=bold just=l];
  title1 " "; 
- columns ("Concurrence Analysis by Ketone Level (KM vs. Ref)" ref_nam ("Ref (mmol/L)" 'p1: <0.6'n 'p2: [0.6-1.0)'n 'p3: [1.0-1.5]'n 'p4: (1.5-3]'n 'p5: >3.0'n) nTotal);
+ columns ("Concurrence Analysis by Ketone Level (KM vs. Ref)(with 1.25 adj)" ref_type ref_nam ("Ref (mmol/L)" 'p1: <0.6'n 'p2: [0.6-1.0)'n 'p3: [1.0-1.5]'n 'p4: (1.5-3]'n 'p5: >3.0'n) nTotal);
+ define ref_type /"Ref Type" Group width=5;
  define ref_nam /"KM (mmol/L)" display;
  define 'p1: <0.6'n /"<0.6" display f=8.1 width=5; 
  define 'p2: [0.6-1.0)'n /"[0.6-1.0)" display f=8.1 width=5;
@@ -916,7 +917,8 @@ proc report data=concur_ref_vs_km nofs split='$'
  style(header)=[font_weight=bold just=c font=(arial, 10pt)]
  style(lines)=[font_weight=bold just=l];
  title1 " "; 
- columns ("Concurrence Analysis by Ketone Level (Ref vs. KM)" ref_nam ("KM (mmol/L)" 'p1: <0.6'n 'p2: [0.6-1.0)'n 'p3: [1.0-1.5]'n 'p4: (1.5-3]'n 'p5: >3.0'n) nTotal);
+ columns ("Concurrence Analysis by Ketone Level (Ref vs. KM)(with 1.25 adj)" ref_type ref_nam ("KM (mmol/L)" 'p1: <0.6'n 'p2: [0.6-1.0)'n 'p3: [1.0-1.5]'n 'p4: (1.5-3]'n 'p5: >3.0'n) nTotal);
+ define ref_type /"Ref Type" Group width=5;
  define ref_nam /"Ref (mmol/L)" display;
  define 'p1: <0.6'n /"<0.6" display f=8.1 width=5; 
  define 'p2: [0.6-1.0)'n /"[0.6-1.0)" display f=8.1 width=5;
@@ -925,7 +927,7 @@ proc report data=concur_ref_vs_km nofs split='$'
  define 'p5: >3.0'n /">3.0" display f=8.1 width=5;
  define ntotal /"N" display f=8.0 width=5;
 run;
-/*ODS RTF CLOSE;*/
+ODS RTF CLOSE;
 
 
 /*Profile Plot*/

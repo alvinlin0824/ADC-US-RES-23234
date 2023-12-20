@@ -157,30 +157,32 @@ kgriv12 <- kgr12 |>
            filter(!is.na(KRSEQ01))
 ```
 
-```{r}
-# reg_plot <- function(condition){
-# kgr12 |> 
-#    select(!KRDTC02:KRDTC01) |> 
-#    left_join(randox |> 
-#              summarise(Randox = mean(`2uL Result`,na.rm = T)*4,.by = `Sample ID`),
-#              by = join_by(KRSEQ02 == `Sample ID`)) |> 
-#    filter(if_all(c(KRSEQ02:Randox), ~ !is.na(.x))) |> 
-#    filter(Subject %in% c(condition)) |> 
-#    ggpubr::ggscatter(x = "KRSEQ01", y = "Randox", add = "reg.line", color = "Subject") + 
-#    facet_wrap(~Subject,ncol = 2,nrow = 2) +
-#    labs(x = "Venous strip") + 
-#    ggpubr::stat_regline_equation(aes(label = paste(..eq.label..,..rr.label.., sep = "~`,`~")),
-#                                   label.x = 0)
-# }
+```{r eval = params$analysis}
+#| label: Reg function
+reg_plot <- function(condition){
+kgr12 |>
+   select(!KRDTC02:KRDTC01) |>
+   left_join(randox |>
+             summarise(Randox = mean(`2uL Result`,na.rm = T)*4,.by = `Sample ID`),
+             by = join_by(KRSEQ02 == `Sample ID`)) |>
+   filter(if_all(c(KRSEQ02:Randox), ~ !is.na(.x))) |>
+   filter(Subject %in% c(condition)) |>
+   ggpubr::ggscatter(x = "KRSEQ01", y = "Randox", add = "reg.line", color = "Subject") +
+   facet_wrap(~Subject,ncol = 2,nrow = 2) +
+   labs(x = "Venous strip") +
+   ggpubr::stat_regline_equation(aes(label = paste(..eq.label..,..rr.label.., sep = "~`,`~")),
+                                  label.x = 0)
+}
 ```
 
-```{r}
-# reg_plot(condition = unique(iv12$Subject)[1:4])
-# reg_plot(condition = unique(iv12$Subject)[5:8])
-# reg_plot(condition = unique(iv12$Subject)[9:12])
-# reg_plot(condition = unique(iv12$Subject)[13:16])
-# reg_plot(condition = unique(iv12$Subject)[17:20])
-# reg_plot(condition = unique(iv12$Subject)[21:23])
+```{r eval = params$analysis}
+#| label: Reg Plot
+reg_plot(condition = unique(iv12$Subject)[1:4])
+reg_plot(condition = unique(iv12$Subject)[5:8])
+reg_plot(condition = unique(iv12$Subject)[9:12])
+reg_plot(condition = unique(iv12$Subject)[13:16])
+reg_plot(condition = unique(iv12$Subject)[17:20])
+reg_plot(condition = unique(iv12$Subject)[21:23])
 ```
 
 ```{r}
@@ -896,8 +898,8 @@ Ap |>
 #| label: Ref vs KM
 #| tbl-cap: "Ref vs KM"
 Ap |> 
-   concur_fun(group_var = c(Site,`Ref Type`),trans = T) |>
-   gt(groupname_col = c("Site","Ref Type")) |> 
+   concur_fun(group_var = c(`Ref Type`),trans = T) |>
+   gt(groupname_col = c("Ref Type")) |> 
    cols_align(align = "center") |>
    sub_missing(columns = everything(),missing_text = "") |>
    opt_stylize(style = 6, color = "blue") |> 
