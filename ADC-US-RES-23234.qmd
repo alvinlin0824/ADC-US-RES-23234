@@ -158,6 +158,37 @@ kgriv12 <- kgr12 |>
 ```
 
 ```{r}
+reg_plot <- function(condition){
+kgr12 |> 
+   select(!KRDTC02:KRDTC01) |> 
+   left_join(randox |> 
+             summarise(Randox = mean(`2uL Result`,na.rm = T)*4,.by = `Sample ID`),
+             by = join_by(KRSEQ02 == `Sample ID`)) |> 
+   filter(if_all(c(KRSEQ02:Randox), ~ !is.na(.x))) |> 
+   filter(Subject %in% c(condition)) |> 
+   ggpubr::ggscatter(x = "KRSEQ01", y = "Randox", add = "reg.line", color = "Subject") + 
+   facet_wrap(~Subject,ncol = 2,nrow = 2) +
+   labs(x = "Venous strip") + 
+   ggpubr::stat_regline_equation(aes(label = paste(..eq.label..,..rr.label.., sep = "~`,`~")),
+                                  label.x = 0)
+}
+```
+
+```{r}
+reg_plot(condition = unique(iv12$Subject)[1:4])
+reg_plot(condition = unique(iv12$Subject)[5:8])
+reg_plot(condition = unique(iv12$Subject)[9:12])
+reg_plot(condition = unique(iv12$Subject)[13:16])
+reg_plot(condition = unique(iv12$Subject)[17:20])
+reg_plot(condition = unique(iv12$Subject)[21:23])
+```
+
+```{r}
+knitr::knit_exit()
+```
+
+
+```{r}
 #| label: Get Time duration
 ketone <- kgriv12 |> 
           left_join(
@@ -778,7 +809,6 @@ Ap |>
     theme(panel.grid.major.y = element_blank(),panel.grid.minor.y = element_blank(),legend.position = "bottom",plot.title = element_text(hjust = 0.5),legend.text = element_text(size = 8)) +
     guides(size = guide_legend(title = "Number of Pairing"))
 ```
-
 
 ```{r eval = params$analysis}
 #| label: Difference Measures group by Site and Reference type
