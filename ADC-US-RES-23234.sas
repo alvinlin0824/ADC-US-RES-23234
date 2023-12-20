@@ -301,12 +301,11 @@ quit;
 data auu_906;
 format dtm_sec datetime16.;
 set auu_start_time;
-ana_100 = (ANA/100)*1.25;
+ana_100 = (ANA/100)*1;
 /*Get Duration Day*/
 nday = floor((dtm-start_time)/86400) + 1;
 dtm_sec = dtm;
 dtm = round(dtm,'0:01:00'T);
-/*Filter Type = 906*/
 if type = "906";
 drop ANA start_time;
 run;
@@ -314,7 +313,6 @@ run;
 /*Wrangle Reference ketone*/
 data ketone_reference;
 set ketone;
-/*where IVVAL01 = "Valid" and ^missing(dtm);*/
 keep subject dtm IVID01 KRSEQ01 ref_type;
 rename dtm = dtm_ref;
 run;
@@ -410,7 +408,7 @@ drop lag_dtm--lag_KRSEQ01;
 run;
 /*(with 1.25 adj)*/
 options papersize=a3 orientation=portrait;
-/*ods rtf file="C:\Project\ADC-US-RES-23234\ADC-US-RES-23234-Safety-Report(with 1.25 adj)-%trim(%sysfunc(today(),yymmddn8.)).rtf" startpage=no;*/
+ods rtf file="C:\Project\ADC-US-RES-23234\ADC-US-RES-23234-Safety-Report-%trim(%sysfunc(today(),yymmddn8.)).rtf" startpage=no;
 
 /*Summary Statistics on Ketone Result*/
 Proc means data = ketone maxdec=2 nonobs;
@@ -594,7 +592,7 @@ run;
 /*histogram rd / binwidth = 0.5;*/
 /*xaxis label = 'Rate Deviation (mmol/L/hour)' values = (-10 to 10 by 1);*/
 /*run;*/
-/*ODS RTF CLOSE;*/
+ODS RTF CLOSE;
 
 data Ap_accuracy;
 set Ap;
@@ -650,7 +648,7 @@ run;
 data Ap_overall;
 set Ap_accuracy overall;
 run;
-
+/*Group by Site,ref_type,Level*/
 /*Count Each Group*/
 proc freq data = Ap_overall(where = (ana_100 between 0.6 and 3.0)) noprint;
 tables Site*ref_type*Level*Group/ out = freq sparse;
@@ -677,7 +675,7 @@ else local_sum + COUNT;
 run;
 
 /*Percent*/
-data sys_freq1;
+data sys_freq;
 set sys_freq;
 if local_sum = . then local_sum = COUNT;
 percent = (local_sum/global_sum)*100;
@@ -685,18 +683,69 @@ N = put(local_sum,5.)||' / '||strip(put(global_sum,5.))||' ('||strip(put(percent
 run;
 
 /*Transpose*/
-proc transpose data = sys_freq1 out = sys_trans(drop=_name_);
+proc transpose data = sys_freq out = sys_trans(drop=_name_);
 by Site ref_type Level;
 ID Group;
 VAR N;
 run;
 
-data sys_trans1;
+data sys_trans;
 retain Site ref_type Level "Within +- 10%/ +- 0.1 mmol/L"n
 "Within +- 20%/ +- 0.2 mmol/L"n "Within +- 30%/ +- 0.3 mmol/L"n
 "Within +- 40%/ +- 0.4 mmol/L"n "Outside +- 40%/ +- 0.4 mmol/L"n;
 set sys_trans;
 run;
+/*Group by Site,ref_type,Level*/
+
+/*Group by ref_type,Level*/
+/*Count Each Group*/
+proc freq data = Ap_overall(where = (ana_100 between 0.6 and 3.0)) noprint;
+tables ref_type*Level*Group/ out = freq1 sparse;
+run;
+
+/*Global Sum*/
+proc sql;
+create table sql_freq1 as 
+select ref_type,Level,Group,COUNT, sum(COUNT) as global_sum
+from freq1 
+group by ref_type,Level;
+quit;
+
+/*Cumulative Sum per Group*/
+proc sort data = sql_freq1;
+by ref_type Level Group;
+run;
+
+data sys_freq1;
+set sql_freq1;
+by ref_type Level;
+if first.Level then local_sum = .;
+else local_sum + COUNT;
+run;
+
+/*Percent*/
+data sys_freq1;
+set sys_freq1;
+if local_sum = . then local_sum = COUNT;
+percent = (local_sum/global_sum)*100;
+N = put(local_sum,5.)||' / '||strip(put(global_sum,5.))||' ('||strip(put(percent,5.1))||'%)';
+run;
+
+/*Transpose*/
+proc transpose data = sys_freq1 out = sys_trans1(drop=_name_);
+by ref_type Level;
+ID Group;
+VAR N;
+run;
+
+data sys_trans1;
+retain ref_type Level "Within +- 10%/ +- 0.1 mmol/L"n
+"Within +- 20%/ +- 0.2 mmol/L"n "Within +- 30%/ +- 0.3 mmol/L"n
+"Within +- 40%/ +- 0.4 mmol/L"n "Outside +- 40%/ +- 0.4 mmol/L"n;
+set sys_trans1;
+run;
+/*Group by ref_type,Level*/
+
 /*System Agreement*/
 
 /*Difference Measure*/
@@ -825,7 +874,7 @@ run;
 /*/*Concurrence (with 1.25 adj)*/
 
 options papersize=a3 orientation=portrait;
-/*ods rtf file="C:\Project\ADC-US-RES-23234\ADC-US-RES-23234-Accuracy-Report(with 1.25 adj)-%trim(%sysfunc(today(),yymmddn8.)).rtf" startpage=no;*/
+ods rtf file="C:\Project\ADC-US-RES-23234\ADC-US-RES-23234-Accuracy-Report-%trim(%sysfunc(today(),yymmddn8.)).rtf" startpage=no;
 
 /*System Agreement plot of Difference between CGM and Reference*/
 proc sgpanel data = Ap_accuracy;
@@ -839,15 +888,29 @@ rowaxis label = "Bias (mmol/L)";
 keylegend / title = "Site";
 run;
 
+/*Group by Site and ref type*/
+proc report data=sys_trans nofs split='$'
+ style(column)=[just=l font=(arial, 10pt)]
+ style(header)=[font_weight=bold just=c font=(arial, 10pt)]
+ style(lines)=[font_weight=bold just=l];
+ title1 ' ';
+ columns ("System Agreement Results Split at 1 mmol/L by Site and Reference Type" Site ref_type Level "Within +- 10%/ +- 0.1 mmol/L"n
+"Within +- 20%/ +- 0.2 mmol/L"n "Within +- 30%/ +- 0.3 mmol/L"n
+"Within +- 40%/ +- 0.4 mmol/L"n "Outside +- 40%/ +- 0.4 mmol/L"n);
+ define Site / Group width=5; 
+ define ref_type / Group "Ref Type" width=5; 
+ define Level /"Ketone Ref Level" order=data width=5; 
+run;
+
+/*Group by ref type*/
 proc report data=sys_trans1 nofs split='$'
  style(column)=[just=l font=(arial, 10pt)]
  style(header)=[font_weight=bold just=c font=(arial, 10pt)]
  style(lines)=[font_weight=bold just=l];
  title1 ' ';
- columns ("System Agreement Results Split at 1 mmol/L(with 1.25 adj)" Site ref_type Level "Within +- 10%/ +- 0.1 mmol/L"n
+ columns ("System Agreement Results Split at 1 mmol/L by Reference Type" ref_type Level "Within +- 10%/ +- 0.1 mmol/L"n
 "Within +- 20%/ +- 0.2 mmol/L"n "Within +- 30%/ +- 0.3 mmol/L"n
 "Within +- 40%/ +- 0.4 mmol/L"n "Outside +- 40%/ +- 0.4 mmol/L"n);
- define Site / Group width=5; 
  define ref_type / Group "Ref Type" width=5; 
  define Level /"Ketone Ref Level" order=data width=5; 
 run;
@@ -867,7 +930,7 @@ run;
 proc report data=bias_table nofs split='$'
  style(column)=[just=l font=(arial, 10pt)] style(header)=[font_weight=bold just=c font=(arial, 10pt)] style(lines)=[font_weight=bold just=l];
  title1 ' ';
- columns ("Bias Measures(with 1.25 adj)" Site ref_type Level ("MARD (%)" abs_pbias_Mean abs_pbias_Median) ("% Bias" pbias_Mean pbias_Median) ("Abs. Bias (mmol/L)" abs_bias_Mean abs_bias_Median) ("Bias (mmol/L)" bias_Mean bias_Median) bias_N);
+ columns ("Bias Measures" Site ref_type Level ("MARD (%)" abs_pbias_Mean abs_pbias_Median) ("% Bias" pbias_Mean pbias_Median) ("Abs. Bias (mmol/L)" abs_bias_Mean abs_bias_Median) ("Bias (mmol/L)" bias_Mean bias_Median) bias_N);
  define Site / Group width=5; 
  define ref_type / Group "Ref Type" width=5;
  define abs_pbias_Mean /"Mean" display f=8.1 width=5; 
@@ -887,7 +950,7 @@ proc report data=concur_km_vs_ref nofs split='$'
  style(header)=[font_weight=bold just=c font=(arial, 10pt)]
  style(lines)=[font_weight=bold just=l];
  title1 " "; 
- columns ("Concurrence Analysis by Ketone Level (KM vs. Ref)(with 1.25 adj)" ref_nam ("Ref (mmol/L)" 'p1: <0.6'n 'p2: [0.6-1.0)'n 'p3: [1.0-1.5]'n 'p4: (1.5-3]'n 'p5: >3.0'n) nTotal);
+ columns ("Concurrence Analysis by Ketone Level (KM vs. Ref)" ref_nam ("Ref (mmol/L)" 'p1: <0.6'n 'p2: [0.6-1.0)'n 'p3: [1.0-1.5]'n 'p4: (1.5-3]'n 'p5: >3.0'n) nTotal);
  define ref_nam /"KM (mmol/L)" display;
  define 'p1: <0.6'n /"<0.6" display f=8.1 width=5; 
  define 'p2: [0.6-1.0)'n /"[0.6-1.0)" display f=8.1 width=5;
@@ -902,7 +965,7 @@ proc report data=concur_ref_vs_km nofs split='$'
  style(header)=[font_weight=bold just=c font=(arial, 10pt)]
  style(lines)=[font_weight=bold just=l];
  title1 " "; 
- columns ("Concurrence Analysis by Ketone Level (Ref vs. KM)(with 1.25 adj)" ref_nam ("KM (mmol/L)" 'p1: <0.6'n 'p2: [0.6-1.0)'n 'p3: [1.0-1.5]'n 'p4: (1.5-3]'n 'p5: >3.0'n) nTotal);
+ columns ("Concurrence Analysis by Ketone Level (Ref vs. KM)" ref_nam ("KM (mmol/L)" 'p1: <0.6'n 'p2: [0.6-1.0)'n 'p3: [1.0-1.5]'n 'p4: (1.5-3]'n 'p5: >3.0'n) nTotal);
  define ref_nam /"Ref (mmol/L)" display;
  define 'p1: <0.6'n /"<0.6" display f=8.1 width=5; 
  define 'p2: [0.6-1.0)'n /"[0.6-1.0)" display f=8.1 width=5;
@@ -911,7 +974,7 @@ proc report data=concur_ref_vs_km nofs split='$'
  define 'p5: >3.0'n /">3.0" display f=8.1 width=5;
  define ntotal /"N" display f=8.0 width=5;
 run;
-/*ODS RTF CLOSE;*/
+ODS RTF CLOSE;
 
 
 /*Profile Plot*/
