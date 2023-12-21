@@ -157,34 +157,6 @@ kgriv12 <- kgr12 |>
            filter(!is.na(KRSEQ01))
 ```
 
-```{r eval = params$analysis}
-#| label: Reg function
-reg_plot <- function(condition){
-kgr12 |>
-   select(!KRDTC02:KRDTC01) |>
-   left_join(randox |>
-             summarise(Randox = mean(`2uL Result`,na.rm = T)*4,.by = `Sample ID`),
-             by = join_by(KRSEQ02 == `Sample ID`)) |>
-   filter(if_all(c(KRSEQ02:Randox), ~ !is.na(.x))) |>
-   filter(Subject %in% c(condition)) |>
-   ggpubr::ggscatter(x = "KRSEQ01", y = "Randox", add = "reg.line", color = "Subject") +
-   facet_wrap(~Subject,ncol = 2,nrow = 2) +
-   labs(x = "Venous strip") +
-   ggpubr::stat_regline_equation(aes(label = paste(..eq.label..,..rr.label.., sep = "~`,`~")),
-                                  label.x = 0)
-}
-```
-
-```{r eval = params$analysis}
-#| label: Reg Plot
-reg_plot(condition = unique(iv12$Subject)[1:4])
-reg_plot(condition = unique(iv12$Subject)[5:8])
-reg_plot(condition = unique(iv12$Subject)[9:12])
-reg_plot(condition = unique(iv12$Subject)[13:16])
-reg_plot(condition = unique(iv12$Subject)[17:20])
-reg_plot(condition = unique(iv12$Subject)[21:23])
-```
-
 ```{r}
 #| label: Get Time duration
 ketone <- kgriv12 |> 
@@ -665,7 +637,6 @@ Ap_rate |>
 ```
 
 `r if(params$analysis){knitr::asis_output("# **Accuracy Performance**")}`
-
 ```{r eval = params$analysis}
 #| label: System Agreement function
 system_agreement_fun <- function(data, wider_name = NULL, group_var) {
@@ -720,6 +691,7 @@ ketone_breaks_percent <- c(0,10,20,30,40,Inf)
 #| label: System Agreement plot of Difference between CGM and Reference
 #| fig-align: center
 Ap |> 
+    filter(`Subject ID` != "1330004") |> 
     filter(between(ANA,0.6,3)) |>
     ggplot(aes(x = KRSEQ01, y = `Difference(mmol/L)`, color = Site, shape = Site)) +
     geom_point() +
@@ -737,24 +709,13 @@ Ap |>
 Ap |> 
    bind_rows(Ap |> 
                mutate(Site = "Overall")) |> 
-   mutate(Site = factor(Site, levels = c("Yale","RCR","Overall"))) |>  
+   mutate(Site = factor(Site, levels = c("Yale","RCR","Overall"))) |> 
+   filter(`Subject ID` != "1330004") |>
    system_agreement_fun(wider_name = NULL,group_var = c(Site,`Ref Type`,Level)) |> 
    gt(groupname_col = c("Site","Ref Type")) |>
    cols_align(align = "center") |>
    cols_width(everything() ~ px(200)) |>
    opt_stylize(style = 6, color = "blue")
-```
-
-```{r eval = params$analysis}
-#| label: System Agreement group by Reference type
-#| column: page
-#| tbl-cap: "System Agreement group by Reference Type"
-# Ap |> 
-#    system_agreement_fun(wider_name = NULL,group_var = c(`Ref Type`,Level)) |> 
-#    gt(groupname_col = c("Ref Type")) |>
-#    cols_align(align = "center") |>
-#    cols_width(everything() ~ px(200)) |>
-#    opt_stylize(style = 6, color = "blue")
 ```
 
 ```{r eval = params$analysis}
@@ -795,6 +756,7 @@ data |>
 #| label: Mean Bias plot by day
 #| fig-align: center
 Ap |> 
+   filter(`Subject ID` != "1330004") |> 
    filter(between(ANA,0.6,3)) |>
    group_by(Site,`Ref Type`,Day) |> 
    summarise(`Mean Bias(%)` = mean(`Relative Difference(%)`,na.rm = T),
@@ -815,6 +777,10 @@ Ap |>
 #| column: page
 #| tbl-cap: "Difference Measures group by Site and Reference Type"
 Ap |> 
+  bind_rows(Ap |> 
+            mutate(Site = "Overall")) |> 
+   mutate(Site = factor(Site, levels = c("Yale","RCR","Overall"))) |> 
+   filter(`Subject ID` != "1330004") |> 
    diff_measure_fun(group_var = c(Site,`Ref Type`,Level))
 ```
 
@@ -885,6 +851,7 @@ concur_fun <- function(data, group_var, trans = FALSE){
 #| label: KM vs Ref
 #| tbl-cap: "KM vs Ref"
 Ap |> 
+   filter(`Subject ID` != "1330004") |> 
    concur_fun(group_var = c(`Ref Type`),trans = F) |> 
    gt(groupname_col = c("Ref Type")) |> 
    cols_align(align = "center") |>
@@ -898,13 +865,43 @@ Ap |>
 #| label: Ref vs KM
 #| tbl-cap: "Ref vs KM"
 Ap |> 
+   filter(`Subject ID` != "1330004") |> 
    concur_fun(group_var = c(`Ref Type`),trans = T) |>
    gt(groupname_col = c("Ref Type")) |> 
    cols_align(align = "center") |>
    sub_missing(columns = everything(),missing_text = "") |>
    opt_stylize(style = 6, color = "blue") |> 
    tab_spanner(label = "KM (mmol/L)",columns = -contains("Total")) |> 
-   tab_header(title = md("Concurrence Analysis by Glucose Level (Ref vs. KM)"))
+   tab_header(title = md("Concurrence Analysis by Ketone Level (Ref vs. KM)"))
+```
+
+`r if(params$analysis){knitr::asis_output("# **Appendix**")}`
+```{r eval = params$analysis}
+#| label: Reg function
+reg_plot <- function(condition){
+kgr12 |>
+   select(!KRDTC02:KRDTC01) |>
+   left_join(randox |>
+             summarise(Randox = mean(`2uL Result`,na.rm = T)*4,.by = `Sample ID`),
+             by = join_by(KRSEQ02 == `Sample ID`)) |>
+   filter(if_all(c(KRSEQ02:Randox), ~ !is.na(.x))) |>
+   filter(Subject %in% c(condition)) |>
+   ggpubr::ggscatter(x = "KRSEQ01", y = "Randox", add = "reg.line", color = "Subject") +
+   facet_wrap(~Subject,ncol = 2,nrow = 2) +
+   labs(x = "Venous strip") +
+   ggpubr::stat_regline_equation(aes(label = paste(..eq.label..,..rr.label.., sep = "~`,`~")),
+                                  label.x = 0)
+}
+```
+
+```{r eval = params$analysis}
+#| label: Reg Plot
+reg_plot(condition = unique(iv12$Subject)[1:4])
+reg_plot(condition = unique(iv12$Subject)[5:8])
+reg_plot(condition = unique(iv12$Subject)[9:12])
+reg_plot(condition = unique(iv12$Subject)[13:16])
+reg_plot(condition = unique(iv12$Subject)[17:20])
+reg_plot(condition = unique(iv12$Subject)[21:23])
 ```
 
 ```{r eval = params$plot}

@@ -594,7 +594,7 @@ run;
 /*run;*/
 ODS RTF CLOSE;
 
-data Ap_accuracy;
+data Ap_accuracy(where=(subject ^= "1330004"));
 set Ap;
 format Level Group concur_ref_group concur_upload_group $35.;
 bias = ana_100 - KRSEQ01; 
