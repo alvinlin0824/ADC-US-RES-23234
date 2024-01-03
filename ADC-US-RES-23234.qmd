@@ -134,6 +134,16 @@ randox <- readRDS(gsub("\\\\", "/", r"(\\oneabbott.com\dept\ADC\Technical_OPS\Cl
 ```
 
 ```{r}
+# kgr12 |> 
+#            filter(!is.na(KRSEQ02)) |> 
+#            left_join(iv12, 
+#                      by = join_by(Subject == Subject,KRSEQ02 == IVID01, KRDTC01 == IVDTC01)) |> 
+#            filter(IVVAL01 == "Valid") |> 
+#            select(Subject,KRSEQ02,KRSEQ01,KRDTC01,IVTM01) |> 
+#    vroom_write(gsub("\\\\", "/", r"(\\oneabbott.com\dept\ADC\Technical_OPS\Clinical_Affairs\Clinical Study Files\Apollo\ADC-US-RES-23234_IDE Pump Suspension Study\Statistics\Programs\Datasets\AL\strip.csv)"),delim = ",")
+```
+
+```{r}
 #| label: KGR12 left join IV12
 kgriv12 <- kgr12 |> 
            filter(!is.na(KRSEQ02)) |> 
