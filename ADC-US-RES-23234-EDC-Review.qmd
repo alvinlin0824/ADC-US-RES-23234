@@ -321,7 +321,8 @@ co[
 de <- read_sas(gsub("\\\\", "/", r"(\\wf00168p.oneabbott.com\data1\CDM\ADC-US-RES-23234\OpenClinica\Current\de.sas7bdat)"))
 de <- de |>  
       filter(!str_detect(DEYN01,regex("CHECK HERE IF NO DATA RECORDED|no_data_recorded",ignore_case = T))) |> 
-      mutate(Subject = as.character(Subject)) |>  
+      mutate(Subject = as.character(Subject),
+             across(c(DESPID01), ~ na_if(.x,""))) |>  
       arrange(Subject)
 ```
 
@@ -345,7 +346,7 @@ str_detect(de$DETM01,"^$|pattern") & str_detect(de$DESPID13,"^$|pattern") |
 # Reader
 str_detect(de$DESPID07,regex("Reader",ignore_case = T)) & str_detect(de$DESPID01,"^$|pattern") |
 # Length of Reader Serial Number
-str_detect(de$DESPID07,regex("Reader",ignore_case = T)) & str_length(de$DESPID01) != 13        |
+str_detect(de$DESPID07,regex("Reader",ignore_case = T)) & str_length(de$DESPID01) != median(str_length(de$DESPID01),na.rm = T)        |
 # Sensor
 str_detect(de$DESPID08,regex("Sensor",ignore_case = T)) & is.na(de$DESPID02)                  |
 # Was there a message on the meter/reader at the time of the incident?
@@ -390,7 +391,7 @@ str_detect(str_to_lower(de$DEORES09),"other") & str_detect(de$DETXT04,"^$|patter
 
 `r knitr::asis_output("DESPID07(Reader) DESPID01(Reader serial number) should not be blank at the same time")` `r colorize(de[str_detect(de$DESPID07,regex("Reader",ignore_case = T)) & str_detect(de$DESPID01,"^$|pattern"),]$Subject,"red")`
 
-`r knitr::asis_output("Length of DESPID01(Reader serial number) should be 13")` `r colorize(de[str_detect(de$DESPID07,regex("Reader",ignore_case = T)) & str_length(de$DESPID01) != 13,]$Subject,"red")`
+`r knitr::asis_output("Length of DESPID01(Reader serial number) should be")` `r colorize( median(str_length(de$DESPID01),na.rm = T),"red")` `r colorize(de[str_detect(de$DESPID07,regex("Reader",ignore_case = T)) & str_length(de$DESPID01) != median(str_length(de$DESPID01),na.rm = T),]$Subject,"red")`
 
 `r knitr::asis_output("DESPID08(Sensor) DESPID02(Sensor number) should not be blank at the same time")` `r colorize(de[str_detect(de$DESPID08,regex("Sensor",ignore_case = T)) & is.na(de$DESPID02),]$Subject,"red")`
 
