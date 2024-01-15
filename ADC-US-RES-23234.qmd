@@ -168,6 +168,17 @@ kgriv12 <- kgr12 |>
 ```
 
 ```{r}
+kgriv12 |> 
+   filter(`Ref Type` == "Venous strip") |> 
+   transmute(Subject = Subject,
+             sample_id = KRSEQ02,
+             glucose_reference = KRSEQ03,
+             data_time = as.character(`Glucose Date Time`)) |> 
+   vroom_write(file = "glucose.csv",delim = ",")
+```
+
+
+```{r}
 #| label: Get Time duration
 ketone <- kgriv12 |> 
           left_join(
