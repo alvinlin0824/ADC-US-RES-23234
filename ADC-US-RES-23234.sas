@@ -407,8 +407,8 @@ ard=abs(rd);
 drop lag_dtm--lag_KRSEQ01;
 run;
 /*(with 1.25 adj)*/
-options papersize=a3 orientation=portrait;
-ods rtf file="C:\Project\ADC-US-RES-23234\ADC-US-RES-23234-Safety-Report(with 1.25 adj)-%trim(%sysfunc(today(),yymmddn8.)).rtf" startpage=no;
+/*options papersize=a3 orientation=portrait;*/
+/*ods rtf file="C:\Project\ADC-US-RES-23234\ADC-US-RES-23234-Safety-Report(with 1.25 adj)-%trim(%sysfunc(today(),yymmddn8.)).rtf" startpage=no;*/
 
 /*Summary Statistics on Ketone Result*/
 Proc means data = ketone maxdec=2 nonobs;
@@ -592,7 +592,7 @@ run;
 /*histogram rd / binwidth = 0.5;*/
 /*xaxis label = 'Rate Deviation (mmol/L/hour)' values = (-10 to 10 by 1);*/
 /*run;*/
-ODS RTF CLOSE;
+/*ODS RTF CLOSE;*/
 
 data Ap_accuracy(where=(subject ^= "1330004"));
 set Ap;
@@ -837,8 +837,8 @@ run;
 /*Ref vs KM*/
 /*/*Concurrence (with 1.25 adj)*/
 
-options papersize=a3 orientation=portrait;
-ods rtf file="C:\Project\ADC-US-RES-23234\ADC-US-RES-23234-Accuracy-Report(with 1.25 adj)-%trim(%sysfunc(today(),yymmddn8.)).rtf" startpage=no;
+/*options papersize=a3 orientation=portrait;*/
+/*ods rtf file="C:\Project\ADC-US-RES-23234\ADC-US-RES-23234-Accuracy-Report(with 1.25 adj)-%trim(%sysfunc(today(),yymmddn8.)).rtf" startpage=no;*/
 
 /*System Agreement plot of Difference between CGM and Reference*/
 proc sgpanel data = Ap_accuracy;
@@ -927,6 +927,41 @@ proc report data=concur_ref_vs_km nofs split='$'
  define 'p5: >3.0'n /">3.0" display f=8.1 width=5;
  define ntotal /"N" display f=8.0 width=5;
 run;
+/*ODS RTF CLOSE;*/
+
+/*Eligibility*/
+proc summary data = edc.ie001(where = (IEORES01 = "Yes"));
+output out =  ie001_summary(drop = _TYPE_ rename = (_FREQ_ = number_of_enrolled));
+run;
+
+/*Number of Completed pump suspension*/
+proc sql;
+    create table number_pump as 
+	select count(distinct subject) as number_of_completed
+	from kgriv;
+quit;
+/*Bind Cols*/
+data summary;
+set ie001_summary;
+set number_pump;
+run;
+
+/*AE*/
+data ae1;
+set edc.ae1;
+run;
+
+options papersize=a3 orientation=portrait;
+ods rtf file="C:\Project\ADC-US-RES-23234\ADC-US-RES-23234-Eligibility-%trim(%sysfunc(today(),yymmddn8.)).rtf" startpage=no;
+proc report data=summary nofs split='$'
+ style(column)=[just=l font=(arial, 10pt)]
+ style(header)=[font_weight=bold just=c font=(arial, 10pt)]
+ style(lines)=[font_weight=bold just=l];
+ title1 " "; 
+ columns ("Eligibility" number_of_enrolled number_of_completed);
+ define number_of_enrolled /"Number of Enrolled" display f=8.0 width=5;
+ define number_of_completed /"Number of Completed" display f=8.0 width=5;
+run; 
 ODS RTF CLOSE;
 
 

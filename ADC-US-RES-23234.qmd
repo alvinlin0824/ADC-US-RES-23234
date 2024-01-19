@@ -578,7 +578,6 @@ Ap_rate <- Ap |>
                     `Absolute Rate Deviation` > 3  ~ ">3"),.by = c(`Sensor Serial Number`,`Ref Type`))
 ```
 
-
 ```{r eval = params$analysis}
 #| label: Summary for Rate Deviation
 #| tbl-cap: "Summary for Rate Deviation"
