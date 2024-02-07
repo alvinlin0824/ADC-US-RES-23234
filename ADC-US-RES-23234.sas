@@ -46,12 +46,12 @@ infile "\\oneabbott.com\dept\ADC\Technical_OPS\Clinical_Affairs\Clinical Study F
  firstobs = 2
  DSD;
 input ID uL8 uL2;
+if uL8 = 2.9 then do; uL8 = uL2*4; end; 
 run;
 
-/*Calculate randox average for 2uL*/
 proc sql;
 create table randox_mean as 
-select ID, mean(uL2)*4 as KRSEQ01
+select ID, mean(uL8) as KRSEQ01
 from randox 
 group by ID;
 quit;
@@ -947,22 +947,22 @@ set number_pump;
 run;
 
 /*AE*/
-data ae1;
-set edc.ae1;
-run;
-
-options papersize=a3 orientation=portrait;
-ods rtf file="C:\Project\ADC-US-RES-23234\ADC-US-RES-23234-Eligibility-%trim(%sysfunc(today(),yymmddn8.)).rtf" startpage=no;
-proc report data=summary nofs split='$'
- style(column)=[just=l font=(arial, 10pt)]
- style(header)=[font_weight=bold just=c font=(arial, 10pt)]
- style(lines)=[font_weight=bold just=l];
- title1 " "; 
- columns ("Eligibility" number_of_enrolled number_of_completed);
- define number_of_enrolled /"Number of Enrolled" display f=8.0 width=5;
- define number_of_completed /"Number of Completed" display f=8.0 width=5;
-run; 
-ODS RTF CLOSE;
+/*data ae1;*/
+/*set edc.ae1;*/
+/*run;*/
+/**/
+/*options papersize=a3 orientation=portrait;*/
+/*ods rtf file="C:\Project\ADC-US-RES-23234\ADC-US-RES-23234-Eligibility-%trim(%sysfunc(today(),yymmddn8.)).rtf" startpage=no;*/
+/*proc report data=summary nofs split='$'*/
+/* style(column)=[just=l font=(arial, 10pt)]*/
+/* style(header)=[font_weight=bold just=c font=(arial, 10pt)]*/
+/* style(lines)=[font_weight=bold just=l];*/
+/* title1 " "; */
+/* columns ("Eligibility" number_of_enrolled number_of_completed);*/
+/* define number_of_enrolled /"Number of Enrolled" display f=8.0 width=5;*/
+/* define number_of_completed /"Number of Completed" display f=8.0 width=5;*/
+/*run; */
+/*ODS RTF CLOSE;*/
 
 
 /*Profile Plot*/

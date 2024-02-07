@@ -153,7 +153,9 @@ kgriv12 <- kgr12 |>
            bind_rows(
              iv12 |> 
                   left_join(randox |> 
-                            summarise(KRSEQ01 = mean(`2uL Result`,na.rm = T)*4,.by = `Sample ID`),
+                            mutate(`8uL Result` = case_when(`8uL Result` == 2.9 ~ `2uL Result`*4,
+                                                            .default = `8uL Result`)) |>  
+                            summarise(KRSEQ01 = mean(`8uL Result`,na.rm = T),.by = `Sample ID`),
                             by = join_by(IVID01 == `Sample ID`)) |> 
               mutate(KRSEQ02 = IVID01,
                      KRDTC01 = IVDTC01,
@@ -911,6 +913,32 @@ reg_plot(condition = unique(iv12$Subject)[9:12])
 reg_plot(condition = unique(iv12$Subject)[13:16])
 reg_plot(condition = unique(iv12$Subject)[17:20])
 reg_plot(condition = unique(iv12$Subject)[21:23])
+```
+
+```{r}
+#|label: Import DM
+dm <- read_sas(gsub("\\\\", "/", r"(\\wf00168p.oneabbott.com\data1\CDM\ADC-US-RES-23234\OpenClinica\Current\dm.sas7bdat)"))
+dm <- dm |>
+      filter(!str_detect(DMYN,regex("Check here if no data recorded",ignore_case = T))) |>
+      mutate(Subject = as.character(Subject)) |>
+      arrange(Subject)
+```
+
+```{r}
+#|label: Import MH1
+mh1 <- read_sas(gsub("\\\\", "/", r"(\\wf00168p.oneabbott.com\data1\CDM\ADC-US-RES-23234\OpenClinica\Current\mh1.sas7bdat)"))
+mh1 <- mh1 |>
+       filter(!str_detect(MHYN01,regex("Check here if no data recorded",ignore_case = T))) |>
+       mutate(Subject = as.character(Subject)) |>
+       arrange(Subject)
+```
+
+```{r}
+#|label: Import LB2
+lb2 <- read_sas(gsub("\\\\", "/", r"(\\wf00168p.oneabbott.com\data1\CDM\ADC-US-RES-23234\OpenClinica\Current\lb2.sas7bdat)"))
+lb2 <- lb2 |>
+       mutate(Subject = as.character(Subject)) |>
+       arrange(Subject)
 ```
 
 ```{r eval = params$plot}
