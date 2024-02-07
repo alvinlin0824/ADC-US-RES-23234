@@ -129,6 +129,75 @@ kgr12 <- kgr2 |>
 ```
 
 ```{r}
+# vroom("FromYuwellappSN4230002377_2024-02-05 141135.txt",delim = "\t") |> View()
+```
+
+KRSEQ01 KRSEQ03
+```{r}
+#| label: Study Results
+#| eval: false
+# 1
+kgr12 |>
+   select(!KRDTC02:KRDTC01) |>
+   left_join(randox |>
+             mutate(`8uL Result` = case_when(`8uL Result` == 2.9 ~ `2uL Result`*4,
+                                                            .default = `8uL Result`)) |>
+             summarise(Randox = mean(`8uL Result`,na.rm = T),.by = `Sample ID`),
+             # summarise(Randox = mean(`2uL Result`,na.rm = T)*4,.by = `Sample ID`),
+             by = join_by(KRSEQ02 == `Sample ID`)) |>
+   filter(if_all(c(KRSEQ02:Randox), ~ !is.na(.x))) |>
+   # filter(Subject %in% c(condition)) |>
+   ggpubr::ggscatter(x = "KRSEQ01", y = "Randox", add = "reg.line") +
+   # facet_wrap(~Subject,ncol = 2,nrow = 2) +
+   labs(x = "Venous strip") +
+   ggpubr::stat_regline_equation(aes(label = paste(..eq.label..,..rr.label.., sep = "~`,`~")),
+                                  label.x = 0)
+
+mean_sd <- list(mean = ~ mean(.x, na.rm = TRUE), 
+                sd = ~ sd(.x, na.rm = TRUE),
+                min = ~ min(.x, na.rm = TRUE),
+                max = ~ max(.x, na.rm = TRUE))
+# 2
+# kgr12 |> 
+#      slice(1,.by = Subject) |> 
+#      summarise(across(c(KRSEQ03,KRSEQ01),mean_sd))
+# 3
+# Ketone
+# kgr12 |> 
+#      slice_max(KRSEQ01,n = 1,with_ties = F,by = Subject) |>  
+#      summarise(across(c(KRSEQ01),mean_sd))
+# Glucose
+# kgr12 |> 
+#      slice_max(KRSEQ03,n = 1,with_ties = F,by = Subject) |>  
+#      summarise(across(c(KRSEQ03),mean_sd))
+# 4
+# kgr12 |> 
+#     slice_max(KRSEQ01,n = 1,with_ties = F,by = Subject) |> 
+#     mutate(Count = case_when(KRSEQ01 > 1 ~ "T",
+#                              .default = "F")) |> 
+#     tabyl(Count)
+# 5 
+# kgr12 |> 
+#     mutate(`Ketone Date Time` = ymd_hm(str_c(KRDTC01,KRDTC02,sep = " "))) |> 
+#     filter(`Ketone Date Time` <= first(`Ketone Date Time`) + hours(3),.by = Subject) |> 
+#     filter(KRSEQ01 > 1,.by = Subject) |> 
+#     filter(KRSEQ03 < 240,.by = Subject) |> 
+#     summarise(N = n_distinct(Subject))
+# 6 
+# kgr12 |> 
+#     mutate(`Ketone Date Time` = ymd_hm(str_c(KRDTC01,KRDTC02,sep = " "))) |> 
+#     filter(`Ketone Date Time` > first(`Ketone Date Time`) + hours(6),.by = Subject) |> 
+#     filter(KRSEQ01 > 1.5,.by = Subject) |> 
+#     filter(KRSEQ03 < 240,.by = Subject) |> 
+#     summarise(N = n_distinct(Subject))
+# 7
+# ketone |> 
+#   filter(`Ref Type` == "Venous strip") |> 
+#   summarise(across(c(duration_to_below_1mmol),mean_sd))
+```
+
+
+```{r}
 #| label: Import Randox rds
 randox <- readRDS(gsub("\\\\", "/", r"(\\oneabbott.com\dept\ADC\Technical_OPS\Clinical_Affairs\Clinical Study Files\Apollo\ADC-US-RES-23234_IDE Pump Suspension Study\Statistics\Programs\Datasets\AL\randox.rds)"))
 ```
@@ -893,7 +962,10 @@ reg_plot <- function(condition){
 kgr12 |>
    select(!KRDTC02:KRDTC01) |>
    left_join(randox |>
-             summarise(Randox = mean(`2uL Result`,na.rm = T)*4,.by = `Sample ID`),
+             mutate(`8uL Result` = case_when(`8uL Result` == 2.9 ~ `2uL Result`*4,
+                                                            .default = `8uL Result`)) |>  
+             summarise(Randox = mean(`8uL Result`,na.rm = T),.by = `Sample ID`), 
+             # summarise(Randox = mean(`2uL Result`,na.rm = T)*4,.by = `Sample ID`),
              by = join_by(KRSEQ02 == `Sample ID`)) |>
    filter(if_all(c(KRSEQ02:Randox), ~ !is.na(.x))) |>
    filter(Subject %in% c(condition)) |>
