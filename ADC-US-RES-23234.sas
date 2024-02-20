@@ -164,7 +164,7 @@ keep subject dtm KRSEQ01 ref_type;
 rename dtm = time_below1_dtm KRSEQ01 = first_below;
 run;
 
-/*Left Join first_keton with kgriv*/
+/*Left Join first_ketone with kgriv*/
 data ketone;
 merge kgriv first_ketone last_ketone1 peak_ketone;
 by ref_type subject;
@@ -407,8 +407,8 @@ ard=abs(rd);
 drop lag_dtm--lag_KRSEQ01;
 run;
 /*(with 1.25 adj)*/
-/*options papersize=a3 orientation=portrait;*/
-/*ods rtf file="C:\Project\ADC-US-RES-23234\ADC-US-RES-23234-Safety-Report(with 1.25 adj)-%trim(%sysfunc(today(),yymmddn8.)).rtf" startpage=no;*/
+options papersize=a3 orientation=portrait;
+ods rtf file="C:\Project\ADC-US-RES-23234\ADC-US-RES-23234-Safety-Report(with 1.25 adj)-%trim(%sysfunc(today(),yymmddn8.)).rtf" startpage=no;
 
 /*Summary Statistics on Ketone Result*/
 Proc means data = ketone maxdec=2 nonobs;
@@ -592,7 +592,7 @@ run;
 /*histogram rd / binwidth = 0.5;*/
 /*xaxis label = 'Rate Deviation (mmol/L/hour)' values = (-10 to 10 by 1);*/
 /*run;*/
-/*ODS RTF CLOSE;*/
+ODS RTF CLOSE;
 
 data Ap_accuracy(where=(subject ^= "1330004"));
 set Ap;
@@ -837,8 +837,8 @@ run;
 /*Ref vs KM*/
 /*/*Concurrence (with 1.25 adj)*/
 
-/*options papersize=a3 orientation=portrait;*/
-/*ods rtf file="C:\Project\ADC-US-RES-23234\ADC-US-RES-23234-Accuracy-Report(with 1.25 adj)-%trim(%sysfunc(today(),yymmddn8.)).rtf" startpage=no;*/
+options papersize=a3 orientation=portrait;
+ods rtf file="C:\Project\ADC-US-RES-23234\ADC-US-RES-23234-Accuracy-Report(with 1.25 adj)-%trim(%sysfunc(today(),yymmddn8.)).rtf" startpage=no;
 
 /*System Agreement plot of Difference between CGM and Reference*/
 proc sgpanel data = Ap_accuracy;
@@ -927,24 +927,179 @@ proc report data=concur_ref_vs_km nofs split='$'
  define 'p5: >3.0'n /">3.0" display f=8.1 width=5;
  define ntotal /"N" display f=8.0 width=5;
 run;
-/*ODS RTF CLOSE;*/
+ODS RTF CLOSE;
+
+/*Demography Table*/
+data dm(keep = Subject SEX AGE ETHNIC RACE EDU);
+set edc.dm(where = (DMYN ^= "CHECK HERE IF NO DATA RECORDED"));
+if RACE = "White" then RACE = catx(' - ', RACE, ETHNIC);
+run;
+
+data mh1(keep = Subject MHDTC02 MHORES01-MHORES04 MHORES06);
+set edc.mh1(where = (MHYN01 ^= "CHECK HERE IF NO DATA RECORDED"));
+run;
+
+data vs;
+set edc.vs(where = (VSYN01 ^= "CHECK HERE IF NO DATA RECORDED"));
+VSORES011 = input(VSORES01,2.);
+VSORES021 = input(VSORES02,2.);
+VSORES031 = input(VSORES03,5.);
+keep Subject VSORES011-VSORES031;
+run;
+
+data lb2;
+set edc.lb2(where = (LBID01));
+LBORES011 = input(LBORES01,3.);
+keep Subject LBORES011;
+run;
+
+/*Subject Demographics and Diabetes History*/
+
+/*Full Join*/
+proc sql;
+     create table dmmh1 as
+	 Select * from dm as x full join mh1 as y
+     on x.Subject = y.Subject;
+quit; 
+
+%MACRO freq(var = );
+	PROC freq DATA= dmmh;
+	tables &var / nocum noprint out = &var(where = (PERCENT ^= .));
+    run;
+%mend freq;
+/*maybe can try for loop*/
+%freq(var = SEX)
+%freq(var = RACE)
+%freq(var = EDU)
+%freq(var = mhores01)
+%freq(var = mhores04)
+
+data demographics;
+format Characteristic $100. COUNT 3. PERCENT 4.1 ;
+rename COUNT = N
+       PERCENT = "%"n;
+set SEX (rename = (SEX = Characteristic)) RACE (rename = (RACE = Characteristic)) EDU (rename = (EDU = Characteristic)) mhores01 (rename = (mhores01 = Characteristic)) mhores04 (rename = (mhores04 = Characteristic));
+run;
+
+/*Factor Levels*/
+proc sql;
+	create table demographics as 
+	select * from demographics
+	order by case(Characteristic) 
+		when "Female" then 1
+    	when "Male" then 2
+        /*Ethnic*/
+        when "Hispanic or Latino" then 3
+		when "Not Hispanic or Latino" then 4
+		/*Race*/
+		when "White - Hispanic or Latino" then 5
+        when "White - Not Hispanic or Latino" then 6
+	    when "American Indian or Alaska Native" then 7
+	    when "Asian" then 8
+	    when "Black or African American" then 9
+		when "Native Hawaiian or Pacific Islander" then 10
+        when "Other" then 11
+		/*Education*/
+		when "Grade 0-8" then 12
+		when "High School (Grades 9-12)" then 13
+		when "Some College (1-4 years)" then 14
+		when "Bachelor's Degree (BA BS etc)" then 15
+		when "Master's Degree (MA MS etc)" then 16
+		when "Doctorate or Professional school degree (PhD EdD MD JD etc)" then 16
+        /*Type Of Diabetes*/
+        when "Type 1" then 17
+		when "Type 2" then 18
+        /*Insulin Pump Use*/
+        when "Yes" then 19
+        when "No" then 20
+	end;
+quit;
+
+/*Baseline Characteristics*/
+
+/*Full Join*/
+proc sql;
+     create table bc as
+	 select x.AGE,
+	        z.VSORES031,
+			z.VSORES031*0.453592 as Kg,
+            z.VSORES011*12 + z.VSORES021 as Inches,
+            (z.VSORES011*12 + z.VSORES021)*0.0254 as Meters,
+		    (z.VSORES031*0.453592)/((z.VSORES011*12 + z.VSORES021)*0.0254)**2  as BMI,
+            year(Today()) - year(y.MHDTC02) as Duration,
+            case
+			when y.MHORES03 = "Months" then y.MHORES02/12
+			else y.MHORES02
+			end as MHORES02,
+            LBORES011
+     from dm as x
+     full join mh1 as y on x.Subject = y.Subject
+	 full join vs as z on y.Subject = z.Subject
+	 full join lb2 as u on z.Subject = u.Subject;
+quit;
+
+%MACRO summary(var = );
+	Proc Means data=BC noprint;
+	var &var;
+	output out=&var(drop = _type_ _freq_ _Label_) mean= Mean median= Median std= SD min= Min max= Max;
+	run;
+%mend summary;
+/*maybe can try for loop*/
+%summary(var = AGE)
+%summary(var = VSORES031)
+%summary(var = Kg)
+%summary(var = Inches)
+%summary(var = Meters)
+%summary(var = BMI)
+%summary(var = Duration)
+%summary(var = MHORES02)
+%summary(var = LBORES011)
+
+data bc_table;
+format Characteristics $55. Median 5.1 ;
+set AGE VSORES031 Kg Inches Meters BMI Duration MHORES02 LBORES011;
+if _n_ = 1 then Characteristics = "Age(Years)";
+Else if _n_ = 2 then Characteristics = "Weight Pounds";
+Else if _n_ = 3 then Characteristics = "Weight Kilograms";
+Else if _n_ = 4 then Characteristics = "Height Inches";
+Else if _n_ = 5 then Characteristics = "Height Meters";
+Else if _n_ = 6 then Characteristics = "Body Mass Index";
+Else if _n_ = 7 then Characteristics = "Duration of diabetes (years)";
+Else if _n_ = 8 then Characteristics = "Duration of insulin use (years)";
+Else if _n_ = 9 then Characteristics = "Total number of injections per day";
+Else Characteristics = "HbA1c (%)";
+Mean±SD = CATX(" ± ",put(Mean,5.1),put(SD,4.1));
+Range = CATX(" to ",put(Min,5.1),put(Max,5.1));
+run;
+
+options papersize=a3 orientation=portrait;
+ods rtf file="C:\Project\ADC-US-RES-23234\ADC-US-RES-23234-Demography-%trim(%sysfunc(today(),yymmddn8.)).rtf" startpage=no;
+/*Demography Table*/
+proc print data = demographics noobs;
+run;
+
+/*Baseline Subject Characteristics*/
+proc print data = bc_table noobs;
+var Characteristics Mean±SD Median Range;
+run;
+ODS RTF CLOSE;
 
 /*Eligibility*/
-proc summary data = edc.ie001(where = (IEORES01 = "Yes"));
-output out =  ie001_summary(drop = _TYPE_ rename = (_FREQ_ = number_of_enrolled));
-run;
+/*proc summary data = edc.ie001(where = (IEORES01 = "Yes"));*/
+/*output out =  ie001_summary(drop = _TYPE_ rename = (_FREQ_ = number_of_enrolled));*/
+/*run;*/
 
 /*Number of Completed pump suspension*/
-proc sql;
-    create table number_pump as 
-	select count(distinct subject) as number_of_completed
-	from kgriv;
-quit;
+/*proc sql;*/
+/*    create table number_pump as */
+/*	select count(distinct subject) as number_of_completed*/
+/*	from kgriv;*/
+/*quit;*/
 /*Bind Cols*/
-data summary;
-set ie001_summary;
-set number_pump;
-run;
+/*data summary;*/
+/*set ie001_summary;*/
+/*set number_pump;*/
+/*run;*/
 
 /*AE*/
 /*data ae1;*/

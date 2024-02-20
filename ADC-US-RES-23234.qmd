@@ -129,10 +129,10 @@ kgr12 <- kgr2 |>
 ```
 
 ```{r}
-# vroom("FromYuwellappSN4230002377_2024-02-05 141135.txt",delim = "\t") |> View()
+#| label: Import Randox rds
+randox <- readRDS(gsub("\\\\", "/", r"(\\oneabbott.com\dept\ADC\Technical_OPS\Clinical_Affairs\Clinical Study Files\Apollo\ADC-US-RES-23234_IDE Pump Suspension Study\Statistics\Programs\Datasets\AL\randox.rds)"))
 ```
 
-KRSEQ01 KRSEQ03
 ```{r}
 #| label: Study Results
 #| eval: false
@@ -145,6 +145,7 @@ kgr12 |>
              summarise(Randox = mean(`8uL Result`,na.rm = T),.by = `Sample ID`),
              # summarise(Randox = mean(`2uL Result`,na.rm = T)*4,.by = `Sample ID`),
              by = join_by(KRSEQ02 == `Sample ID`)) |>
+   filter(Subject != "1330004") |>
    filter(if_all(c(KRSEQ02:Randox), ~ !is.na(.x))) |>
    # filter(Subject %in% c(condition)) |>
    ggpubr::ggscatter(x = "KRSEQ01", y = "Randox", add = "reg.line") +
@@ -184,22 +185,16 @@ mean_sd <- list(mean = ~ mean(.x, na.rm = TRUE),
 #     filter(KRSEQ03 < 240,.by = Subject) |> 
 #     summarise(N = n_distinct(Subject))
 # 6 
-# kgr12 |> 
-#     mutate(`Ketone Date Time` = ymd_hm(str_c(KRDTC01,KRDTC02,sep = " "))) |> 
-#     filter(`Ketone Date Time` > first(`Ketone Date Time`) + hours(6),.by = Subject) |> 
-#     filter(KRSEQ01 > 1.5,.by = Subject) |> 
-#     filter(KRSEQ03 < 240,.by = Subject) |> 
+# kgr12 |>
+#     mutate(`Ketone Date Time` = ymd_hm(str_c(KRDTC01,KRDTC02,sep = " "))) |>
+#     filter(`Ketone Date Time` <= first(`Ketone Date Time`) + hours(6),.by = Subject) |>
+#     filter(KRSEQ01 > 1.5,.by = Subject) |> View()
+#     filter(KRSEQ03 < 240,.by = Subject) |>
 #     summarise(N = n_distinct(Subject))
 # 7
 # ketone |> 
 #   filter(`Ref Type` == "Venous strip") |> 
 #   summarise(across(c(duration_to_below_1mmol),mean_sd))
-```
-
-
-```{r}
-#| label: Import Randox rds
-randox <- readRDS(gsub("\\\\", "/", r"(\\oneabbott.com\dept\ADC\Technical_OPS\Clinical_Affairs\Clinical Study Files\Apollo\ADC-US-RES-23234_IDE Pump Suspension Study\Statistics\Programs\Datasets\AL\randox.rds)"))
 ```
 
 ```{r}
