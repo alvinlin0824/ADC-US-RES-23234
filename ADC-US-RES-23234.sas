@@ -1072,6 +1072,12 @@ Mean±SD = CATX(" ± ",put(Mean,5.1),put(SD,4.1));
 Range = CATX(" to ",put(Min,5.1),put(Max,5.1));
 run;
 
+/*Sensor Accountability*/
+proc summary data = edc.sa;
+class Subject DUCOD01;
+output out = freq(where = (^missing(Subject) and missing(DUCOD01)) drop = _TYPE_);
+run;
+
 options papersize=a3 orientation=portrait;
 ods rtf file="C:\Project\ADC-US-RES-23234\ADC-US-RES-23234-Demography-%trim(%sysfunc(today(),yymmddn8.)).rtf" startpage=no;
 /*Demography Table*/
@@ -1082,7 +1088,15 @@ run;
 proc print data = bc_table noobs;
 var Characteristics Mean±SD Median Range;
 run;
+
+proc summary data = freq print;
+class _FREQ_;
+run;
 ODS RTF CLOSE;
+
+
+
+
 
 /*Eligibility*/
 /*proc summary data = edc.ie001(where = (IEORES01 = "Yes"));*/

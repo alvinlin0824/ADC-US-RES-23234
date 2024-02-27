@@ -71,6 +71,16 @@ file_list[str_detect(file_list,"extracted_realm.zip|dualsensors_upload_info.xml"
 <!-- UDP -->
 
 ```{r}
+# read_sas(gsub("\\\\", "/", r"(\\wf00168p.oneabbott.com\data1\CDM\ADC-US-RES-23234\OpenClinica\Current\pd.sas7bdat)")) |> 
+#   filter(!str_detect(DVYN,regex("Check here if no data recorded",ignore_case = T))) |> 
+#   transmute(DVDESC1 = case_when(!str_detect(DVDESC2,"^$|pattern") 
+#                              ~ str_c(DVDESC1, DVDESC2, sep = " "),
+#                              .default = DVDESC1)) |>
+#   gt() |> 
+#   gtsave("pd.docx")
+```
+
+```{r}
 #|label: Import IV1
 iv1 <- read_sas(gsub("\\\\", "/", r"(\\wf00168p.oneabbott.com\data1\CDM\ADC-US-RES-23234\OpenClinica\Current\iv1.sas7bdat)"))
 iv1 <- iv1 |>
@@ -192,9 +202,9 @@ mean_sd <- list(mean = ~ mean(.x, na.rm = TRUE),
 #     filter(KRSEQ03 < 240,.by = Subject) |>
 #     summarise(N = n_distinct(Subject))
 # 7
-# ketone |> 
-#   filter(`Ref Type` == "Venous strip") |> 
-#   summarise(across(c(duration_to_below_1mmol),mean_sd))
+ketone |>
+  filter(`Ref Type` == "Venous strip") |>
+  summarise(across(c(duration_to_below_1mmol),mean_sd))
 ```
 
 ```{r}
@@ -349,7 +359,7 @@ ketone |>
   geom_point() + 
   geom_line() + 
   facet_grid(cols = vars(`Ref Type`)) + 
-  scale_x_continuous(expand = c(0,0), breaks = c(seq(0,8,1)), limits = c(0,8)) + 
+  scale_x_continuous(expand = c(0,0), breaks = c(seq(0,8.5,1)), limits = c(0,8.5)) + 
   scale_y_continuous(expand = c(0,0), limits = c(0,5)) + 
   geom_hline(yintercept = 1,linewidth = 1) + 
   labs(title = "Ketone Reference",x = "Time(Hours)", y = "Ketone Test Result (mmol/L)") +
@@ -369,7 +379,7 @@ ketone |>
   geom_line() + 
   facet_grid(cols = vars(`Ref Type`)) + 
   labs(title = "Ketone Vary Over Time",x = "Time(Hours)", y = "Ketone Test Result (mmol/L)") +
-  scale_x_continuous(expand = c(0,0), breaks = c(seq(1,8,1))) + 
+  scale_x_continuous(expand = c(0,0), breaks = c(seq(0,8.5,1)), limits = c(0,8.5)) + 
   scale_y_continuous(expand = c(0,0), breaks = c(seq(-2.0,2.0,0.5)),limits = c(-2,2)) +
   theme_bw() +
   theme(panel.grid.major.y = element_blank(),panel.grid.minor.y = element_blank(),legend.position = "bottom",plot.title = element_text(hjust = 0.5))
