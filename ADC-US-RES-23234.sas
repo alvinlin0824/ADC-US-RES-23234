@@ -46,12 +46,16 @@ infile "\\oneabbott.com\dept\ADC\Technical_OPS\Clinical_Affairs\Clinical Study F
  firstobs = 2
  DSD;
 input ID uL8 uL2;
-if uL8 = 2.9 then do; uL8 = uL2*4; end; 
+/*if uL8 = 2.9 then do; uL8 = uL2*4; end; */
 run;
 
 proc sql;
 create table randox_mean as 
-select ID, mean(uL8) as KRSEQ01
+select ID, mean(uL8) as mean_8uL, mean(uL2) as mean_2uL
+case when mean_8uL < 2.9 then mean_8uL
+	 when mean_8uL >= 2.9 then mean_2uL*4
+	 ELSE mean_2uL*4
+  	END AS KRSEQ01
 from randox 
 group by ID;
 quit;

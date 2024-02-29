@@ -218,6 +218,15 @@ ketone |>
 ```
 
 ```{r}
+# randox |> 
+#    summarise(mean_2uL = mean(`2uL Result`,na.rm = T),
+#              mean_8uL = mean(`8uL Result`,na.rm = T),.by = `Sample ID`) |> 
+#    mutate(KRSEQ01 = case_when(mean_8uL < 2.9 ~ mean_8uL,
+#                               mean_8uL >= 2.9 ~ mean_2uL*4,
+#                               .default = mean_2uL*4),.keep = "unused")
+```
+
+```{r}
 #| label: KGR12 left join IV12
 kgriv12 <- kgr12 |> 
            filter(!is.na(KRSEQ02)) |> 
@@ -227,9 +236,15 @@ kgriv12 <- kgr12 |>
            bind_rows(
              iv12 |> 
                   left_join(randox |> 
-                            mutate(`8uL Result` = case_when(`8uL Result` == 2.9 ~ `2uL Result`*4,
-                                                            .default = `8uL Result`)) |>  
-                            summarise(KRSEQ01 = mean(`8uL Result`,na.rm = T),.by = `Sample ID`),
+                            summarise(mean_2uL = mean(`2uL Result`,na.rm = T),
+                                      mean_8uL = mean(`8uL Result`,na.rm = T),.by = `Sample ID`) |> 
+                            mutate(KRSEQ01 = case_when(mean_8uL < 2.9 ~ mean_8uL,
+                                                       mean_8uL >= 2.9 ~ mean_2uL*4,
+                                                       .default = mean_2uL*4),.keep = "unused"),
+                            # randox |> 
+                            # mutate(`8uL Result` = case_when(`8uL Result` == 2.9 ~ `2uL Result`*4,
+                            #                                 .default = `8uL Result`)) |>  
+                            # summarise(KRSEQ01 = mean(`8uL Result`,na.rm = T),.by = `Sample ID`),
                             by = join_by(IVID01 == `Sample ID`)) |> 
               mutate(KRSEQ02 = IVID01,
                      KRDTC01 = IVDTC01,
@@ -966,10 +981,18 @@ Ap |>
 reg_plot <- function(condition){
 kgr12 |>
    select(!KRDTC02:KRDTC01) |>
-   left_join(randox |>
-             mutate(`8uL Result` = case_when(`8uL Result` == 2.9 ~ `2uL Result`*4,
-                                                            .default = `8uL Result`)) |>  
-             summarise(Randox = mean(`8uL Result`,na.rm = T),.by = `Sample ID`), 
+   left_join(
+             randox |>
+             summarise(mean_2uL = mean(`2uL Result`,na.rm = T),
+                       mean_8uL = mean(`8uL Result`,na.rm = T),.by = `Sample ID`) |>
+             mutate(Randox = case_when(mean_8uL < 2.9 ~ mean_8uL,
+                                        mean_8uL >= 2.9 ~ mean_2uL*4,
+                                       .default = mean_2uL*4),.keep = "unused"),
+     
+             # randox |>
+             # mutate(`8uL Result` = case_when(`8uL Result` == 2.9 ~ `2uL Result`*4,
+             #                                                .default = `8uL Result`)) |>
+             # summarise(Randox = mean(`8uL Result`,na.rm = T),.by = `Sample ID`),
              # summarise(Randox = mean(`2uL Result`,na.rm = T)*4,.by = `Sample ID`),
              by = join_by(KRSEQ02 == `Sample ID`)) |>
    filter(if_all(c(KRSEQ02:Randox), ~ !is.na(.x))) |>
