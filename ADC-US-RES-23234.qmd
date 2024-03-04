@@ -1,5 +1,5 @@
 ---
-title: "ADC-US-RES-23234 Insulin Pump Suspension Study `r params$title2`"
+title: "ADC-US-RES-23234 Insulin Pump Suspension Study `r params$title1`"
 description: "To characterize beta-hydroxybutyrate ketone levels in people with type 1 diabetes using continuous subcutaneous insulin infusion (CSII) during a planned suspension of their insulin pump"
 author: "Alvin, Lin"
 date: "`r Sys.Date()`"
@@ -15,8 +15,8 @@ execute:
   warning: false 
   keep-md: true
 params:
-  analysis: TRUE
-  plot: FALSE
+  analysis: FALSE
+  plot: TRUE
   title1: "Profile Plot"
   title2: "Accuracy Performance"
 ---
@@ -273,7 +273,8 @@ ketone <- kgriv12 |>
                  `Time < 1 mmol/L` = first(`Time < 1 mmol/L`,na_rm = T),
 
                  duration_to_peak = as.numeric(difftime(`Ketone Date Time`,first(`Ketone Date Time`),units = "hours")),
-                 duration_to_below_1mmol = as.numeric(difftime(`Time < 1 mmol/L`,`Peak Time` ,units = "hours")),.by = c(Subject,`Ref Type`))
+                 duration_to_below_1mmol = as.numeric(difftime(`Time < 1 mmol/L`,`Peak Time` ,units = "hours")),.by = c(Subject,`Ref Type`)) |> 
+            filter(Subject != "1330004")
 ```
 
 `r if(params$analysis){knitr::asis_output("# **Safety**")}`
@@ -791,7 +792,6 @@ ketone_breaks_percent <- c(0,10,20,30,40,Inf)
 #| label: System Agreement plot of Difference between CGM and Reference
 #| fig-align: center
 Ap |> 
-    filter(`Subject ID` != "1330004") |> 
     filter(between(ANA,0.6,3)) |>
     ggplot(aes(x = KRSEQ01, y = `Difference(mmol/L)`, color = Site, shape = Site)) +
     geom_point() +
@@ -810,7 +810,6 @@ Ap |>
    bind_rows(Ap |> 
                mutate(Site = "Overall")) |> 
    mutate(Site = factor(Site, levels = c("Yale","RCR","Overall"))) |> 
-   filter(`Subject ID` != "1330004") |>
    system_agreement_fun(wider_name = NULL,group_var = c(Site,`Ref Type`,Level)) |> 
    gt(groupname_col = c("Site","Ref Type")) |>
    cols_align(align = "center") |>
@@ -856,7 +855,6 @@ data |>
 #| label: Mean Bias plot by day
 #| fig-align: center
 Ap |> 
-   filter(`Subject ID` != "1330004") |> 
    filter(between(ANA,0.6,3)) |>
    group_by(Site,`Ref Type`,Day) |> 
    summarise(`Mean Bias(%)` = mean(`Relative Difference(%)`,na.rm = T),
@@ -880,7 +878,6 @@ Ap |>
   bind_rows(Ap |> 
             mutate(Site = "Overall")) |> 
    mutate(Site = factor(Site, levels = c("Yale","RCR","Overall"))) |> 
-   filter(`Subject ID` != "1330004") |> 
    diff_measure_fun(group_var = c(Site,`Ref Type`,Level))
 ```
 
@@ -951,7 +948,6 @@ concur_fun <- function(data, group_var, trans = FALSE){
 #| label: KM vs Ref
 #| tbl-cap: "KM vs Ref"
 Ap |> 
-   filter(`Subject ID` != "1330004") |> 
    concur_fun(group_var = c(`Ref Type`),trans = F) |> 
    gt(groupname_col = c("Ref Type")) |> 
    cols_align(align = "center") |>
@@ -965,7 +961,6 @@ Ap |>
 #| label: Ref vs KM
 #| tbl-cap: "Ref vs KM"
 Ap |> 
-   filter(`Subject ID` != "1330004") |> 
    concur_fun(group_var = c(`Ref Type`),trans = T) |>
    gt(groupname_col = c("Ref Type")) |> 
    cols_align(align = "center") |>
@@ -1111,8 +1106,11 @@ breakdown_condition_plot <- function(Id) {
 
 ```{r}
 #| column: screen
-#| eval: false
-breakdown_condition_plot(Id = "90005")
+breakdown_condition_plot(Id = "90008")
+```
+
+```{r}
+knitr::knit_exit()
 ```
 
 ```{r eval = params$plot}

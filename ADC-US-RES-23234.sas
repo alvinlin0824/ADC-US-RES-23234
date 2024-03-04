@@ -50,11 +50,11 @@ input ID uL8 uL2;
 run;
 
 proc sql;
-create table randox_mean as 
-select ID, mean(uL8) as mean_8uL, mean(uL2) as mean_2uL
-case when mean_8uL < 2.9 then mean_8uL
-	 when mean_8uL >= 2.9 then mean_2uL*4
-	 ELSE mean_2uL*4
+create table randox_mean(drop = mean_8uL) as 
+select ID, mean(uL8) as mean_8uL,
+case when calculated mean_8uL < 2.9 then mean(uL8)
+	 when calculated mean_8uL >= 2.9 then mean(uL2)*4
+	 ELSE mean(uL2)*4
   	END AS KRSEQ01
 from randox 
 group by ID;
@@ -124,7 +124,7 @@ run;
 /*Valid sample only*/
 proc sort data = kgriv;
 by ref_type subject dtm;
-where ^missing(dtm) and IVVAL01 = "Valid" and ^missing(KRSEQ01);
+where ^missing(dtm) and IVVAL01 = "Valid" and ^missing(KRSEQ01) and subject ^= "1330004";
 run;
 
 /*Get First Ketone Date and Time*/
