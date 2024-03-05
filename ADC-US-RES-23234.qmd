@@ -129,6 +129,15 @@ kgr2 <- kgr2 |>
 ```
 
 ```{r}
+#|label: Import ps
+ps <- read_sas(gsub("\\\\", "/", r"(\\wf00168p.oneabbott.com\data1\CDM\ADC-US-RES-23234\OpenClinica\Current\ps.sas7bdat)"))
+ps <- ps |>
+      filter(!str_detect(PSYN01,regex("Check here if no data recorded",ignore_case = T))) |>
+      mutate(Subject = as.character(Subject)) |>
+      arrange(Subject)
+```
+
+```{r}
 #| label: KGR2 left join KGR1
 kgr12 <- kgr2 |> 
          select(Subject,KRSEQ02:KRDTC03) |> 
@@ -136,6 +145,14 @@ kgr12 <- kgr2 |>
                    select(Subject,KRDTC01),
                    by = join_by(Subject == Subject)) |> 
          arrange(Subject,KRDTC01)
+```
+
+```{r}
+kgr12 |> 
+  slice(1,.by = Subject) |> 
+  left_join(ps |> 
+               select(Subject,PSDTC01,PSTM02),by = join_by(Subject)) |> 
+  mutate(diff = readr::parse_time(KRDTC02) - readr::parse_time(PSTM02)) |> View()
 ```
 
 ```{r}
@@ -232,20 +249,20 @@ kgriv12 <- kgr12 |>
            filter(!is.na(KRSEQ02)) |> 
            left_join(iv12, 
                      by = join_by(Subject == Subject,KRSEQ02 == IVID01, KRDTC01 == IVDTC01)) |> 
+           filter(IVVAL01 == "Valid") |> 
            mutate(`Ref Type` = "Venous strip") |> 
            bind_rows(
              iv12 |> 
+              select(!IVVAL01) |>
                   left_join(randox |> 
+                             
                             summarise(mean_2uL = mean(`2uL Result`,na.rm = T),
                                       mean_8uL = mean(`8uL Result`,na.rm = T),.by = `Sample ID`) |> 
                             mutate(KRSEQ01 = case_when(mean_8uL < 2.9 ~ mean_8uL,
                                                        mean_8uL >= 2.9 ~ mean_2uL*4,
                                                        .default = mean_2uL*4),.keep = "unused"),
-                            # randox |> 
-                            # mutate(`8uL Result` = case_when(`8uL Result` == 2.9 ~ `2uL Result`*4,
-                            #                                 .default = `8uL Result`)) |>  
-                            # summarise(KRSEQ01 = mean(`8uL Result`,na.rm = T),.by = `Sample ID`),
-                            by = join_by(IVID01 == `Sample ID`)) |> 
+                            by = join_by(IVID01 == `Sample ID`)) |>
+              filter(Subject != "1330004") |> 
               mutate(KRSEQ02 = IVID01,
                      KRDTC01 = IVDTC01,
                     `Ref Type` = "Randox",.keep = "unused")) |> 
@@ -254,7 +271,6 @@ kgriv12 <- kgr12 |>
                   KRDTC02 = NULL,
                   .keep = "unused") |> 
            arrange(`Ref Type`,Subject,`Ketone Date Time`) |> 
-           filter(IVVAL01 == "Valid") |> 
            filter(!is.na(KRSEQ01))
 ```
 
@@ -273,8 +289,7 @@ ketone <- kgriv12 |>
                  `Time < 1 mmol/L` = first(`Time < 1 mmol/L`,na_rm = T),
 
                  duration_to_peak = as.numeric(difftime(`Ketone Date Time`,first(`Ketone Date Time`),units = "hours")),
-                 duration_to_below_1mmol = as.numeric(difftime(`Time < 1 mmol/L`,`Peak Time` ,units = "hours")),.by = c(Subject,`Ref Type`)) |> 
-            filter(Subject != "1330004")
+                 duration_to_below_1mmol = as.numeric(difftime(`Time < 1 mmol/L`,`Peak Time` ,units = "hours")),.by = c(Subject,`Ref Type`))
 ```
 
 `r if(params$analysis){knitr::asis_output("# **Safety**")}`

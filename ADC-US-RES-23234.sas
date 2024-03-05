@@ -50,10 +50,10 @@ input ID uL8 uL2;
 run;
 
 proc sql;
-create table randox_mean(drop = mean_8uL) as 
-select ID, mean(uL8) as mean_8uL,
-case when calculated mean_8uL < 2.9 then mean(uL8)
-	 when calculated mean_8uL >= 2.9 then mean(uL2)*4
+create table randox_mean as 
+select ID,
+case when mean(uL8) < 2.9 then mean(uL8)
+	 when mean(uL8) >= 2.9 then mean(uL2)*4
 	 ELSE mean(uL2)*4
   	END AS KRSEQ01
 from randox 
@@ -62,7 +62,7 @@ quit;
 
 /*Left join to get IV draw time*/
 Proc sql;
-create table randox_time as
+create table randox_time(drop = IVVAL01) as
 select * from IV12 as x left join randox_mean as y
 on x.IVID01 = y.ID;
 quit;
@@ -70,6 +70,7 @@ quit;
 data randox_time;
 set randox_time (drop=ID);
 ref_type = "Randox";
+where Subject ^= 1330004;
 run;
 
 /*Ketone Glucose Results*/
@@ -114,7 +115,7 @@ run;
 /*Bind rows with randox*/
 data kgriv;
 format dtm datetime14.;
-set kgriv12 randox_time;
+set kgriv12(where = (IVVAL01 = "Valid")) randox_time;
 dtm = dhms(IVDTC01,0,0,input(IVTM01,time5.));
 subject_C = strip(put(Subject,7.));
 rename subject_C = subject;
@@ -124,7 +125,7 @@ run;
 /*Valid sample only*/
 proc sort data = kgriv;
 by ref_type subject dtm;
-where ^missing(dtm) and IVVAL01 = "Valid" and ^missing(KRSEQ01) and subject ^= "1330004";
+where ^missing(dtm) and ^missing(KRSEQ01);
 run;
 
 /*Get First Ketone Date and Time*/
@@ -598,7 +599,7 @@ run;
 /*run;*/
 ODS RTF CLOSE;
 
-data Ap_accuracy(where=(subject ^= "1330004"));
+data Ap_accuracy;
 set Ap;
 format Level Group concur_ref_group concur_upload_group $35.;
 bias = ana_100 - KRSEQ01; 
@@ -1082,8 +1083,8 @@ class Subject DUCOD01;
 output out = freq(where = (^missing(Subject) and missing(DUCOD01)) drop = _TYPE_);
 run;
 
-options papersize=a3 orientation=portrait;
-ods rtf file="C:\Project\ADC-US-RES-23234\ADC-US-RES-23234-Demography-%trim(%sysfunc(today(),yymmddn8.)).rtf" startpage=no;
+/*options papersize=a3 orientation=portrait;*/
+/*ods rtf file="C:\Project\ADC-US-RES-23234\ADC-US-RES-23234-Demography-%trim(%sysfunc(today(),yymmddn8.)).rtf" startpage=no;*/
 /*Demography Table*/
 proc print data = demographics noobs;
 run;
@@ -1096,7 +1097,7 @@ run;
 proc summary data = freq print;
 class _FREQ_;
 run;
-ODS RTF CLOSE;
+/*ODS RTF CLOSE;*/
 
 
 
