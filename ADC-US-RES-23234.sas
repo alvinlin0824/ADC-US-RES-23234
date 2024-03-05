@@ -62,7 +62,7 @@ quit;
 
 /*Left join to get IV draw time*/
 Proc sql;
-create table randox_time(drop = IVVAL01) as
+create table randox_time as
 select * from IV12 as x left join randox_mean as y
 on x.IVID01 = y.ID;
 quit;
@@ -115,7 +115,7 @@ run;
 /*Bind rows with randox*/
 data kgriv;
 format dtm datetime14.;
-set kgriv12(where = (IVVAL01 = "Valid")) randox_time;
+set kgriv12 randox_time;
 dtm = dhms(IVDTC01,0,0,input(IVTM01,time5.));
 subject_C = strip(put(Subject,7.));
 rename subject_C = subject;
@@ -125,7 +125,7 @@ run;
 /*Valid sample only*/
 proc sort data = kgriv;
 by ref_type subject dtm;
-where ^missing(dtm) and ^missing(KRSEQ01);
+where ^missing(dtm) and ^missing(KRSEQ01) and IVVAL01 = "Valid";
 run;
 
 /*Get First Ketone Date and Time*/
@@ -306,7 +306,7 @@ quit;
 data auu_906;
 format dtm_sec datetime16.;
 set auu_start_time;
-ana_100 = (ANA/100)*1.25;
+ana_100 = (ANA/100)*1;
 /*Get Duration Day*/
 nday = floor((dtm-start_time)/86400) + 1;
 dtm_sec = dtm;
@@ -413,7 +413,7 @@ drop lag_dtm--lag_KRSEQ01;
 run;
 /*(with 1.25 adj)*/
 options papersize=a3 orientation=portrait;
-ods rtf file="C:\Project\ADC-US-RES-23234\ADC-US-RES-23234-Safety-Report(with 1.25 adj)-%trim(%sysfunc(today(),yymmddn8.)).rtf" startpage=no;
+ods rtf file="C:\Project\ADC-US-RES-23234\ADC-US-RES-23234-Safety-Report-%trim(%sysfunc(today(),yymmddn8.)).rtf" startpage=no;
 
 /*Summary Statistics on Ketone Result*/
 Proc means data = ketone maxdec=2 nonobs;
@@ -843,7 +843,7 @@ run;
 /*/*Concurrence (with 1.25 adj)*/
 
 options papersize=a3 orientation=portrait;
-ods rtf file="C:\Project\ADC-US-RES-23234\ADC-US-RES-23234-Accuracy-Report(with 1.25 adj)-%trim(%sysfunc(today(),yymmddn8.)).rtf" startpage=no;
+ods rtf file="C:\Project\ADC-US-RES-23234\ADC-US-RES-23234-Accuracy-Report-%trim(%sysfunc(today(),yymmddn8.)).rtf" startpage=no;
 
 /*System Agreement plot of Difference between CGM and Reference*/
 proc sgpanel data = Ap_accuracy;
@@ -863,7 +863,7 @@ proc report data=sys_trans nofs split='$'
  style(header)=[font_weight=bold just=c font=(arial, 10pt)]
  style(lines)=[font_weight=bold just=l];
  title1 ' ';
- columns ("System Agreement Results Split at 1 mmol/L(with 1.25 adj) by Site and Reference Type" Site ref_type Level "Within +- 10%/ +- 0.1 mmol/L"n
+ columns ("System Agreement Results Split at 1 mmol/L by Site and Reference Type" Site ref_type Level "Within +- 10%/ +- 0.1 mmol/L"n
 "Within +- 20%/ +- 0.2 mmol/L"n "Within +- 30%/ +- 0.3 mmol/L"n
 "Within +- 40%/ +- 0.4 mmol/L"n "Outside +- 40%/ +- 0.4 mmol/L"n);
  define Site / Group order order=internal descending width=5; 
@@ -886,7 +886,7 @@ run;
 proc report data=bias_table nofs split='$'
  style(column)=[just=l font=(arial, 10pt)] style(header)=[font_weight=bold just=c font=(arial, 10pt)] style(lines)=[font_weight=bold just=l];
  title1 ' ';
- columns ("Bias Measures(with 1.25 adj)" Site ref_type Level ("MARD (%)" abs_pbias_Mean abs_pbias_Median) ("% Bias" pbias_Mean pbias_Median) ("Abs. Bias (mmol/L)" abs_bias_Mean abs_bias_Median) ("Bias (mmol/L)" bias_Mean bias_Median) bias_N);
+ columns ("Bias Measures" Site ref_type Level ("MARD (%)" abs_pbias_Mean abs_pbias_Median) ("% Bias" pbias_Mean pbias_Median) ("Abs. Bias (mmol/L)" abs_bias_Mean abs_bias_Median) ("Bias (mmol/L)" bias_Mean bias_Median) bias_N);
  define Site / Group order order=internal descending width=5; 
  define ref_type / Group "Ref Type" width=5;
  define abs_pbias_Mean /"Mean" display f=8.1 width=5; 
@@ -906,7 +906,7 @@ proc report data=concur_km_vs_ref nofs split='$'
  style(header)=[font_weight=bold just=c font=(arial, 10pt)]
  style(lines)=[font_weight=bold just=l];
  title1 " "; 
- columns ("Concurrence Analysis by Ketone Level (KM vs. Ref)(with 1.25 adj)" ref_type ref_nam ("Ref (mmol/L)" 'p1: <0.6'n 'p2: [0.6-1.0)'n 'p3: [1.0-1.5]'n 'p4: (1.5-3]'n 'p5: >3.0'n) nTotal);
+ columns ("Concurrence Analysis by Ketone Level (KM vs. Ref)" ref_type ref_nam ("Ref (mmol/L)" 'p1: <0.6'n 'p2: [0.6-1.0)'n 'p3: [1.0-1.5]'n 'p4: (1.5-3]'n 'p5: >3.0'n) nTotal);
  define ref_type /"Ref Type" Group width=5;
  define ref_nam /"KM (mmol/L)" display;
  define 'p1: <0.6'n /"<0.6" display f=8.1 width=5; 
@@ -922,7 +922,7 @@ proc report data=concur_ref_vs_km nofs split='$'
  style(header)=[font_weight=bold just=c font=(arial, 10pt)]
  style(lines)=[font_weight=bold just=l];
  title1 " "; 
- columns ("Concurrence Analysis by Ketone Level (Ref vs. KM)(with 1.25 adj)" ref_type ref_nam ("KM (mmol/L)" 'p1: <0.6'n 'p2: [0.6-1.0)'n 'p3: [1.0-1.5]'n 'p4: (1.5-3]'n 'p5: >3.0'n) nTotal);
+ columns ("Concurrence Analysis by Ketone Level (Ref vs. KM)" ref_type ref_nam ("KM (mmol/L)" 'p1: <0.6'n 'p2: [0.6-1.0)'n 'p3: [1.0-1.5]'n 'p4: (1.5-3]'n 'p5: >3.0'n) nTotal);
  define ref_type /"Ref Type" Group width=5;
  define ref_nam /"Ref (mmol/L)" display;
  define 'p1: <0.6'n /"<0.6" display f=8.1 width=5; 

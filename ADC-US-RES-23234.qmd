@@ -130,11 +130,11 @@ kgr2 <- kgr2 |>
 
 ```{r}
 #|label: Import ps
-ps <- read_sas(gsub("\\\\", "/", r"(\\wf00168p.oneabbott.com\data1\CDM\ADC-US-RES-23234\OpenClinica\Current\ps.sas7bdat)"))
-ps <- ps |>
-      filter(!str_detect(PSYN01,regex("Check here if no data recorded",ignore_case = T))) |>
-      mutate(Subject = as.character(Subject)) |>
-      arrange(Subject)
+# ps <- read_sas(gsub("\\\\", "/", r"(\\wf00168p.oneabbott.com\data1\CDM\ADC-US-RES-23234\OpenClinica\Current\ps.sas7bdat)"))
+# ps <- ps |>
+#       filter(!str_detect(PSYN01,regex("Check here if no data recorded",ignore_case = T))) |>
+#       mutate(Subject = as.character(Subject)) |>
+#       arrange(Subject)
 ```
 
 ```{r}
@@ -148,11 +148,11 @@ kgr12 <- kgr2 |>
 ```
 
 ```{r}
-kgr12 |> 
-  slice(1,.by = Subject) |> 
-  left_join(ps |> 
-               select(Subject,PSDTC01,PSTM02),by = join_by(Subject)) |> 
-  mutate(diff = readr::parse_time(KRDTC02) - readr::parse_time(PSTM02)) |> View()
+# kgr12 |> 
+#   slice(1,.by = Subject) |> 
+#   left_join(ps |> 
+#                select(Subject,PSDTC01,PSTM02),by = join_by(Subject)) |> 
+#   mutate(diff = readr::parse_time(KRDTC02) - readr::parse_time(PSTM02)) |> View()
 ```
 
 ```{r}
@@ -249,13 +249,10 @@ kgriv12 <- kgr12 |>
            filter(!is.na(KRSEQ02)) |> 
            left_join(iv12, 
                      by = join_by(Subject == Subject,KRSEQ02 == IVID01, KRDTC01 == IVDTC01)) |> 
-           filter(IVVAL01 == "Valid") |> 
            mutate(`Ref Type` = "Venous strip") |> 
            bind_rows(
              iv12 |> 
-              select(!IVVAL01) |>
                   left_join(randox |> 
-                             
                             summarise(mean_2uL = mean(`2uL Result`,na.rm = T),
                                       mean_8uL = mean(`8uL Result`,na.rm = T),.by = `Sample ID`) |> 
                             mutate(KRSEQ01 = case_when(mean_8uL < 2.9 ~ mean_8uL,
@@ -271,7 +268,8 @@ kgriv12 <- kgr12 |>
                   KRDTC02 = NULL,
                   .keep = "unused") |> 
            arrange(`Ref Type`,Subject,`Ketone Date Time`) |> 
-           filter(!is.na(KRSEQ01))
+           filter(!is.na(KRSEQ01)) |> 
+           filter(IVVAL01 == "Valid")
 ```
 
 ```{r}
