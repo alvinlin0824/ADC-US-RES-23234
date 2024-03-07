@@ -412,8 +412,8 @@ ard=abs(rd);
 drop lag_dtm--lag_KRSEQ01;
 run;
 /*(with 1.25 adj)*/
-options papersize=a3 orientation=portrait;
-ods rtf file="C:\Project\ADC-US-RES-23234\ADC-US-RES-23234-Safety-Report-%trim(%sysfunc(today(),yymmddn8.)).rtf" startpage=no;
+/*options papersize=a3 orientation=portrait;*/
+/*ods rtf file="C:\Project\ADC-US-RES-23234\ADC-US-RES-23234-Safety-Report-%trim(%sysfunc(today(),yymmddn8.)).rtf" startpage=no;*/
 
 /*Summary Statistics on Ketone Result*/
 Proc means data = ketone maxdec=2 nonobs;
@@ -461,16 +461,6 @@ rowaxis label = "Ketone Test Result (mmol/L)"
 keylegend / title = "Subject ID";
 run;
 
-/*proc sgplot data = ketone noautolegend cycleattrs;*/
-/*where ^missing(dtm);*/
-/*title1 "Ketone Reference";*/
-/*styleattrs datacontrastcolors = (magenta green blue orange lilac lime marron olive steel violet yellow);*/
-/*	series x = time_diff y = krseq01 / group = subject groupdisplay = overlay markers markerattrs = (size = 3 symbol = dot) name = "REAL";*/
-/*	yaxis label = "Ketone Test Result (mmol/L)" values=(0 to 5 by 0.5);*/
-/*	xaxis label = "Time(Hours)" values=(0 to 8 by 1) INTERVAL = HOUR VALUESROTATE=DIAGONAL2;*/
-/*	keylegend / title = "Subject ID";*/
-/*run;*/
-
 /*Delta*/
 proc sgpanel data = ketone_lag;
 where ^missing(dtm);
@@ -483,16 +473,6 @@ rowaxis label = "Ketone Test Result (mmol/L)"
     values=(-2 to 2 by 0.5);
 keylegend / title = "Subject ID";
 run;
-
-/*proc sgplot data = ketone_lag noautolegend cycleattrs;*/
-/*where ^missing(dtm);*/
-/*title1 "Ketone Vary Over Time";*/
-/*styleattrs datacontrastcolors = (magenta green blue orange lilac lime marron olive steel violet yellow);*/
-/*	series x = time_diff y = krseq01_diff / group = subject groupdisplay = overlay markers markerattrs = (size = 3 symbol = dot) name = "REAL";*/
-/*	yaxis label = "Ketone Test Result (mmol/L)" values=(-1 to 1 by 0.1);*/
-/*	xaxis label = "Time(Hours)" values=(0 to 8 by 1) INTERVAL = HOUR VALUESROTATE=DIAGONAL2;*/
-/*	keylegend / title = "Subject ID";*/
-/*run;*/
 
 /*Time from baseline to peak*/
 proc sgpanel data = ketone;
@@ -507,16 +487,6 @@ rowaxis label = "Ketone Test Result (mmol/L)"
 keylegend / title = "Subject ID";
 run;
 
-/*proc sgplot data = ketone noautolegend cycleattrs;*/
-/*where ^missing(dtm) and dtm <= peak_test_dtm;*/
-/*title1 "Time From Baseline To Peak";*/
-/*styleattrs datacontrastcolors = (magenta green blue orange lilac lime marron olive steel violet yellow);*/
-/*	series x = time_diff y = krseq01 / group = subject groupdisplay = overlay markers markerattrs = (size = 3 symbol = dot) name = "REAL";*/
-/*	yaxis label = "Ketone Test Result (mmol/L)" values=(0 to 5 by 0.5);*/
-/*	xaxis label = "Time(Hours)" values=(0 to 8 by 1) INTERVAL = HOUR VALUESROTATE=DIAGONAL2;*/
-/*	keylegend / title = "Subject ID";*/
-/*run;*/
-
 /*Time from peak to 1 mmol*/
 proc sgpanel data = ketone;
 where ^missing(dtm) and ^missing(duration_to_below1);
@@ -529,16 +499,6 @@ rowaxis label = "Ketone Test Result (mmol/L)"
     values=(0 to 5 by 0.5);
 keylegend / title = "Subject ID";
 run;
-
-/*proc sgplot data = ketone noautolegend cycleattrs;*/
-/*where ^missing(dtm) and ^missing(duration_to_below1);*/
-/*title1 "Time From Peak To < 1 mmol/L";*/
-/*styleattrs datacontrastcolors = (magenta green blue orange lilac lime marron olive steel violet yellow);*/
-/*	series x = time_diff1 y = krseq01 / group = subject groupdisplay = overlay markers markerattrs = (size = 3 symbol = dot) name = "REAL";*/
-/*	yaxis label = "Ketone Test Result (mmol/L)" values=(0 to 4 by 0.5);*/
-/*	xaxis label = "Time(Hours)" values=(0 to 3 by 1) INTERVAL = HOUR VALUESROTATE=DIAGONAL2;*/
-/*	keylegend / title = "Subject ID";*/
-/*run;*/
 
 /*Ketone Reference Rate*/
 proc tabulate data = Ap_rate format=8.1 style=[cellwidth=2.0cm just=c];
@@ -555,12 +515,6 @@ histogram ketone_ref_rate / binwidth = 0.5;
 colaxis label = "Ketone Ref Rate (mmol/L/hour)"
 	values=(-10 to 10 by 1) INTERVAL = HOUR VALUESROTATE=DIAGONAL2;
 run;
-
-/*proc sgplot data = Ap_rate;*/
-/*title "Distribution of Ketone Ref Rate";*/
-/*histogram ketone_ref_rate / binwidth = 0.5;*/
-/*xaxis label = 'Ketone Ref Rate (mmol/L/hour)' values = (-10 to 10 by 1);*/
-/*run;*/
 
 /*Rate Deviation*/
 proc tabulate data = Ap_rate format=8.1 style=[cellwidth=2.0cm just=c];
@@ -592,12 +546,7 @@ histogram rd / binwidth = 0.5;
 colaxis label = "Rate Deviation (mmol/L/hour)"
 	values=(-10 to 10 by 1) INTERVAL = HOUR VALUESROTATE=DIAGONAL2;
 run;
-/*proc sgplot data = Ap_rate;*/
-/*title "Distribution of Rate Deviation";*/
-/*histogram rd / binwidth = 0.5;*/
-/*xaxis label = 'Rate Deviation (mmol/L/hour)' values = (-10 to 10 by 1);*/
-/*run;*/
-ODS RTF CLOSE;
+/*ODS RTF CLOSE;*/
 
 data Ap_accuracy;
 set Ap;
@@ -842,8 +791,8 @@ run;
 /*Ref vs KM*/
 /*/*Concurrence (with 1.25 adj)*/
 
-options papersize=a3 orientation=portrait;
-ods rtf file="C:\Project\ADC-US-RES-23234\ADC-US-RES-23234-Accuracy-Report-%trim(%sysfunc(today(),yymmddn8.)).rtf" startpage=no;
+/*options papersize=a3 orientation=portrait;*/
+/*ods rtf file="C:\Project\ADC-US-RES-23234\ADC-US-RES-23234-Accuracy-Report-%trim(%sysfunc(today(),yymmddn8.)).rtf" startpage=no;*/
 
 /*System Agreement plot of Difference between CGM and Reference*/
 proc sgpanel data = Ap_accuracy;
@@ -932,7 +881,7 @@ proc report data=concur_ref_vs_km nofs split='$'
  define 'p5: >3.0'n /">3.0" display f=8.1 width=5;
  define ntotal /"N" display f=8.0 width=5;
 run;
-ODS RTF CLOSE;
+/*ODS RTF CLOSE;*/
 
 /*Demography Table*/
 data dm(keep = Subject SEX AGE ETHNIC RACE EDU);
@@ -968,7 +917,7 @@ proc sql;
 quit; 
 
 %MACRO freq(var = );
-	PROC freq DATA= dmmh;
+	PROC freq DATA= dmmh1;
 	tables &var / nocum noprint out = &var(where = (PERCENT ^= .));
     run;
 %mend freq;
@@ -1043,22 +992,22 @@ proc sql;
 	 full join lb2 as u on z.Subject = u.Subject;
 quit;
 
-%MACRO summary(var = );
-	Proc Means data=BC noprint;
+%MACRO summary(df = , var = );
+	Proc Means data=&df noprint;
 	var &var;
-	output out=&var(drop = _type_ _freq_ _Label_) mean= Mean median= Median std= SD min= Min max= Max;
+	output out=&var(drop = _type_ _freq_ _Label_) n = N mean= Mean median= Median std= SD min= Min max= Max;
 	run;
 %mend summary;
 /*maybe can try for loop*/
-%summary(var = AGE)
-%summary(var = VSORES031)
-%summary(var = Kg)
-%summary(var = Inches)
-%summary(var = Meters)
-%summary(var = BMI)
-%summary(var = Duration)
-%summary(var = MHORES02)
-%summary(var = LBORES011)
+%summary(df = BC, var = AGE)
+%summary(df = BC, var = VSORES031)
+%summary(df = BC, var = Kg)
+%summary(df = BC, var = Inches)
+%summary(df = BC, var = Meters)
+%summary(df = BC, var = BMI)
+%summary(df = BC, var = Duration)
+%summary(df = BC, var = MHORES02)
+%summary(df = BC, var = LBORES011)
 
 data bc_table;
 format Characteristics $55. Median 5.1 ;
@@ -1077,10 +1026,33 @@ Mean±SD = CATX(" ± ",put(Mean,5.1),put(SD,4.1));
 Range = CATX(" to ",put(Min,5.1),put(Max,5.1));
 run;
 
+/*Ketone & Glucose Summary*/
+%summary(df = kgriv(where = (ref_type = "Venous strip")), var = krseq01);
+%summary(df = kgriv(where = (ref_type = "Venous strip")), var = krseq03);
+
+data ket_gluc;
+set krseq01 krseq03;
+if _n_ = 1 then Characteristics = "Ketone Test Result (mmol/L)";
+if _n_ = 2 then Characteristics = "Glucose Test Result (mg/dL)";
+Mean±SD = CATX(" ± ",put(Mean,5.1),put(SD,4.1));
+Range = CATX(" - ",put(Min,5.1),put(Max,5.1));
+run;
+
 /*Sensor Accountability*/
 proc summary data = edc.sa;
 class Subject DUCOD01;
 output out = freq(where = (^missing(Subject) and missing(DUCOD01)) drop = _TYPE_);
+run;
+
+proc freq data = freq noprint;
+tables _freq_ / out = snr_attempt(drop = PERCENT);
+run;
+
+data snr_attempt(drop = _FREQ_);
+retain FREQC;
+set snr_attempt;
+number_of_snr = _FREQ_*COUNT;
+FREQC = put(_FREQ_,$3.);
 run;
 
 /*options papersize=a3 orientation=portrait;*/
@@ -1094,13 +1066,16 @@ proc print data = bc_table noobs;
 var Characteristics Mean±SD Median Range;
 run;
 
-proc summary data = freq print;
-class _FREQ_;
+proc print data = ket_gluc noobs;
+var Characteristics N Mean±SD Range;
 run;
+
+proc print data = snr_attempt label noobs sumlabel = "Total";
+label FREQC = "Disposition of Sensors" COUNT = "Number of Subjects" number_of_snr = "Number of Sensors";
+sum _numeric_;
+run;
+
 /*ODS RTF CLOSE;*/
-
-
-
 
 
 /*Eligibility*/

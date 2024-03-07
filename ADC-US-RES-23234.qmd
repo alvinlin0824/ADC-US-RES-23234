@@ -71,12 +71,14 @@ file_list[str_detect(file_list,"extracted_realm.zip|dualsensors_upload_info.xml"
 <!-- UDP -->
 
 ```{r}
-# read_sas(gsub("\\\\", "/", r"(\\wf00168p.oneabbott.com\data1\CDM\ADC-US-RES-23234\OpenClinica\Current\pd.sas7bdat)")) |> 
+#| label: Import PD
+# read_sas(gsub("\\\\", "/", r"(\\wf00168p.oneabbott.com\data1\CDM\ADC-US-RES-23234\OpenClinica\Current\pd.sas7bdat)")) |>
 #   filter(!str_detect(DVYN,regex("Check here if no data recorded",ignore_case = T))) |> 
-#   transmute(DVDESC1 = case_when(!str_detect(DVDESC2,"^$|pattern") 
+#   transmute(DVDESC1 = case_when(!str_detect(DVDESC2,"^$|pattern")
 #                              ~ str_c(DVDESC1, DVDESC2, sep = " "),
-#                              .default = DVDESC1)) |>
-#   gt() |> 
+#                              .default = DVDESC1),
+#            Preventative = DVDESC4) |> 
+#   gt() |>
 #   gtsave("pd.docx")
 ```
 
@@ -164,27 +166,27 @@ randox <- readRDS(gsub("\\\\", "/", r"(\\oneabbott.com\dept\ADC\Technical_OPS\Cl
 #| label: Study Results
 #| eval: false
 # 1
-kgr12 |>
-   select(!KRDTC02:KRDTC01) |>
-   left_join(randox |>
-             mutate(`8uL Result` = case_when(`8uL Result` == 2.9 ~ `2uL Result`*4,
-                                                            .default = `8uL Result`)) |>
-             summarise(Randox = mean(`8uL Result`,na.rm = T),.by = `Sample ID`),
-             # summarise(Randox = mean(`2uL Result`,na.rm = T)*4,.by = `Sample ID`),
-             by = join_by(KRSEQ02 == `Sample ID`)) |>
-   filter(Subject != "1330004") |>
-   filter(if_all(c(KRSEQ02:Randox), ~ !is.na(.x))) |>
-   # filter(Subject %in% c(condition)) |>
-   ggpubr::ggscatter(x = "KRSEQ01", y = "Randox", add = "reg.line") +
-   # facet_wrap(~Subject,ncol = 2,nrow = 2) +
-   labs(x = "Venous strip") +
-   ggpubr::stat_regline_equation(aes(label = paste(..eq.label..,..rr.label.., sep = "~`,`~")),
-                                  label.x = 0)
+# kgr12 |>
+#    select(!KRDTC02:KRDTC01) |>
+#    left_join(randox |>
+#              mutate(`8uL Result` = case_when(`8uL Result` == 2.9 ~ `2uL Result`*4,
+#                                                             .default = `8uL Result`)) |>
+#              summarise(Randox = mean(`8uL Result`,na.rm = T),.by = `Sample ID`),
+#              # summarise(Randox = mean(`2uL Result`,na.rm = T)*4,.by = `Sample ID`),
+#              by = join_by(KRSEQ02 == `Sample ID`)) |>
+#    filter(Subject != "1330004") |>
+#    filter(if_all(c(KRSEQ02:Randox), ~ !is.na(.x))) |>
+#    # filter(Subject %in% c(condition)) |>
+#    ggpubr::ggscatter(x = "KRSEQ01", y = "Randox", add = "reg.line") +
+#    # facet_wrap(~Subject,ncol = 2,nrow = 2) +
+#    labs(x = "Venous strip") +
+#    ggpubr::stat_regline_equation(aes(label = paste(..eq.label..,..rr.label.., sep = "~`,`~")),
+#                                   label.x = 0)
 
-mean_sd <- list(mean = ~ mean(.x, na.rm = TRUE), 
-                sd = ~ sd(.x, na.rm = TRUE),
-                min = ~ min(.x, na.rm = TRUE),
-                max = ~ max(.x, na.rm = TRUE))
+# mean_sd <- list(mean = ~ mean(.x, na.rm = TRUE), 
+#                 sd = ~ sd(.x, na.rm = TRUE),
+#                 min = ~ min(.x, na.rm = TRUE),
+#                 max = ~ max(.x, na.rm = TRUE))
 # 2
 # kgr12 |> 
 #      slice(1,.by = Subject) |> 
@@ -219,9 +221,9 @@ mean_sd <- list(mean = ~ mean(.x, na.rm = TRUE),
 #     filter(KRSEQ03 < 240,.by = Subject) |>
 #     summarise(N = n_distinct(Subject))
 # 7
-ketone |>
-  filter(`Ref Type` == "Venous strip") |>
-  summarise(across(c(duration_to_below_1mmol),mean_sd))
+# ketone |>
+#   filter(`Ref Type` == "Venous strip") |>
+#   summarise(across(c(duration_to_below_1mmol),mean_sd))
 ```
 
 ```{r}
@@ -408,11 +410,41 @@ ketone |>
   geom_line() + 
   facet_grid(cols = vars(`Ref Type`)) + 
   labs(title = "Ketone Vary Over Time",x = "Time(Hours)", y = "Ketone Test Result (mmol/L)") +
-  scale_x_continuous(expand = c(0,0), breaks = c(seq(0,8.5,1)), limits = c(0,8.5)) + 
+  scale_x_continuous(expand = c(0,0), breaks = c(seq(0,8.5,1)), limits = c(0,8.5)) +
   scale_y_continuous(expand = c(0,0), breaks = c(seq(-2.0,2.0,0.5)),limits = c(-2,2)) +
   theme_bw() +
   theme(panel.grid.major.y = element_blank(),panel.grid.minor.y = element_blank(),legend.position = "bottom",plot.title = element_text(hjust = 0.5))
 ```
+
+```{r}
+#| label: Randox Quality Check
+#| eval: false
+# eTime = as.numeric(difftime(`Ketone Date Time`,lag(`Ketone Date Time`),units = "hours")),
+#           lag_diff = KRSEQ01 - lag(KRSEQ01),
+kgriv12 |>
+   mutate(RoC = KRSEQ01 - lag(KRSEQ01) / as.numeric(difftime(`Ketone Date Time`,lag(`Ketone Date Time`),units = "hours")),
+          mean_roc = mean(RoC,na.rm = T),
+          sd_roc = sd(RoC,na.rm = T),
+          Z_score = (RoC - mean_roc)/sd_roc,
+          Z_score_status = case_when(abs(Z_score) >= 3 ~ "Flag",
+                                     .default = ""),
+          IQR = quantile(RoC,probs = 0.75,na.rm = T) - quantile(RoC,probs = 0.25,na.rm = T),
+          IQR_status = case_when(RoC <= quantile(RoC,probs = 0.25,na.rm = T) - 1.5 * IQR |
+                                 RoC >= quantile(RoC,probs = 0.75,na.rm = T) + 1.5 * IQR
+                                   ~ "Flag",
+                                     .default = ""),
+          `Ketone Date Time` = as.character(`Ketone Date Time`),
+          .by = c(Subject,`Ref Type`)) |> 
+   select(!c(KRSEQ03,`Glucose Date Time`)) |> 
+   filter(`Ref Type` == "Randox") |> 
+   filter(Subject %in% c(unique(kgriv12$Subject)[seq(21,25,1)])) |> 
+   # filter(Subject %in% c("90006","90002","90003","90004","90005")) |> 
+   ggplot() +
+   aes(y = Subject, x = RoC) + 
+   ggridges::geom_density_ridges(quantile_lines = TRUE)
+   # vroom_write("randox_quality.csv",delim = ",")
+```
+
 
 ```{r eval = params$analysis}
 #| label: Time From Baseline To Peak
@@ -519,9 +551,12 @@ read_excel_allsheets <- function(filename, tibble = FALSE, n, r, col_type) {
 #   mutate(`Sample ID` = case_when(str_detect(`Sample ID`,"[:punct:]") ~
 #                     str_extract(`Sample ID`,regex("(?<=[:punct:])[:digit:]+")),
 #                     .default = str_extract(`Sample ID`,regex("(?<=9)[:digit:]+"))),
-#          across(c(`8uL Result`,`2uL Result`), ~ replace_na(.x,0))) |>
-#   arrange(`Sample ID`) |> View()
-#        saveRDS(gsub("\\\\", "/", r"(\\oneabbott.com\dept\ADC\Technical_OPS\Clinical_Affairs\Clinical Study Files\Apollo\ADC-US-RES-23234_IDE Pump Suspension Study\Statistics\Programs\Datasets\AL\randox.rds)"))
+#          across(c(`8uL Result`,`2uL Result`), ~ if_else(.x == 0.07,0,.x))
+#          # across(c(`8uL Result`,`2uL Result`), ~ replace_na(.x,0))
+#          ) |>
+#   arrange(`Sample ID`) |> 
+  # vroom_write(gsub("\\\\", "/", r"(\\oneabbott.com\dept\ADC\Technical_OPS\Clinical_Affairs\Clinical Study Files\Apollo\ADC-US-RES-23234_IDE Pump Suspension Study\Statistics\Programs\Datasets\AL\randox.csv)"),delim = ",")
+       # saveRDS(gsub("\\\\", "/", r"(\\oneabbott.com\dept\ADC\Technical_OPS\Clinical_Affairs\Clinical Study Files\Apollo\ADC-US-RES-23234_IDE Pump Suspension Study\Statistics\Programs\Datasets\AL\randox.rds)"))
 ```
 <!-- randox -->
 
@@ -1119,11 +1154,8 @@ breakdown_condition_plot <- function(Id) {
 
 ```{r}
 #| column: screen
+#| eval: false
 breakdown_condition_plot(Id = "90008")
-```
-
-```{r}
-knitr::knit_exit()
 ```
 
 ```{r eval = params$plot}
