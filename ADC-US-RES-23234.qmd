@@ -274,10 +274,10 @@ kgriv121 <- kgr12 |>
            select(!c(KRDTC02,KRDTC03:IVTM01)) |>
            arrange(`Ref Type`,Subject,`Ketone Date Time`)
 ```
- kgriv12 <- 
+ kgriv121 |>
 ```{r}
 #| label: Randox Quality Check
-kgriv121 |>
+kgriv12 
   
   
           #  mutate(iv_diff_pre1 = as.numeric(difftime(lag(`Ketone Date Time`, n = 1),`Ketone Date Time`,units = "hours")),
