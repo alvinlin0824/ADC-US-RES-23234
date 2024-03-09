@@ -70,7 +70,9 @@ quit;
 data randox_time;
 set randox_time (drop=ID);
 ref_type = "Randox";
-where Subject ^= 1330004;
+if Subject ^= 1330004;
+/*Remove randox outliers*/
+where IVID01 not in (20216 20316 20324 20326 20327 20328 20329 20424 20425 20427);
 run;
 
 /*Ketone Glucose Results*/
@@ -412,8 +414,8 @@ ard=abs(rd);
 drop lag_dtm--lag_KRSEQ01;
 run;
 /*(with 1.25 adj)*/
-/*options papersize=a3 orientation=portrait;*/
-/*ods rtf file="C:\Project\ADC-US-RES-23234\ADC-US-RES-23234-Safety-Report-%trim(%sysfunc(today(),yymmddn8.)).rtf" startpage=no;*/
+options papersize=a3 orientation=portrait;
+ods rtf file="C:\Project\ADC-US-RES-23234\ADC-US-RES-23234-Safety-Report-%trim(%sysfunc(today(),yymmddn8.)).rtf" startpage=no;
 
 /*Summary Statistics on Ketone Result*/
 Proc means data = ketone maxdec=2 nonobs;
@@ -546,7 +548,7 @@ histogram rd / binwidth = 0.5;
 colaxis label = "Rate Deviation (mmol/L/hour)"
 	values=(-10 to 10 by 1) INTERVAL = HOUR VALUESROTATE=DIAGONAL2;
 run;
-/*ODS RTF CLOSE;*/
+ODS RTF CLOSE;
 
 data Ap_accuracy;
 set Ap;
@@ -791,8 +793,8 @@ run;
 /*Ref vs KM*/
 /*/*Concurrence (with 1.25 adj)*/
 
-/*options papersize=a3 orientation=portrait;*/
-/*ods rtf file="C:\Project\ADC-US-RES-23234\ADC-US-RES-23234-Accuracy-Report-%trim(%sysfunc(today(),yymmddn8.)).rtf" startpage=no;*/
+options papersize=a3 orientation=portrait;
+ods rtf file="C:\Project\ADC-US-RES-23234\ADC-US-RES-23234-Accuracy-Report-%trim(%sysfunc(today(),yymmddn8.)).rtf" startpage=no;
 
 /*System Agreement plot of Difference between CGM and Reference*/
 proc sgpanel data = Ap_accuracy;
@@ -881,7 +883,7 @@ proc report data=concur_ref_vs_km nofs split='$'
  define 'p5: >3.0'n /">3.0" display f=8.1 width=5;
  define ntotal /"N" display f=8.0 width=5;
 run;
-/*ODS RTF CLOSE;*/
+ODS RTF CLOSE;
 
 /*Demography Table*/
 data dm(keep = Subject SEX AGE ETHNIC RACE EDU);

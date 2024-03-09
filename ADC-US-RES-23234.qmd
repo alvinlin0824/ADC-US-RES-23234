@@ -261,7 +261,7 @@ kgriv12 <- kgr12 |>
                                                        mean_8uL >= 2.9 ~ mean_2uL*4,
                                                        .default = mean_2uL*4),.keep = "unused"),
                             by = join_by(IVID01 == `Sample ID`)) |>
-              filter(Subject != "1330004") |> 
+              # filter(Subject != "1330004") |> 
               mutate(KRSEQ02 = IVID01,
                      KRDTC01 = IVDTC01,
                     `Ref Type` = "Randox",.keep = "unused")) |> 
@@ -270,8 +270,120 @@ kgriv12 <- kgr12 |>
                   KRDTC02 = NULL,
                   .keep = "unused") |> 
            arrange(`Ref Type`,Subject,`Ketone Date Time`) |> 
-           filter(!is.na(KRSEQ01)) |> 
-           filter(IVVAL01 == "Valid")
+           filter(!is.na(KRSEQ01)) 
+           # filter(IVVAL01 == "Valid")
+```
+
+```{r}
+#| label: Randox Quality Check
+#| eval: false
+# eTime = as.numeric(difftime(`Ketone Date Time`,lag(`Ketone Date Time`),units = "hours")),
+#           lag_diff = KRSEQ01 - lag(KRSEQ01),
+kgriv12 |>
+     mutate(iv_diff_pre1 = as.numeric(difftime(lag(`Ketone Date Time`, n = 1),`Ketone Date Time`,units = "hours")),
+
+
+            # 
+            # ketone_rate_pre3 = case_when(-30 <= lag(iv_diff_pre1, n = 2) & lag(iv_diff_pre1, n = 2) < 0 ~ 
+            #  (lag(KRSEQ01, n = 3) - lag(KRSEQ01, n = 2)) / as.numeric(difftime(lag(`Ketone Date Time`, n = 3),lag(`Ketone Date Time`, n = 2),units = "hours")),
+            #  .default = NA),
+            # 
+            # ketone_rate_pre4 = case_when(-30 <= lag(iv_diff_pre1, n = 3) & lag(iv_diff_pre1, n = 3) < 0 ~ 
+            #  (lag(KRSEQ01, n = 4)-lag(KRSEQ01, n = 3)) / as.numeric(difftime(lag(`Ketone Date Time`, n = 4),lag(`Ketone Date Time`, n = 3),units = "hours")),
+            #  .default = NA),
+            # 
+            # ketone_rate_pre5 = case_when(-30 <= lag(iv_diff_pre1, n = 4) & lag(iv_diff_pre1, n = 4) < 0 ~ 
+            #  (lag(KRSEQ01, n = 5)-lag(KRSEQ01, n = 4)) / as.numeric(difftime(lag(`Ketone Date Time`, n = 5),lag(`Ketone Date Time`, n = 4),units = "hours")),
+            #  .default = NA),
+            
+            iv_diff_post1 = as.numeric(difftime(lead(`Ketone Date Time`, n = 1),`Ketone Date Time`,units = "hours")),
+            ketone_rate_pre1 = case_when(-30 <= iv_diff_pre1 & iv_diff_pre1 < 0 ~ 
+             (lag(KRSEQ01, n = 1) - KRSEQ01) / as.numeric(difftime(lag(`Ketone Date Time`, n = 1),`Ketone Date Time`,units = "hours")),
+             .default = NA),
+            ketone_rate_post1 = case_when(0 < iv_diff_post1 & iv_diff_post1 <= 30 ~ 
+                         (lead(KRSEQ01, n = 1) - KRSEQ01) / as.numeric(difftime(lead(`Ketone Date Time`, n = 1),`Ketone Date Time`,units = "hours")),
+             .default = NA),
+            # a =  lag(ketone_rate_post1, n = 1),
+            # b = lead(ketone_rate_pre1,n = 1),
+            # ketone_rate_pre2 = case_when(-30 <= lag(iv_diff_pre1, n = 1) & lag(iv_diff_pre1, n = 1) < 0 ~
+            #  (lag(KRSEQ01, n = 2)-lag(KRSEQ01, n = 1)) / as.numeric(difftime(lag(`Ketone Date Time`, n = 2),lag(`Ketone Date Time`, n = 1),units = "hours")),
+            #  .default = NA),
+            # ketone_rate_post2 = case_when(0 < iv_diff_post1 & iv_diff_post1 <= 30 ~
+            #              (lead(KRSEQ01, n = 2) - lead(KRSEQ01, n = 1)) / as.numeric(difftime(lead(`Ketone Date Time`, n = 2),lead(`Ketone Date Time`, n = 1),units = "hours")),
+            #  .default = NA),
+            .by = c(Subject,`Ref Type`)) |> 
+    # mutate(self_Exculsion = case_when(
+    #                               # Case I
+    #                              round_normal(abs(ketone_rate_pre1),1) > 2.5 &
+    #                              round_normal(abs(ketone_rate_post1),1) > 2.5 ~ "Flag",
+    #                              (round_normal(abs(ketone_rate_pre1),1) > 2.5 & 
+    #                              round_normal(abs(ketone_rate_pre1),1) <= 1) |
+    #                               (round_normal(abs(ketone_rate_post1),1) > 2.5 & 
+    #                              round_normal(abs(ketone_rate_post2),1) <= 1)  ~ "Flag",
+    #                              
+    #                              .default = "")
+      
+      
+          #  self_Exculsion = case_when(# Case I
+          #                        round_normal(abs(ketone_rate_pre1),1) > 2.5 &
+          #                        round_normal(abs(ketone_rate_post1),1) > 2.5 ~ "Flag",
+          #                        .default = ""),
+          # # a =  lag(ketone_rate_post1, n = 1),
+          # lag_Exculsion = case_when(round_normal(abs(ketone_rate_pre1),1) > 2.5
+          #                            ~ "Flag",
+          #                            .default = ""
+          #                            ),
+          # # b = lead(ketone_rate_pre1,n = 1),
+          #  lead_Exculsion = case_when(round_normal(abs(ketone_rate_post1),1) > 2.5
+          #                            ~ "Flag",
+          #                            .default = ""
+          #                            ),
+           # a = lead(lag_Exculsion, n = 1),
+           # b = lag(lead_Exculsion, n = 1)
+             
+             
+                           # case_when(# Case II
+                           #       round_normal(abs(ketone_rate_pre1),1) > 2.5 | 
+                           #       round_normal(abs(ketone_rate_post1),1) > 2.5 ~ "Flag",
+                           #       .default = ""
+                                   
+                                 
+                                 
+
+    
+
+    rowwise() |>
+    mutate(avg_pre1_post1 = mean(c(abs(ketone_rate_pre1),abs(ketone_rate_post1)))) |>
+    ungroup() |>
+    mutate(avg = round_normal(avg_pre1_post1,1),
+           Exclusion = case_when(
+                        round_normal(avg_pre1_post1,1) >= 3.0 ~ "Flag",
+                        .default = "")
+
+
+
+           ) |> View()
+    # filter(me > 3) |> View()
+    # # Exclusion
+    # mutate(Exclusion = case_when(ketone_rate_pre1 > 0.75 & ketone_rate_pre4 > 0.75 & !is.na(ketone_rate_pre2) & !is.na(ketone_rate_pre3) & (ketone_rate_pre2 < -2 | ketone_rate_pre3 < -2) ~ "Rapid Ketone rate of change",
+    #       ketone_rate_pre1 < -3 & is.na(ketone_rate_post1) ~ "Ketone ROC <-3 mg/dL/min and no subsequent ROC available",
+    #          str_detect(IVVAL01,regex("Invalid",ignore_case = T)) ~ IVVAL01,
+    #         .default = "")) |>
+    # mutate(Exclusion = case_when(
+    #           lead(Exclusion, n = 1) == "Rapid Ketone rate of change" & ketone_rate_pre1 < -2
+    #            ~ "Ketone ROC<-2 mg/dL/min while the previous and subsequent ROC >0.75 mg/dL/min",
+    #           lead(Exclusion, n = 2) == "Rapid Ketone rate of change" & ketone_rate_pre1 < -2
+    #            ~ "Ketone ROC<-2 mg/dL/min while the previous and subsequent ROC >0.75 mg/dL/min",
+    #           lead(Exclusion, n = 3) == "Rapid Ketone rate of change" & ketone_rate_pre1 < -2
+    #            ~ "Ketone ROC<-2 mg/dL/min while the previous and subsequent ROC >0.75 mg/dL/min",
+    #            Exclusion == "Rapid Ketone rate of change" ~ "",
+    #           .default = Exclusion),.by = c(Subject,`Ref Type`)) |> View()
+   # filter(Subject %in% c(unique(kgriv12$Subject)[seq(21,25,1)])) |> 
+   # # filter(Subject %in% c("90006","90002","90003","90004","90005")) |> 
+   # ggplot() +
+   # aes(y = Subject, x = RoC) + 
+   # ggridges::geom_density_ridges(quantile_lines = TRUE)
+   # vroom_write("randox_quality.csv",delim = ",")
 ```
 
 ```{r}
@@ -415,36 +527,6 @@ ketone |>
   theme_bw() +
   theme(panel.grid.major.y = element_blank(),panel.grid.minor.y = element_blank(),legend.position = "bottom",plot.title = element_text(hjust = 0.5))
 ```
-
-```{r}
-#| label: Randox Quality Check
-#| eval: false
-# eTime = as.numeric(difftime(`Ketone Date Time`,lag(`Ketone Date Time`),units = "hours")),
-#           lag_diff = KRSEQ01 - lag(KRSEQ01),
-kgriv12 |>
-   mutate(RoC = KRSEQ01 - lag(KRSEQ01) / as.numeric(difftime(`Ketone Date Time`,lag(`Ketone Date Time`),units = "hours")),
-          mean_roc = mean(RoC,na.rm = T),
-          sd_roc = sd(RoC,na.rm = T),
-          Z_score = (RoC - mean_roc)/sd_roc,
-          Z_score_status = case_when(abs(Z_score) >= 3 ~ "Flag",
-                                     .default = ""),
-          IQR = quantile(RoC,probs = 0.75,na.rm = T) - quantile(RoC,probs = 0.25,na.rm = T),
-          IQR_status = case_when(RoC <= quantile(RoC,probs = 0.25,na.rm = T) - 1.5 * IQR |
-                                 RoC >= quantile(RoC,probs = 0.75,na.rm = T) + 1.5 * IQR
-                                   ~ "Flag",
-                                     .default = ""),
-          `Ketone Date Time` = as.character(`Ketone Date Time`),
-          .by = c(Subject,`Ref Type`)) |> 
-   select(!c(KRSEQ03,`Glucose Date Time`)) |> 
-   filter(`Ref Type` == "Randox") |> 
-   filter(Subject %in% c(unique(kgriv12$Subject)[seq(21,25,1)])) |> 
-   # filter(Subject %in% c("90006","90002","90003","90004","90005")) |> 
-   ggplot() +
-   aes(y = Subject, x = RoC) + 
-   ggridges::geom_density_ridges(quantile_lines = TRUE)
-   # vroom_write("randox_quality.csv",delim = ",")
-```
-
 
 ```{r eval = params$analysis}
 #| label: Time From Baseline To Peak
