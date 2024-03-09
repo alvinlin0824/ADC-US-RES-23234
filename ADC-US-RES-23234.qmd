@@ -247,13 +247,13 @@ randox <- readRDS(gsub("\\\\", "/", r"(\\oneabbott.com\dept\ADC\Technical_OPS\Cl
 
 ```{r}
 #| label: KGR12 left join IV12
-kgriv12 <- kgr12 |> 
-           filter(!is.na(KRSEQ02)) |> 
-           left_join(iv12, 
+kgriv121 <- kgr12 |> 
+            filter(!is.na(KRSEQ02)) |> 
+            left_join(iv12, 
                      by = join_by(Subject == Subject,KRSEQ02 == IVID01, KRDTC01 == IVDTC01)) |> 
-           mutate(`Ref Type` = "Venous strip") |> 
-           bind_rows(
-             iv12 |> 
+            mutate(`Ref Type` = "Venous strip") |> 
+            bind_rows(
+              iv12 |> 
                   left_join(randox |> 
                             summarise(mean_2uL = mean(`2uL Result`,na.rm = T),
                                       mean_8uL = mean(`8uL Result`,na.rm = T),.by = `Sample ID`) |> 
@@ -265,36 +265,38 @@ kgriv12 <- kgr12 |>
               mutate(KRSEQ02 = IVID01,
                      KRDTC01 = IVDTC01,
                     `Ref Type` = "Randox",.keep = "unused")) |> 
-           filter(!is.na(KRSEQ01)) |> 
+           filter(!is.na(KRSEQ01)) |>
            mutate(`Ketone Date Time` = case_when(
-                                        `Ref Type` == "Venous strip" 
+                                        `Ref Type` == "Venous strip"
                                         ~ ymd_hm(str_c(KRDTC01,KRDTC02,sep = " ")),
                                         .default = ymd_hm(str_c(KRDTC01,IVTM01,sep = " "))),
-                  `Glucose Date Time` = ymd_hm(str_c(KRDTC01,KRDTC03,sep = " "))) |> 
-           select(!c(KRDTC02:IVTM01)) |> 
+                  `Glucose Date Time` = ymd_hm(str_c(KRDTC01,KRDTC03,sep = " "))) |>
+           select(!c(KRDTC02,KRDTC03:IVTM01)) |>
            arrange(`Ref Type`,Subject,`Ketone Date Time`)
 ```
- 
+ kgriv12 <- 
 ```{r}
 #| label: Randox Quality Check
-kgriv12 <- kgriv12 |>
-           mutate(iv_diff_pre1 = as.numeric(difftime(lag(`Ketone Date Time`, n = 1),`Ketone Date Time`,units = "hours")),
-                  iv_diff_post1 = as.numeric(difftime(lead(`Ketone Date Time`, n = 1),`Ketone Date Time`,units = "hours")),
-                  ketone_rate_pre1 = case_when(-30 <= iv_diff_pre1 & iv_diff_pre1 < 0 ~ 
-                   (lag(KRSEQ01, n = 1) - KRSEQ01) / as.numeric(difftime(lag(`Ketone Date Time`, n = 1),`Ketone Date Time`,units = "hours")),
-                   .default = NA),
-                  ketone_rate_post1 = case_when(0 < iv_diff_post1 & iv_diff_post1 <= 30 ~ 
-                               (lead(KRSEQ01, n = 1) - KRSEQ01) / as.numeric(difftime(lead(`Ketone Date Time`, n = 1),`Ketone Date Time`,units = "hours")),
-                   .default = NA),
-                  .by = c(Subject,`Ref Type`)) |> 
-          rowwise() |>
-          mutate(avg_pre1_post1 = mean(c(abs(ketone_rate_pre1),abs(ketone_rate_post1)))) |>
-          ungroup() |>
-          mutate(Exclusion = case_when(
-                              round_normal(avg_pre1_post1,1) >= 3.0 ~ "Flag",
-                              .default = "")) |> 
-          filter((IVVAL01 == "Valid" | is.na(IVVAL01)) & Exclusion == "") |> 
-          select(!c(iv_diff_pre1:last_col()))
+kgriv121 |>
+  
+  
+          #  mutate(iv_diff_pre1 = as.numeric(difftime(lag(`Ketone Date Time`, n = 1),`Ketone Date Time`,units = "hours")),
+          #         iv_diff_post1 = as.numeric(difftime(lead(`Ketone Date Time`, n = 1),`Ketone Date Time`,units = "hours")),
+          #         ketone_rate_pre1 = case_when(-30 <= iv_diff_pre1 & iv_diff_pre1 < 0 ~ 
+          #          (lag(KRSEQ01, n = 1) - KRSEQ01) / as.numeric(difftime(lag(`Ketone Date Time`, n = 1),`Ketone Date Time`,units = "hours")),
+          #          .default = NA),
+          #         ketone_rate_post1 = case_when(0 < iv_diff_post1 & iv_diff_post1 <= 30 ~ 
+          #                      (lead(KRSEQ01, n = 1) - KRSEQ01) / as.numeric(difftime(lead(`Ketone Date Time`, n = 1),`Ketone Date Time`,units = "hours")),
+          #          .default = NA),
+          #         .by = c(Subject,`Ref Type`)) |> 
+          # rowwise() |>
+          # mutate(avg_pre1_post1 = mean(c(abs(ketone_rate_pre1),abs(ketone_rate_post1)))) |>
+          # ungroup() |>
+          # mutate(Exclusion = case_when(
+          #                     round_normal(avg_pre1_post1,1) >= 3.0 ~ "Flag",
+          #                     .default = "")) |> 
+          # filter((IVVAL01 == "Valid" | is.na(IVVAL01)) & Exclusion == "") |> 
+          # select(!c(iv_diff_pre1:last_col()))
 ```
 
 ```{r}
@@ -1097,8 +1099,8 @@ breakdown_condition_plot <- function(Id) {
     # Glucose Reference 
     hc_add_series(
     name = "Glucose Test Result",
-    data = kgriv12 %>%
-           filter(Subject == Id,`Ref Type` == "Venous strip"),
+    data = kgriv121 %>%
+           filter(Subject == Id,`Ref Type` == "Venous strip", (IVVAL01 == "Valid" | is.na(IVVAL01))),
     type = "scatter",
     yAxis = 1,
     color = "#9900FF",
@@ -1107,8 +1109,8 @@ breakdown_condition_plot <- function(Id) {
     # Ketone Venous Strip 
     hc_add_series(
     name = "Ketone Venous Strip",
-    data = kgriv12 %>%
-           filter(Subject == Id, `Ref Type` == "Venous strip"),
+    data = kgriv121 %>%
+           filter(Subject == Id, `Ref Type` == "Venous strip", (IVVAL01 == "Valid" | is.na(IVVAL01))),
     type = "scatter",
     yAxis = 0,
     color = "#FF0000",
@@ -1117,8 +1119,8 @@ breakdown_condition_plot <- function(Id) {
     # Randox
     hc_add_series(
     name = "Ketone Randox",
-    data = kgriv12 %>%
-           filter(Subject == Id, `Ref Type` == "Randox", !is.na(KRSEQ01)),
+    data = kgriv121 %>%
+           filter(Subject == Id, `Ref Type` == "Randox", (IVVAL01 == "Valid" | is.na(IVVAL01))),
     type = "scatter",
     yAxis = 0,
     color = "#33ff99",
@@ -1148,7 +1150,7 @@ breakdown_condition_plot <- function(Id) {
 ```{r}
 #| column: screen
 #| eval: false
-breakdown_condition_plot(Id = "90008")
+breakdown_condition_plot(Id = "1330001")
 ```
 
 ```{r eval = params$plot}
