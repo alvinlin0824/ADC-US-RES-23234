@@ -70,9 +70,8 @@ quit;
 data randox_time;
 set randox_time (drop=ID);
 ref_type = "Randox";
-if Subject ^= 1330004;
 /*Remove randox outliers*/
-where IVID01 not in (20216 20316 20324 20326 20327 20328 20329 20424 20425 20427);
+where IVID01 not in (20216 20316 20324 20326 20327 20328 20329 20424 20425 20427) and Subject ^= 1330004;
 run;
 
 /*Ketone Glucose Results*/
@@ -112,13 +111,15 @@ data kgriv12;
 merge kgr12 iv12;
 by Subject IVDTC01 IVID01;
 ref_type = "Venous strip";
+if IVID01 = 21124 then delete;
 run;
 
 /*Bind rows with randox*/
 data kgriv;
 format dtm datetime14.;
 set kgriv12 randox_time;
-dtm = dhms(IVDTC01,0,0,input(IVTM01,time5.));
+if ref_type = "Venous strip" then dtm = dhms(IVDTC01,0,0,input(KRDTC02,time5.));
+else dtm = dhms(IVDTC01,0,0,input(IVTM01,time5.));
 subject_C = strip(put(Subject,7.));
 rename subject_C = subject;
 drop subject;
@@ -127,7 +128,7 @@ run;
 /*Valid sample only*/
 proc sort data = kgriv;
 by ref_type subject dtm;
-where ^missing(dtm) and ^missing(KRSEQ01) and IVVAL01 = "Valid";
+where IVVAL01 in ("Valid" "") and ^missing(KRSEQ01);
 run;
 
 /*Get First Ketone Date and Time*/
@@ -418,7 +419,7 @@ options papersize=a3 orientation=portrait;
 ods rtf file="C:\Project\ADC-US-RES-23234\ADC-US-RES-23234-Safety-Report-%trim(%sysfunc(today(),yymmddn8.)).rtf" startpage=no;
 
 /*Summary Statistics on Ketone Result*/
-Proc means data = ketone maxdec=2 nonobs;
+Proc means data = kgriv maxdec=2 nonobs;
 title;
 var KRSEQ01;
 class Subject ref_type;
