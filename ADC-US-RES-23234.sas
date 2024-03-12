@@ -13,22 +13,12 @@ libname out "\\oneabbott.com\dept\ADC\Technical_OPS\Clinical_Affairs\Clinical St
 /*libname mydir "C:\Project\ADC-US-RES-23234";*/
 
 /*IV SAMPLE COLLECTION*/
-data iv1;
-set edc.iv1(where = (IVYN01 ^= "Check Here if no data recorded"));
-keep Subject ivdtc01;
-run;
-
-data iv2;
-set edc.iv2 (where = (^missing(IVID01)));
-keep Subject IVID01 IVTM01 IVVAL01;
-run;
-
 /*Sort IV1 and IV2*/
-proc sort data = iv1;
+proc sort data = edc.iv1(where = (IVYN01 ^= "Check Here if no data recorded")) out = iv1(keep = Subject ivdtc01);
 by Subject;
 run;
 
-proc sort data = iv2;
+proc sort data = edc.iv2(where = (^missing(IVID01))) out = iv2(keep = Subject IVID01 IVTM01 IVVAL01);
 by Subject IVID01;
 run;
 
@@ -37,6 +27,31 @@ data iv12;
 merge iv1 iv2;
 by Subject;
 run;
+
+/*Ketone Glucose Results*/
+/*Sort KGR1 and KGR2*/
+proc sort data = edc.kgr1 out = kgr1(keep = Subject KRDTC01);
+by Subject;
+run;
+
+proc sort data = edc.kgr2(where = (^missing(KRSEQ01))) out = kgr2(keep = Subject KRSEQ02--KRDTC03);
+by Subject;
+run;
+
+/*KGR2 full join KGR1*/
+data kgr12;
+merge kgr2 kgr1;
+by Subject;
+rename KRDTC01 = IVDTC01 KRSEQ02 = IVID01;
+run;
+
+/*Full Join IV12 and KGR12*/
+proc sql;
+create table kgriv12 as
+select *,  "Venous strip" as ref_type
+from kgr12 as x full join iv12 as y
+on x.Subject = y.Subject and x.IVDTC01 = y.IVDTC01 and x.IVID01 = y.IVID01;
+quit;
 
 /*Import Randox.csv*/
 data randox;
@@ -63,78 +78,83 @@ quit;
 /*Left join to get IV draw time*/
 Proc sql;
 create table randox_time as
-select * from IV12 as x left join randox_mean as y
-on x.IVID01 = y.ID;
+select x.subject, y.KRSEQ01, x.IVID01, x.KRDTC02, x.IVDTC01, x.IVTM01, x.IVVAL01, "Randox" as ref_type
+from kgriv12 as x left join randox_mean as y
+on x.IVID01 = y.ID
+where ^missing(y.KRSEQ01) and x.Subject ^= 1330004;
 quit;
-
-data randox_time;
-set randox_time (drop=ID);
-ref_type = "Randox";
-/*Remove randox outliers*/
-where IVID01 not in (20216 20316 20324 20326 20327 20328 20329 20424 20425 20427) and Subject ^= 1330004;
-run;
-
-/*Ketone Glucose Results*/
-data kgr1;
-set edc.kgr1;
-keep Subject KRDTC01;
-run;
-
-data kgr2;
-set edc.kgr2;
-keep Subject KRSEQ02--KRDTC03;
-run;
-
-/*Sort KGR1 and KGR2*/
-proc sort data = kgr1;
-by Subject;
-run;
-
-proc sort data = kgr2;
-by Subject;
-run;
-
-/*KGR2 full join KGR1*/
-data kgr12;
-merge kgr2 kgr1;
-by Subject;
-rename KRDTC01 = IVDTC01 KRSEQ02 = IVID01;
-run;
-
-/*Sort KGR12*/
-proc sort data = kgr12;
-by Subject IVDTC01 IVID01;
-run;
-
-/*KGR12 left join IV12*/
-data kgriv12;
-merge kgr12 iv12;
-by Subject IVDTC01 IVID01;
-ref_type = "Venous strip";
-if IVID01 = 21124 then delete;
-run;
 
 /*Bind rows with randox*/
 data kgriv;
-format dtm datetime14.;
 set kgriv12 randox_time;
-if ref_type = "Venous strip" then dtm = dhms(IVDTC01,0,0,input(KRDTC02,time5.));
+if IVTM01 = "" then dtm = dhms(IVDTC01,0,0,input(KRDTC02,time5.));
 else dtm = dhms(IVDTC01,0,0,input(IVTM01,time5.));
 subject_C = strip(put(Subject,7.));
 rename subject_C = subject;
-drop subject;
+format dtm datetime14.;
+drop subject KRDTC02 KRDTC03 IVDTC01 IVTM01;
 run;
 
-/*Valid sample only*/
+/*Exclusion List*/
+/*Lag*/
 proc sort data = kgriv;
-by ref_type subject dtm;
-where IVVAL01 in ("Valid" "") and ^missing(KRSEQ01);
+by subject ref_type dtm;
+run; 
+
+data lag_exclusion;
+set kgriv;
+by subject ref_type;
+lag_dtm = lag(dtm);
+lag_KRSEQ01 = lag(KRSEQ01);
+if first.ref_type then do; 
+lag_dtm = .;
+lag_KRSEQ01 = .;
+end;
+lag_rate = (KRSEQ01 - lag_KRSEQ01) / ((dtm - lag_dtm)/3600);
+format lag_dtm datetime14.;
 run;
+
+/*Lead*/
+proc sort data = kgriv;
+by subject ref_type descending dtm;
+run; 
+
+data lead_exclusion;
+set kgriv;
+by subject ref_type;
+lead_dtm = lag(dtm);
+lead_KRSEQ01 = lag(KRSEQ01);
+if first.ref_type then do; 
+lead_dtm = .;
+lead_KRSEQ01 = .;
+end;
+lead_rate = (KRSEQ01 - lead_KRSEQ01) / ((dtm - lead_dtm)/3600);
+format lead_dtm datetime14.;
+run;
+
+/*Join Lag and Lead exlcusion*/
+proc sql;
+create table exclsuion as
+select x.subject, x.IVID01, x.IVVAL01, x.ref_type
+from lag_exclusion as x inner join lead_exclusion as y
+on x.IVID01 = y.IVID01 and x.ref_type = y.ref_type
+where round((abs(lag_rate) + abs(lead_rate))/2,0.1) >= 3.0;
+quit;
+
+/*Valid sample only and excluded */
+proc sql;
+create table kgriv as
+select *
+from kgriv as x left join exclsuion as y
+on x.IVID01 = y.IVID01 and x.ref_type = y.ref_type
+where x.IVID01 ^= y.IVID01 and x.IVVAL01 in ("Valid" "")
+order by x.ref_type, x.subject, x.dtm;
+quit;
 
 /*Get First Ketone Date and Time*/
 data first_ketone;
 set kgriv;
-by ref_type subject ;
+by ref_type subject;
 if first.subject;
 keep subject dtm ref_type;
 rename dtm = first_test_dtm;
@@ -432,6 +452,16 @@ var "Ref Type"n Subject 'Start Time'n 'Peak Time'n 'Max Ketone Reference(mmol/L)
 run;
 
 proc tabulate data = analysis_ketone;
+title "Peak reach >= 1 mmol/L ";
+where Peak >= 1;
+class ref_type;
+var KRSEQ01 duration_to_peak duration_to_below1;
+table  ref_type = "Ref Type", KRSEQ01 = "Maximum Ketone Level Achieved"*(n mean stddev) duration_to_peak = "Time(Hours) To Peak Ketone Level From First Test"*(n mean stddev)
+duration_to_below1 = "Time(Hours) From Peak Ketone Level to Ketone Level < 1 mmol/L"*(n mean stddev);
+run;
+
+proc tabulate data = analysis_ketone;
+title "Drop below 1 mmol/L";
 where ^missing(first_below);
 class ref_type;
 var KRSEQ01 duration_to_peak duration_to_below1;
@@ -440,7 +470,7 @@ duration_to_below1 = "Time(Hours) From Peak Ketone Level to Ketone Level < 1 mmo
 run;
 
 proc tabulate data = analysis_ketone;
-/*where ^missing(first_below);*/
+title "Never Drop below 1 mmol/L";
 class ref_type;
 var KRSEQ01 duration_to_peak duration_to_below1;
 table  ref_type = "Ref Type", KRSEQ01 = "Maximum Ketone Level Achieved"*(n mean stddev) duration_to_peak = "Time(Hours) To Peak Ketone Level From First Test"*(n mean stddev)
@@ -479,10 +509,10 @@ run;
 
 /*Time from baseline to peak*/
 proc sgpanel data = ketone;
-where ^missing(dtm) and dtm <= peak_test_dtm;
-title1 "Time From Baseline To Peak";
+where ^missing(dtm) and dtm <= peak_test_dtm and Peak >= 1;
+title1 "Ketone Level From Baseline To Peak";
 panelby ref_type / spacing=5 novarname;
-series x = time_diff y = krseq01 / group = subject groupdisplay = overlay markers markerattrs = (size = 3 symbol = dot);
+series x = time_diff y = krseq01 / group = subject groupdisplay = overlay markers markerattrs = (size = 3 symbol = dot) grouporder=ascending;
 colaxis label = "Time(Hours)"
 	values=(0 to 7 by 1) INTERVAL = HOUR VALUESROTATE=DIAGONAL2;
 rowaxis label = "Ketone Test Result (mmol/L)"
@@ -490,12 +520,24 @@ rowaxis label = "Ketone Test Result (mmol/L)"
 keylegend / title = "Subject ID";
 run;
 
+/*proc sgpanel data = ketone;*/
+/*where ^missing(dtm) and dtm <= peak_test_dtm and Peak >= 1 and ^missing(duration_to_below1);*/
+/*title1 "Time From Baseline To Peak";*/
+/*panelby ref_type / spacing=5 novarname;*/
+/*series x = time_diff y = krseq01 / group = subject groupdisplay = overlay markers markerattrs = (size = 3 symbol = dot);*/
+/*colaxis label = "Time(Hours)"*/
+/*	values=(0 to 7 by 1) INTERVAL = HOUR VALUESROTATE=DIAGONAL2;*/
+/*rowaxis label = "Ketone Test Result (mmol/L)"*/
+/*    values=(0 to 5 by 0.5);*/
+/*keylegend / title = "Subject ID";*/
+/*run;*/
+
 /*Time from peak to 1 mmol*/
 proc sgpanel data = ketone;
 where ^missing(dtm) and ^missing(duration_to_below1);
-title1 "Time From Peak To < 1 mmol/L";
+title1 "Ketone Level From Peak To < 1 mmol/L";
 panelby ref_type / spacing=5 novarname;
-series x = time_diff1 y = krseq01 / group = subject groupdisplay = overlay markers markerattrs = (size = 3 symbol = dot);
+series x = time_diff1 y = krseq01 / group = subject groupdisplay = overlay markers markerattrs = (size = 3 symbol = dot) grouporder=ascending;
 colaxis label = "Time(Hours)"
 	values=(0 to 3 by 1) INTERVAL = HOUR VALUESROTATE=DIAGONAL2;
 rowaxis label = "Ketone Test Result (mmol/L)"
