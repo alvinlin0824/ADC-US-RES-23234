@@ -150,14 +150,6 @@ kgr12 <- kgr2 |>
 ```
 
 ```{r}
-# kgr12 |> 
-#   slice(1,.by = Subject) |> 
-#   left_join(ps |> 
-#                select(Subject,PSDTC01,PSTM02),by = join_by(Subject)) |> 
-#   mutate(diff = readr::parse_time(KRDTC02) - readr::parse_time(PSTM02)) |> View()
-```
-
-```{r}
 #| label: Import Randox rds
 randox <- readRDS(gsub("\\\\", "/", r"(\\oneabbott.com\dept\ADC\Technical_OPS\Clinical_Affairs\Clinical Study Files\Apollo\ADC-US-RES-23234_IDE Pump Suspension Study\Statistics\Programs\Datasets\AL\randox.rds)"))
 ```
@@ -681,7 +673,7 @@ Ap <- upload_ketone |>
       # Rate
       mutate(Site = case_when(str_starts(`Subject ID`,"133") ~ "Yale",
                               .default = "RCR"),
-             ANA = (ANA/100)*1,
+             ANA = (ANA/100)*1.25,
              Level = case_when(KRSEQ01 < 1 ~ "< 1 mmol/L",
                               .default = ">= 1 mmol/L"),
             # Accuracy
