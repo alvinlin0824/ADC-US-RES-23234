@@ -509,7 +509,8 @@ run;
 
 /*Time from baseline to peak*/
 proc sgpanel data = ketone;
-where ^missing(dtm) and dtm <= peak_test_dtm and Peak >= 1;
+/*where ^missing(dtm) and dtm <= peak_test_dtm and Peak >= 1;*/
+where dtm <= peak_test_dtm;
 title1 "Ketone Level From Baseline To Peak";
 panelby ref_type / spacing=5 novarname;
 series x = time_diff y = krseq01 / group = subject groupdisplay = overlay markers markerattrs = (size = 3 symbol = dot) grouporder=ascending;
@@ -534,12 +535,12 @@ run;
 
 /*Time from peak to 1 mmol*/
 proc sgpanel data = ketone;
-where ^missing(dtm) and ^missing(duration_to_below1);
+/*where ^missing(dtm) and ^missing(duration_to_below1);*/
 title1 "Ketone Level From Peak To < 1 mmol/L";
 panelby ref_type / spacing=5 novarname;
 series x = time_diff1 y = krseq01 / group = subject groupdisplay = overlay markers markerattrs = (size = 3 symbol = dot) grouporder=ascending;
 colaxis label = "Time(Hours)"
-	values=(0 to 3 by 1) INTERVAL = HOUR VALUESROTATE=DIAGONAL2;
+	values=(0 to 6 by 1) INTERVAL = HOUR VALUESROTATE=DIAGONAL2;
 rowaxis label = "Ketone Test Result (mmol/L)"
     values=(0 to 5 by 0.5);
 keylegend / title = "Subject ID";

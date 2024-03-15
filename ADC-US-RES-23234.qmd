@@ -673,7 +673,7 @@ Ap <- upload_ketone |>
       # Rate
       mutate(Site = case_when(str_starts(`Subject ID`,"133") ~ "Yale",
                               .default = "RCR"),
-             ANA = (ANA/100)*1.25,
+             ANA = (ANA/100)*1,
              Level = case_when(KRSEQ01 < 1 ~ "< 1 mmol/L",
                               .default = ">= 1 mmol/L"),
             # Accuracy
