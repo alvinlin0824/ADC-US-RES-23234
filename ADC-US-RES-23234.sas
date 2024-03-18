@@ -493,6 +493,18 @@ rowaxis label = "Ketone Test Result (mmol/L)"
     values=(0 to 5 by 0.5);
 keylegend / title = "Subject ID";
 run;
+options nobyline;
+proc sgplot data = ketone noautolegend cycleattrs;
+where ^missing(dtm);
+by ref_type;
+title1 " ";
+/*styleattrs datacontrastcolors = (magenta green blue orange lilac lime marron olive steel violet yellow);*/
+	series x = time_diff y = krseq01 / group = subject groupdisplay = overlay markers markerattrs = (size = 3 symbol = dot) name = "REAL";
+	yaxis label = "Ketone Test Result (mmol/L)" values=(0 to 5 by 0.5);
+	xaxis label = "Time(Hours)" values=(0 to 8 by 1) INTERVAL = HOUR VALUESROTATE=DIAGONAL2;
+	keylegend / title = "Subject ID";
+run;
+options byline;
 
 /*Delta*/
 proc sgpanel data = ketone_lag;
