@@ -329,7 +329,7 @@ quit;
 data auu_906;
 format dtm_sec datetime16.;
 set auu_start_time;
-ana_100 = (ANA/100)*1.25;
+ana_100 = (ANA/100)*1;
 /*Get Duration Day*/
 nday = floor((dtm-start_time)/86400) + 1;
 dtm_sec = dtm;
@@ -436,7 +436,7 @@ drop lag_dtm--lag_KRSEQ01;
 run;
 /*(with 1.25 adj)*/
 options papersize=a3 orientation=portrait;
-ods rtf file="C:\Project\ADC-US-RES-23234\ADC-US-RES-23234-Safety-Report(with 1.25 adj)-%trim(%sysfunc(today(),yymmddn8.)).rtf" startpage=no;
+ods rtf file="C:\Project\ADC-US-RES-23234\ADC-US-RES-23234-Safety-Report-%trim(%sysfunc(today(),yymmddn8.)).rtf" startpage=no;
 
 /*Summary Statistics on Ketone Result*/
 Proc means data = kgriv maxdec=2 nonobs;
@@ -726,13 +726,16 @@ run;
 proc means data = Ap_overall(where = (ana_100 between 0.6 and 3.0)) noprint;
 class Site ref_type Level;
 var abs_pbias pbias abs_bias bias;
-output out = bias_mean(drop = _TYPE_ _FREQ_) mean =  median =  n = / autoname ;
+output out = bias_mean(drop = _TYPE_ _FREQ_) mean =  median =  std = n = / autoname ;
 run;
 
 /*Change Column names and order*/
 data bias_table;
-retain Site ref_type Level abs_pbias_Mean abs_pbias_Median
-pbias_Mean pbias_Median abs_bias_Mean abs_bias_Median bias_Mean bias_Median;
+retain Site ref_type Level 
+abs_pbias_Mean abs_pbias_Median abs_pbias_StdDev
+pbias_Mean pbias_Median  pbias_StdDev
+abs_bias_Mean abs_bias_Median abs_bias_StdDev
+bias_Mean bias_Median bias_StdDev;
 set bias_mean(drop = abs_pbias_N pbias_N abs_bias_N);
 where ^missing(Site) and ^missing(ref_type) and ^missing(Level) ;
 run;
@@ -850,7 +853,7 @@ run;
 /*/*Concurrence (with 1.25 adj)*/
 
 options papersize=a3 orientation=portrait;
-ods rtf file="C:\Project\ADC-US-RES-23234\ADC-US-RES-23234-Accuracy-Report(with 1.25 adj)-%trim(%sysfunc(today(),yymmddn8.)).rtf" startpage=no;
+ods rtf file="C:\Project\ADC-US-RES-23234\ADC-US-RES-23234-Accuracy-Report-%trim(%sysfunc(today(),yymmddn8.)).rtf" startpage=no;
 
 /*System Agreement plot of Difference between CGM and Reference*/
 proc sgpanel data = Ap_accuracy;
@@ -870,7 +873,7 @@ proc report data=sys_trans nofs split='$'
  style(header)=[font_weight=bold just=c font=(arial, 10pt)]
  style(lines)=[font_weight=bold just=l];
  title1 ' ';
- columns ("System Agreement Results Split at 1 mmol/L(with 1.25 adj) by Site and Reference Type" Site ref_type Level "Within +- 10%/ +- 0.1 mmol/L"n
+ columns ("System Agreement Results Split at 1 mmol/L by Site and Reference Type" Site ref_type Level "Within +- 10%/ +- 0.1 mmol/L"n
 "Within +- 20%/ +- 0.2 mmol/L"n "Within +- 30%/ +- 0.3 mmol/L"n
 "Within +- 40%/ +- 0.4 mmol/L"n "Outside +- 40%/ +- 0.4 mmol/L"n);
  define Site / Group order order=internal descending width=5; 
@@ -893,17 +896,21 @@ run;
 proc report data=bias_table nofs split='$'
  style(column)=[just=l font=(arial, 10pt)] style(header)=[font_weight=bold just=c font=(arial, 10pt)] style(lines)=[font_weight=bold just=l];
  title1 ' ';
- columns ("Bias Measures(with 1.25 adj)" Site ref_type Level ("MARD (%)" abs_pbias_Mean abs_pbias_Median) ("% Bias" pbias_Mean pbias_Median) ("Abs. Bias (mmol/L)" abs_bias_Mean abs_bias_Median) ("Bias (mmol/L)" bias_Mean bias_Median) bias_N);
+ columns ("Bias Measures" Site ref_type Level ("MARD (%)" abs_pbias_Mean abs_pbias_Median abs_pbias_StdDev) ("% Bias" pbias_Mean pbias_Median pbias_StdDev) ("Abs. Bias (mmol/L)" abs_bias_Mean abs_bias_Median abs_bias_StdDev) ("Bias (mmol/L)" bias_Mean bias_Median bias_StdDev) bias_N);
  define Site / Group order order=internal descending width=5; 
  define ref_type / Group "Ref Type" width=5;
  define abs_pbias_Mean /"Mean" display f=8.1 width=5; 
  define abs_pbias_Median /"Median" display f=8.1 width=5;
+ define abs_pbias_StdDev /"SD" display f=8.1 width=5; 
  define pbias_Mean /"Mean" display f=8.1 width=5; 
  define pbias_Median /"Median" display f=8.1 width=5; 
+ define pbias_StdDev /"SD" display f=8.1 width=5; 
  define abs_bias_Mean /"Mean" display f=8.1 width=5; 
  define abs_bias_Median /"Median" display f=8.1 width=5; 
+ define abs_bias_StdDev /"SD" display f=8.1 width=5; 
  define bias_Mean /"Mean" display f=8.1 width=5;
  define bias_Median /"Median" display f=8.1 width=5; 
+ define bias_StdDev /"SD" display f=8.1 width=5;
  define bias_N /"N" display width=5;
  define Level /"Ketone Ref Level" order=data width=5; 
 run;
@@ -913,7 +920,7 @@ proc report data=concur_km_vs_ref nofs split='$'
  style(header)=[font_weight=bold just=c font=(arial, 10pt)]
  style(lines)=[font_weight=bold just=l];
  title1 " "; 
- columns ("Concurrence Analysis by Ketone Level (KM vs. Ref)(with 1.25 adj)" ref_type ref_nam ("Ref (mmol/L)" 'p1: <0.6'n 'p2: [0.6-1.0)'n 'p3: [1.0-1.5]'n 'p4: (1.5-3]'n 'p5: >3.0'n) nTotal);
+ columns ("Concurrence Analysis by Ketone Level (KM vs. Ref)" ref_type ref_nam ("Ref (mmol/L)" 'p1: <0.6'n 'p2: [0.6-1.0)'n 'p3: [1.0-1.5]'n 'p4: (1.5-3]'n 'p5: >3.0'n) nTotal);
  define ref_type /"Ref Type" Group width=5;
  define ref_nam /"KM (mmol/L)" display;
  define 'p1: <0.6'n /"<0.6" display f=8.1 width=5; 
@@ -929,7 +936,7 @@ proc report data=concur_ref_vs_km nofs split='$'
  style(header)=[font_weight=bold just=c font=(arial, 10pt)]
  style(lines)=[font_weight=bold just=l];
  title1 " "; 
- columns ("Concurrence Analysis by Ketone Level (Ref vs. KM)(with 1.25 adj)" ref_type ref_nam ("KM (mmol/L)" 'p1: <0.6'n 'p2: [0.6-1.0)'n 'p3: [1.0-1.5]'n 'p4: (1.5-3]'n 'p5: >3.0'n) nTotal);
+ columns ("Concurrence Analysis by Ketone Level (Ref vs. KM)" ref_type ref_nam ("KM (mmol/L)" 'p1: <0.6'n 'p2: [0.6-1.0)'n 'p3: [1.0-1.5]'n 'p4: (1.5-3]'n 'p5: >3.0'n) nTotal);
  define ref_type /"Ref Type" Group width=5;
  define ref_nam /"Ref (mmol/L)" display;
  define 'p1: <0.6'n /"<0.6" display f=8.1 width=5; 
@@ -947,22 +954,20 @@ set edc.dm(where = (DMYN ^= "CHECK HERE IF NO DATA RECORDED"));
 if RACE = "White" then RACE = catx(' - ', RACE, ETHNIC);
 run;
 
-data mh1(keep = Subject MHDTC02 MHORES01-MHORES04 MHORES06);
+data mh1(keep = Subject MHDTC01 MHDTC02 MHORES01-MHORES04 MHORES06);
 set edc.mh1(where = (MHYN01 ^= "CHECK HERE IF NO DATA RECORDED"));
 run;
 
-data vs;
+data vs(keep = Subject VSORES011-VSORES031);
 set edc.vs(where = (VSYN01 ^= "CHECK HERE IF NO DATA RECORDED"));
 VSORES011 = input(VSORES01,2.);
 VSORES021 = input(VSORES02,2.);
 VSORES031 = input(VSORES03,5.);
-keep Subject VSORES011-VSORES031;
 run;
 
-data lb2;
+data lb2(keep = Subject LBORES011);
 set edc.lb2(where = (LBID01));
 LBORES011 = input(LBORES01,3.);
-keep Subject LBORES011;
 run;
 
 /*Subject Demographics and Diabetes History*/
@@ -1038,7 +1043,7 @@ proc sql;
             z.VSORES011*12 + z.VSORES021 as Inches,
             (z.VSORES011*12 + z.VSORES021)*0.0254 as Meters,
 		    (z.VSORES031*0.453592)/((z.VSORES011*12 + z.VSORES021)*0.0254)**2  as BMI,
-            year(Today()) - year(y.MHDTC02) as Duration,
+            intck("year",y.MHDTC02,y.MHDTC01) as Duration,
             case
 			when y.MHORES03 = "Months" then y.MHORES02/12
 			else y.MHORES02
@@ -1078,7 +1083,7 @@ Else if _n_ = 5 then Characteristics = "Height Meters";
 Else if _n_ = 6 then Characteristics = "Body Mass Index";
 Else if _n_ = 7 then Characteristics = "Duration of diabetes (years)";
 Else if _n_ = 8 then Characteristics = "Duration of insulin use (years)";
-Else if _n_ = 9 then Characteristics = "Total number of injections per day";
+/*Else if _n_ = 9 then Characteristics = "Total number of injections per day";*/
 Else Characteristics = "HbA1c (%)";
 Mean±SD = CATX(" ± ",put(Mean,5.1),put(SD,4.1));
 Range = CATX(" to ",put(Min,5.1),put(Max,5.1));
@@ -1113,8 +1118,8 @@ number_of_snr = _FREQ_*COUNT;
 FREQC = put(_FREQ_,$3.);
 run;
 
-/*options papersize=a3 orientation=portrait;*/
-/*ods rtf file="C:\Project\ADC-US-RES-23234\ADC-US-RES-23234-Demography-%trim(%sysfunc(today(),yymmddn8.)).rtf" startpage=no;*/
+options papersize=a3 orientation=portrait;
+ods rtf file="C:\Project\ADC-US-RES-23234\ADC-US-RES-23234-Demography-%trim(%sysfunc(today(),yymmddn8.)).rtf" startpage=no;
 /*Demography Table*/
 proc print data = demographics noobs;
 run;
@@ -1133,7 +1138,7 @@ label FREQC = "Disposition of Sensors" COUNT = "Number of Subjects" number_of_sn
 sum _numeric_;
 run;
 
-/*ODS RTF CLOSE;*/
+ODS RTF CLOSE;
 
 
 /*Eligibility*/
