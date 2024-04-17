@@ -980,16 +980,16 @@ proc sql;
 quit; 
 
 %MACRO freq(var = );
-	PROC freq DATA= dmmh1;
-	tables &var / nocum noprint out = &var(where = (PERCENT ^= .));
-    run;
+    %let n = %sysfunc(countw(&var));
+	%do i = 1 %to &n;
+		%let val = %scan(&var,&i);
+		PROC freq DATA= dmmh1;
+		tables &val / nocum noprint out = &val(where = (PERCENT ^= .)) sparse;
+        run;
+	%end;
 %mend freq;
-/*maybe can try for loop*/
-%freq(var = SEX)
-%freq(var = RACE)
-%freq(var = EDU)
-%freq(var = mhores01)
-%freq(var = mhores04)
+
+%freq(var = SEX RACE EDU mhores01 mhores04);
 
 data demographics;
 format Characteristic $100. COUNT 3. PERCENT 4.1 ;
@@ -1056,21 +1056,17 @@ proc sql;
 quit;
 
 %MACRO summary(df = , var = );
-	Proc Means data=&df noprint;
-	var &var;
-	output out=&var(drop = _type_ _freq_ _Label_) n = N mean= Mean median= Median std= SD min= Min max= Max;
-	run;
+    %let n = %sysfunc(countw(&var));
+	%do i = 1 %to &n;
+		%let val = %scan(&var,&i);
+		Proc Means data=&df noprint;
+		var &val;
+		output out=&val(drop = _type_ _freq_ _Label_) n = N mean= Mean median= Median std= SD min= Min max= Max;
+		run;
+	%end;
 %mend summary;
-/*maybe can try for loop*/
-%summary(df = BC, var = AGE)
-%summary(df = BC, var = VSORES031)
-%summary(df = BC, var = Kg)
-%summary(df = BC, var = Inches)
-%summary(df = BC, var = Meters)
-%summary(df = BC, var = BMI)
-%summary(df = BC, var = Duration)
-%summary(df = BC, var = MHORES02)
-%summary(df = BC, var = LBORES011)
+
+%summary(df = BC, var = AGE VSORES031 Kg Inches Meters BMI Duration MHORES02 LBORES011);
 
 data bc_table;
 format Characteristics $55. Median 5.1 ;
