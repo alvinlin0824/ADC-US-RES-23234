@@ -489,7 +489,7 @@ ketone |>
   geom_point() +
   geom_line() +
   facet_grid(cols = vars(`Ref Type`)) + 
-  scale_x_continuous(expand = c(0,0)) + 
+  scale_x_continuous(expand = c(0,0),breaks = c(seq(0,4,1)),limits = c(0,4)) + 
   scale_y_continuous(expand = c(0,0),breaks = c(seq(0,5,1)),limits = c(0,5)) + 
   labs(title = "Time From Peak To 1 mmol/L",x = "Time(Hours)", y = "Ketone Test Result (mmol/L)") +
   theme_bw() +

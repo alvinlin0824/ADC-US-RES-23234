@@ -1032,8 +1032,17 @@ proc sql;
 	end;
 quit;
 
-/*Baseline Characteristics*/
+/*Safety Parameter Log*/
+proc sql;
+create table kd12 as
+select y.Subject, y.KDYN01,x.Subject,x.KDID01,x.KDORES02,x.KDORES04,x.KDORES06,x.KDORES08
+from edc.kd2 as x 
+left join edc.kd1 as y
+on x.Subject = y.Subject
+where KDYN01 ^= "Check Here If No Data Recorded";
+quit;
 
+/*Baseline Characteristics*/
 /*Full Join*/
 proc sql;
      create table bc as
@@ -1067,6 +1076,7 @@ quit;
 %mend summary;
 
 %summary(df = BC, var = AGE VSORES031 Kg Inches Meters BMI Duration MHORES02 LBORES011);
+%summary(df = kd12, var = KDORES02 KDORES04 KDORES06 KDORES08);
 
 data bc_table;
 format Characteristics $55. Median 5.1 ;
@@ -1083,6 +1093,18 @@ Else if _n_ = 8 then Characteristics = "Duration of insulin use (years)";
 Else Characteristics = "HbA1c (%)";
 Mean±SD = CATX(" ± ",put(Mean,5.1),put(SD,4.1));
 Range = CATX(" to ",put(Min,5.1),put(Max,5.1));
+run;
+
+/*Safety Data*/
+data safety_data;
+set KDORES02 KDORES04 KDORES06 KDORES08;
+if _n_ = 1 then Safety = "Ketone Test Result (mmol/L)";
+if _n_ = 2 then Safety = "Glucose Test Result (mg/dL)";
+if _n_ = 3 then Safety = "pH Test Result (pH units)";
+if _n_ = 4 then Safety = "Potassium Test Result (mmol/L)";
+Mean±SD = put(Mean,5.1) || " (" || put(SD,4.1) || ")" || " " || "[ " || strip(put(Min,5.1)) || " to " || strip(put(Max,5.1)) || "]";
+/*Mean±SD = CATX(" ± ",put(Mean,5.1),put(SD,4.1));*/
+/*Range = CATX(" - ",put(Min,5.1),put(Max,5.1));*/
 run;
 
 /*Ketone & Glucose Summary*/
@@ -1125,14 +1147,19 @@ proc print data = bc_table noobs;
 var Characteristics Mean±SD Median Range;
 run;
 
-proc print data = ket_gluc noobs;
-var Characteristics N Mean±SD Range;
+/*proc print data = ket_gluc noobs;*/
+/*var Characteristics N Mean±SD Range;*/
+/*run;*/
+
+proc print data = safety_data noobs label;
+var Safety N Mean±SD;
+label Safety = "Safety Test" N = "Count" Mean±SD = "Mean (SD) [min – max]";
 run;
 
-proc print data = snr_attempt label noobs sumlabel = "Total";
-label FREQC = "Disposition of Sensors" COUNT = "Number of Subjects" number_of_snr = "Number of Sensors";
-sum _numeric_;
-run;
+/*proc print data = snr_attempt label noobs sumlabel = "Total";*/
+/*label FREQC = "Disposition of Sensors" COUNT = "Number of Subjects" number_of_snr = "Number of Sensors";*/
+/*sum _numeric_;*/
+/*run;*/
 
 ODS RTF CLOSE;
 
