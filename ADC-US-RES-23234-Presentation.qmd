@@ -59,7 +59,11 @@ registerS3method(
 
 ## Primary Objective
 
--   To characterize beta-hydroxybutyrate ketone levels in people with type 1 diabetes using continuous subcutaneous insulin infusion (CSII) during a planned suspension of their insulin pump
+-   To characterize beta-hydroxybutyrate(BHB) ketone levels in people with type 1 diabetes using continuous subcutaneous insulin infusion (CSII) during a planned suspension of their insulin pump
+
+::: notes
+This study aimed to evaluate the evolution of beta-hydroxybutyrate (BHB) levels in relation to elevation in glucose levels following suspension of CSII during a planned suspension of their insulin pump.
+:::
 
 # Study Design
 
@@ -92,7 +96,6 @@ tibble(Site = c("Yale School of Medicine (Yale)","Rainer Clinical Research Cente
    tab_spanner(label = "Number of Subjects", columns = c(Enrolled,Evaluable)) |>  
    tab_footnote(footnote = "Two (2) subjects did not perform pump suspension due to blood potassium level less than 3.5 mmol/L",locations = cells_body(rows = 1, columns = 3)) 
 ```
-
 
 ## Demographics {.scrollable}
 
@@ -165,9 +168,8 @@ c("SEX","RACE","EDU","MHORES01","MHORES04") |>
   tab_row_group(label = "Sex",rows = c(1:2))
 ```
 
-::: {.notes}
-In total, 13 (52.0%) subjects were male, 18 (72.0 %) subjects were non-Hispanic white.
-25 (100.0%) were type 1 diabetic
+::: notes
+In total, 13 (52.0%) subjects were male, 18 (72.0 %) subjects were non-Hispanic white. 25 (100.0%) were type 1 diabetic
 :::
 
 ## Demographics
@@ -218,7 +220,7 @@ c("AGE","VSORES03", "Kg","Inches","Meters","BMI","DD","MHORES02") |>
     tab_header(title = md("**Baseline Characteristics**"))
 ```
 
-::: {.notes}
+::: notes
 Subjects ranged in age from 19 to 69 years (mean: 41.1 SD: 16.9 years) (Table 3). Subjects’ weight ranged from 57.5 to 119.8 kg (126.8 to 264.2 pounds) with a mean of 80.8 kg and SD of 14.7 kg (mean: 178.2 pounds, SD: 32.5 pounds), while Body Mass Index (BMI) ranged from 21.4 - 44.0 kg/m² with a mean BMI of 27.8 kg/m² and SD of 5.2 kg/m². Duration of diabetes ranged from 7.0 to 58.0 years with a mean of 28.0 years and SD of 15.9 years
 :::
 
@@ -228,7 +230,7 @@ Subjects ranged in age from 19 to 69 years (mean: 41.1 SD: 16.9 years) (Table 3)
 
 # Data Quality Issues
 
--   For Randox, with a total of 634 samples collected. Of the Randox corporation Ranbut ketone results it was determined that results from assays run on 21Aug2023 had unreliable results and 10 out of 634 were excluded from analysis
+-   For Randox, with a total of 598 samples collected. Of the Randox corporation Ranbut ketone results it was determined that results from assays run on 21Aug2023 had unreliable results and 10 out of 598 were excluded from analysis
 
 ## Profile Plot with Randox Issues
 
@@ -445,9 +447,8 @@ breakdown_condition_plot(Id = "90004")
 
 ```{r}
 #| column: screen
-breakdown_condition_plot(Id = "1330001")
+breakdown_condition_plot(Id = "90006")
 ```
-
 
 ## List of excluded Randox
 
@@ -455,6 +456,8 @@ breakdown_condition_plot(Id = "1330001")
 
 ```{r}
 #| label: List of excluded Randox
+#| echo: true
+#| code-fold: true
 kgriv121 |>
            mutate(iv_diff_pre1 = as.numeric(difftime(lag(`Ketone Date Time`, n = 1),`Ketone Date Time`,units = "hours")),
                   iv_diff_post1 = as.numeric(difftime(lead(`Ketone Date Time`, n = 1),`Ketone Date Time`,units = "hours")),
@@ -472,13 +475,14 @@ kgriv121 |>
                               round_normal(avg_pre1_post1,1) >= 3.0 ~ "Flag",
                               .default = "")) |>
           filter(Exclusion == "Flag") |> 
-          select(Subject,`Sample ID` = KRSEQ02,`Ketone Test Result(mmol/L)` = KRSEQ01, `Ref Type`) |> 
+          mutate(N = row_number()) |> 
+          select(N,Subject,`Sample ID` = KRSEQ02,`Ketone Test Result(mmol/L)` = KRSEQ01, `Ref Type`) |> 
           gt() |>
           opt_stylize(style = 6, color = "blue") |>
           cols_align(align = "center",columns = everything())
 ```
 
-::: {.notes}
+::: notes
 Also, Subject 1330004 did not have Ranbut data available due to test methodology issues being resolved with Randox Corporation
 :::
 
@@ -515,30 +519,35 @@ reg_plot(condition = unique(iv12$Subject)[1:4])
 ```
 
 ## Randox vs Venous Strip
+
 ```{r}
 #| label: Reg Plot2
 reg_plot(condition = unique(iv12$Subject)[5:8])
 ```
 
 ## Randox vs Venous Strip
+
 ```{r}
 #| label: Reg Plot3
 reg_plot(condition = unique(iv12$Subject)[9:12])
 ```
 
 ## Randox vs Venous Strip
+
 ```{r}
 #| label: Reg Plot4
 reg_plot(condition = unique(iv12$Subject)[13:16])
 ```
 
 ## Randox vs Venous Strip
+
 ```{r}
 #| label: Reg Plot5
 reg_plot(condition = unique(iv12$Subject)[17:20])
 ```
 
 ## Randox vs Venous Strip
+
 ```{r}
 #| label: Reg Plot6
 reg_plot(condition = unique(iv12$Subject)[21:23])
@@ -546,7 +555,7 @@ reg_plot(condition = unique(iv12$Subject)[21:23])
 
 # Ketone Safety
 
-## Ketone Values Over the Pump Suspension Session 
+## Ketone Values Over the Pump Suspension Session
 
 . . .
 
@@ -585,11 +594,11 @@ ketone |>
   theme(panel.grid.major.y = element_blank(),panel.grid.minor.y = element_blank(),legend.position = "bottom",plot.title = element_text(hjust = 0.5))
 ```
 
-::: {.notes}
+::: notes
 This plot the Randox Ranbut and Precision Xtra ketone measurements for all subjects throughout the entire planned insulin pump suspension session. Each line in these graphs represents an individual participant’s measured ketone.
 :::
 
-## Time from baseline to max ketone level achieved  
+## Time from baseline to max ketone level achieved
 
 . . .
 
@@ -608,8 +617,8 @@ ketone |>
   theme(panel.grid.major.y = element_blank(),panel.grid.minor.y = element_blank(),legend.position = "bottom",plot.title = element_text(hjust = 0.5))
 ```
 
-::: {.notes}
-Figures 1-2 below show the rising ketone values of subjects from baseline to peak during in-clinic visits using both the Randox corporation Ranbut ketone assay and the Precision Xtra Blood Ketone strips   
+::: notes
+Figures 1-2 below show the rising ketone values of subjects from baseline to peak during in-clinic visits using both the Randox corporation Ranbut ketone assay and the Precision Xtra Blood Ketone strips
 :::
 
 ## Time from peak ketone level to return to 1 mmol/L
@@ -631,11 +640,11 @@ ketone |>
   theme(panel.grid.major.y = element_blank(),panel.grid.minor.y = element_blank(),legend.position = "bottom",plot.title = element_text(hjust = 0.5))
 ```
 
-::: {.notes}
-the falling ketone values from peak to <1 mmol/L during in-clinic visits using both the Randox corporation Ranbut ketone assay and the Precision Xtra Blood Ketone strips
+::: notes
+the falling ketone values from peak to \<1 mmol/L during in-clinic visits using both the Randox corporation Ranbut ketone assay and the Precision Xtra Blood Ketone strips
 :::
 
-## Ketone Values Over the Pump Suspension Session  
+## Ketone Values Over the Pump Suspension Session
 
 . . .
 
@@ -668,9 +677,15 @@ ketone |>
       opt_stylize(style = 6, color = "blue")
 ```
 
-::: {.notes}
+::: notes
 The mean maximum ketone level achieved was 1.86 mmol/L based on Precision Xtra blood ketone strip data, with a mean time to peak ketone level from baseline of 5.14 hours. Using Randox Ranbut data, the mean maximum ketone level achieved was 1.60 mmol/L with a mean time to peak ketone level of 5.37 hours. The peak ketone level reached during the pump suspension session was a range of 0.2 mmol/L to 4.2 mmol/L based on Precision Xtra blood ketone strip data, suggesting a large person-to-person variation. Similarly, the Randox Ranbut data also show a large person-to-person variation in peak ketone level reached during the insulin pump suspension
 :::
+
+## Changes in glucose and ketone levels following pump suspension
+
+. . .
+
+![](90004.png){fig-align="center"}
 
 ## Safety Conclusion
 
@@ -1013,12 +1028,14 @@ Ap |>
    tab_header(title = md("Concurrence Analysis by Ketone Level (Ref vs. KM)"))
 ```
 
+# Thank you
+
 ## Appendix {.scrollable}
 
 ```{r}
-kgriv121 |> 
-   filter(IVVAL01 == "Valid" | is.na(IVVAL01)) |> 
+# kgriv121 |> 
+#    filter(IVVAL01 == "Valid" | is.na(IVVAL01)) |> 
+kgriv12 |> 
    mutate(across(where(is.POSIXct), ~ as.character(.x))) |> 
    reactable(paginationType = "jump", striped = TRUE, highlight = TRUE, searchable = TRUE, filterable = TRUE, showPageSizeOptions = TRUE,pageSizeOptions = c(6, 12, 18), defaultPageSize = 6, resizable = TRUE,defaultColDef = colDef(align = "center",minWidth = 115),style = list(fontFamily = 'Menlo',fontSize = '14px'))
 ```
-
