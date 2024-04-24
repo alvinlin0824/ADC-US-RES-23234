@@ -5,12 +5,13 @@ date: today
 date-format: full
 format:
   revealjs:
+    self-contained: true
     incremental: true
     slide-number: true
-    chalkboard:
-      theme: whiteboard
-      boardmarker-width: 5
-      buttons: false
+    # chalkboard:
+    #   theme: whiteboard
+    #   boardmarker-width: 5
+    #   buttons: false
 ---
 
 ```{r}
@@ -130,7 +131,7 @@ vs <- vs |>
 #| label: Demographics function
 my_fun <- function(group_var){
     dm |>
-       select(Subject,SEX,ETHNIC:EDU) %>%
+       select(Subject,SEX,ETHNIC:EDU) |>
        full_join(mh1 |>
                     select(Subject,MHORES01,MHORES04),by = c("Subject")) |>
   transmute(SEX = factor(SEX,levels = c("Female","Male")),
@@ -150,17 +151,58 @@ my_fun <- function(group_var){
 }
 ```
 
+```{r}
+  #   dm |>
+  #      select(Subject,SEX,ETHNIC:EDU) |>
+  #      full_join(mh1 |>
+  #                   select(Subject,MHORES01,MHORES04),by = join_by(Subject)) |>
+  # transmute(Subject = Subject,
+  #           SEX = factor(SEX,levels = c("Female","Male")),
+  #           ETHNIC = factor(ETHNIC,levels = c("Hispanic or Latino","Not Hispanic or Latino")),
+  #           RACE = case_when(RACE == "White" ~ str_c(RACE,ETHNIC,sep = " - "),
+  #                            .default = RACE),
+  #           RACE = factor(RACE,levels = c("White - Not Hispanic or Latino","White - Hispanic or Latino","American Indian or Alaska Native","Asian","Black or African American","Native Hawaiian or Pacific Islander","Other")),
+  #           EDU = factor(EDU,levels = c("Grade 0-8","High School (Grades 9-12)","Some College (1-4 years)","Bachelor's Degree (BA BS etc)","Master's Degree (MA MS etc)","Doctorate or Professional school degree (PhD EdD MD JD etc)")),
+  #           MHORES01 = factor(MHORES01,levels = c("Type 1","Type 2","Other: Non-Diabetic")),
+  #           MHORES04 = factor(MHORES04,levels = c("Yes","No"))) |> 
+  #     pivot_longer(cols = !Subject, names_to = "Charateristic", values_to = "values") |> 
+  #     group_by(Charateristic) |> 
+  #     tabyl(values,show_na = FALSE) |> 
+  #     as_tibble() |>
+```
+
+
+```{r}
+ # dm |>
+ #       select(Subject,SEX,ETHNIC:RACE,EDU) %>%
+ #       full_join(mh1 |>
+ #                    select(Subject,MHORES01,MHORES04),by = join_by(Subject)) |>
+ #       mutate(RACE = case_when(RACE == "White" ~ str_c(RACE,ETHNIC,sep = " - "),
+ #                              .default = RACE),
+ #              ETHNIC = NULL) |>
+ #      pivot_longer(cols = !Subject, names_to = "Category", values_to = "Charateristic") |>
+ #      mutate(Charateristic = factor(Charateristic, levels = c("Female","Male","White - Not Hispanic or Latino","White - Hispanic or Latino","American Indian or Alaska Native","Asian","Black or African American","Native Hawaiian or Pacific Islander","Other", "Grade 0-8","High School (Grades 9-12)","Some College (1-4 years)","Bachelor's Degree (BA BS etc)","Master's Degree (MA MS etc)","Doctorate or Professional school degree (PhD EdD MD JD etc)" ,"Type 1","Type 2","Other: Non-Diabetic","Yes","No"))) |>
+ #      group_by(Category) |> 
+ #      count(Charateristic) |> View()
+      # tabyl(Charateristic, show_na = FALSE) |>
+      # as_tibble() |> View()
+      # mutate(N = n,
+      #       `%` = 100*(round(percent,3))) |> View()
+```
+
+
 . . .
 
 ```{r}
 #| label: Demographics Table
 #| warning: false
 c("SEX","RACE","EDU","MHORES01","MHORES04") |> 
-  map_dfr(~ my_fun(.data[[.x]])) |> 
+  map(~ my_fun(.data[[.x]])) |>  
+  list_rbind() |>
   gt() |>
   opt_stylize(style = 6, color = "blue") |>
   cols_align(align = "center",columns = everything()) |>
-  tab_header(title = md("**Subject Demographics and Diabetes History**")) |>   
+  tab_header(title = md("**Subject Demographics and Diabetes History**")) |>
   tab_row_group(label = "Insulin Pump Use",rows = c(19:20)) |>
   tab_row_group(label = "Type of Diabetes",rows = c(16:18)) |>
   tab_row_group(label = "Education",rows = c(10:15)) |>

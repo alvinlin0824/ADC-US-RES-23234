@@ -73,39 +73,30 @@ file_list[str_detect(file_list,"extracted_realm.zip|dualsensors_upload_info.xml"
 ```{r}
 #| label: Import PD
 # read_sas(gsub("\\\\", "/", r"(\\wf00168p.oneabbott.com\data1\CDM\ADC-US-RES-23234\OpenClinica\Current\pd.sas7bdat)")) |>
-#   filter(!str_detect(DVYN,regex("Check here if no data recorded",ignore_case = T))) |> 
-#   transmute(DVDESC1 = case_when(!str_detect(DVDESC2,"^$|pattern")
+#   filter(!str_detect(DVYN,regex("Check here if no data recorded",ignore_case = T))) |> View()
+#   transmute(Subject = as.character(Subject),
+#             DVDESC1 = case_when(!str_detect(DVDESC2,"^$|pattern")
 #                              ~ str_c(DVDESC1, DVDESC2, sep = " "),
 #                              .default = DVDESC1),
-#            Preventative = DVDESC4) |>
-#   gt() |>
-#   gtsave("pd.docx")
-```
-
-```{r}
-#| label: Import PD
-# read_sas(gsub("\\\\", "/", r"(\\wf00168p.oneabbott.com\data1\CDM\ADC-US-RES-23234\OpenClinica\Current\pd.sas7bdat)")) |>
-#   filter(!str_detect(DVYN,regex("Check here if no data recorded",ignore_case = T))) |> 
-#   transmute(DVDESC1 = case_when(!str_detect(DVDESC2,"^$|pattern")
-#                              ~ str_c(DVDESC1, DVDESC2, sep = " "),
-#                              .default = DVDESC1),
-#            Preventative = DVDESC4) |>
-#   gt() |>
-#   gtsave("pd.docx")
+#             Preventative = case_when(!str_detect(DVDESC5,"^$|pattern") & !str_detect(DVDESC6,"^$|pattern")
+#                              ~ str_c(DVDESC4, DVDESC5, DVDESC6, sep = " "),
+#                              .default = DVDESC4)) |> 
+  # gt() |>
+  # gtsave("pd.docx")
 ```
 
 ```{r}
 #| label: Import DE
-read_sas(gsub("\\\\", "/", r"(\\wf00168p.oneabbott.com\data1\CDM\ADC-US-RES-23234\OpenClinica\Current\de.sas7bdat)")) |> 
-  filter(!str_detect(DEYN01,regex("Check here if no data recorded",ignore_case = T))) |> 
-  transmute( Subject = Subject,
-            `Sensor SN` = DESPID02,
-             `Date of the Incident` = format.Date(ymd(DEDTC02,tz = "America/Los_Angeles"),format = "%d %b %y"),
-            `Time of the Incident` = DETM01,
-            Description = str_to_sentence(DEORES02),
-           `Action Taken` = str_to_sentence(DEORES03)) |> 
-   gt() |> 
-   gtsave("de.docx")
+# read_sas(gsub("\\\\", "/", r"(\\wf00168p.oneabbott.com\data1\CDM\ADC-US-RES-23234\OpenClinica\Current\de.sas7bdat)")) |> 
+#   filter(!str_detect(DEYN01,regex("Check here if no data recorded",ignore_case = T))) |> 
+#   transmute( Subject = Subject,
+#             `Sensor SN` = DESPID02,
+#              `Date of the Incident` = format.Date(ymd(DEDTC02,tz = "America/Los_Angeles"),format = "%d %b %y"),
+#             `Time of the Incident` = DETM01,
+#             Description = str_to_sentence(DEORES02),
+#            `Action Taken` = str_to_sentence(DEORES03)) |> 
+#    gt() |> 
+#    gtsave("de.docx")
 ```
 
 ```{r}
