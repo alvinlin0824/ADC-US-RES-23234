@@ -36,7 +36,7 @@ params:
 <!-- Venous strip vs. Randox -->
 ```{r}
 #| label: Libaray Packages 
-#| message: false
+suppressPackageStartupMessages({
 library(tidyverse)
 library(reactable)
 library(haven)
@@ -48,6 +48,7 @@ library(fs)
 library(highcharter)
 library(vroom)
 library(gt)
+})
 ```
 
 <!-- UDP -->
@@ -269,6 +270,55 @@ kgriv121 <- kgr12 |>
 ```
 
 ```{r}
+p <- vector("list",length(unique(kgriv121$Subject)))
+for (names in unique(kgriv121$Subject)){
+p[[names]] <- kgriv121 |> 
+  filter(`Ref Type` == "Venous strip") |> 
+  # filter(IVVAL01 == "Valid" | is.na(IVVAL01)) |> 
+  mutate(kt = as.numeric(difftime(`Ketone Date Time`,first(`Ketone Date Time`),units = "hours")),
+         gt = as.numeric(difftime(`Glucose Date Time`,first(`Glucose Date Time`),units = "hours")),
+         .by = Subject) |> 
+  filter(Subject == names) |> 
+  ggplot() + 
+  geom_point(aes(x = gt, y = KRSEQ03), color = "#3399ff") + 
+  geom_line(aes(x = gt, y = KRSEQ03), color = "#3399ff") +
+  geom_point(aes(x = kt, y = KRSEQ01 * 100)) +
+  geom_line(aes(x = kt, y = KRSEQ01 * 100)) +
+  scale_x_continuous(name = "Time (Hours)", breaks = seq(0, 10, by = 1), limits = c(0,10)) + 
+  scale_y_continuous(
+    name = "Glucose (mg/dL)", breaks = seq(0, 450, by = 50), limits = c(0,450),
+    sec.axis = sec_axis(~ . /100, name = "Ketone (mmol/L)", breaks = seq(0, 4.5, by = 0.5))) +
+  theme_bw() +
+  labs(title =  names)
+   
+
+  ggsave(filename = paste0("plot_", names, ".png"), plot = p[[names]], width = 8, height = 6, dpi = 300)
+   # p[[names]] |> 
+   #   print()
+}
+```
+<!-- "90006" "1330003" "90008" "1330005" "1330010" -->
+
+```{r}
+data <- data.frame(
+  day = as.Date("2023-01-01") + 0:99,
+  temperature = runif(100, min = 0, max = 10),
+  price = runif(100, min = 0, max = 100)
+)
+
+# Plot with primary and secondary y-axes
+ggplot(data, aes(x = day)) +
+  geom_line(aes(y = temperature), color = "blue") +
+  geom_line(aes(y = price / 10), color = "red") +  # Adjust the scale for the secondary axis
+  scale_y_continuous(
+    name = "Temperature (°C)",
+    sec.axis = sec_axis(~ . * 10, name = "Price ($)")
+  ) +
+  theme_minimal()
+```
+
+
+```{r}
 #| label: Randox Quality Check
 kgriv12 <- kgriv121 |>
            mutate(iv_diff_pre1 = as.numeric(difftime(lag(`Ketone Date Time`, n = 1),`Ketone Date Time`,units = "hours")),
@@ -288,6 +338,23 @@ kgriv12 <- kgriv121 |>
                               .default = "")) |>
           filter((IVVAL01 == "Valid" | is.na(IVVAL01)) & Exclusion == "") |>
           select(!c(iv_diff_pre1:last_col()))
+```
+
+```{r}
+#| eval: false
+kgriv12 |> 
+     filter(`Ref Type` == "Randox") |> 
+     select(Subject, date_time = `Ketone Date Time`, Result = KRSEQ01) |> 
+     openxlsx::write.xlsx("Randox.xlsx")
+```
+
+```{r}
+#| eval: false
+vroom("cal_replacement_234_isc_prod1.txt", show_col_types = FALSE) |> 
+    transmute(sensor_serial_number = convert_UID_to_sensor_serial_number(sensor_UID),
+              slope = slope_na_mm,
+              intercept = intercept_na) |> 
+    openxlsx::write.xlsx("CalTable.xlsx")
 ```
 
 ```{r}
@@ -1074,6 +1141,30 @@ dm <- dm |>
       filter(!str_detect(DMYN,regex("Check here if no data recorded",ignore_case = T))) |>
       mutate(Subject = as.character(Subject)) |>
       arrange(Subject)
+```
+
+```{r}
+#|label: Import VS
+vs <- read_sas(gsub("\\\\", "/", r"(\\wf00168p.oneabbott.com\data1\CDM\ADC-US-RES-23234\OpenClinica\Current\vs.sas7bdat)"))
+vs <- vs |>
+      filter(!str_detect(VSYN01,regex("Check here if no data recorded",ignore_case = T))) |>
+      mutate(across(starts_with("VSO"), ~ as.numeric(.x)),
+             Subject = as.character(Subject)) |>
+      arrange(Subject)
+```
+
+```{r}
+#| eval: false
+dm |> 
+    select(Subject,SEX:RACE) |> 
+    left_join(vs |> 
+                 select(Subject,starts_with("VSOR")),
+              by = join_by(Subject == Subject)) |> 
+    mutate(`Weight(Kg)` = measurements::conv_unit(VSORES03,"lbs","kg"),
+          `Height(Inches)` = VSORES01*12 + VSORES02,
+          `Height(Meter)` = measurements::conv_unit(`Height(Inches)`,"inch","m")) |> 
+   select(Subject,SEX:RACE, `Weight(Pound)` = VSORES03,`Weight(Kg)`:`Height(Meter)`) |> 
+   openxlsx::write.xlsx("Demography.xlsx")
 ```
 
 ```{r}
