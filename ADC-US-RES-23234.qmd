@@ -1,0 +1,1761 @@
+---
+title: "ADC-US-RES-23234 Insulin Pump Suspension Study `r params$title1`"
+description: "To characterize beta-hydroxybutyrate ketone levels in people with type 1 diabetes using continuous subcutaneous insulin infusion (CSII) during a planned suspension of their insulin pump"
+author: "Alvin, Lin"
+date: "`r Sys.Date()`"
+format:
+   html:
+     theme: flatly
+     self-contained: true
+toc: true
+toc-depth: 3
+toc-location: left
+execute:
+  echo: false
+  warning: false 
+  keep-md: true
+params:
+  analysis: FALSE
+  plot: TRUE
+  title1: "Profile Plot"
+  title2: "Accuracy Performance"
+---
+
+<!-- EDC \\wf00168p.oneabbott.com\data1\CDM\ADC-US-RES-23234\OpenClinica\Current -->
+
+<!-- UUU \\wf00168p.oneabbott.com\data1\CDM\ADC-US-RES-23234\UploadData\UUU\UUU_DataFiles -->
+
+<!-- Study Protocol \\oneabbott.com\dept\ADC\Technical_OPS\Clinical_Affairs\Clinical Study Files\Apollo\ADC-US-RES-23234_IDE Pump Suspension Study\Protocol -->
+
+<!-- CRF \\oneabbott.com\dept\ADC\Technical_OPS\Clinical_Affairs\Clinical Study Files\Apollo\ADC-US-RES-23234_IDE Pump Suspension Study\Case Report Forms\Version B\Approved\pdf -->
+
+<!-- DMP \\oneabbott.com\dept\ADC\Technical_OPS\Clinical_Affairs\Clinical Study Files\Apollo\ADC-US-RES-23234_IDE Pump Suspension Study\CDM\Study_Binder\Data_Management_Plan\Version_1.0\Final -->
+
+<!-- Lori Rankin-Grundvig Site 133 Yale. Martin, Pamela Site 009 Rainier -->
+
+<!-- Venous strip vs. Randox -->
+```{r}
+#| label: Libaray Packages 
+suppressPackageStartupMessages({
+library(tidyverse)
+library(reactable)
+library(haven)
+library(janitor)
+# library(reactablefmtr)
+library(htmltools)
+library(UUU)
+library(fs)
+library(highcharter)
+library(vroom)
+library(gt)
+library(plotly)
+})
+```
+
+<!-- UDP -->
+```{r}
+#| label: Directory
+#| eval: false
+file_list <- dir_ls(gsub("\\\\", "/", r"(\\wf00168p.oneabbott.com\data1\CDM\ADC-US-RES-23234\UploadData\UUU\UUU_DataFiles)"),recurse = T)
+```
+
+```{r}
+#| label: Copy extracted_realm.zip to T drive
+#| eval: false
+file_list[str_detect(file_list,"extracted_realm.zip|dualsensors_upload_info.xml") & !str_detect(file_list,regex("Transfers|Archive"))] |>
+  file_copy(gsub("\\\\", "/", r"(D:\CUT\23234)"))
+```
+
+```{r}
+#| label: Move UDP output files to T drive
+# file_copy(gsub("\\\\", "/", r"(C:\UDP\OutputFiles\Output_2023-09-06-15-01)"),gsub("\\\\", "/", r"(\\oneabbott.com\dept\ADC\Technical_OPS\Clinical_Affairs\Clinical Study Files\Apollo\ADC-US-RES-23234_IDE Pump Suspension Study\Statistics\Upload Data)"))
+```
+<!-- UDP -->
+
+```{r}
+#| label: Import PD
+# read_sas(gsub("\\\\", "/", r"(\\wf00168p.oneabbott.com\data1\CDM\ADC-US-RES-23234\OpenClinica\Current\pd.sas7bdat)")) |>
+#   filter(!str_detect(DVYN,regex("Check here if no data recorded",ignore_case = T))) |> View()
+#   transmute(Subject = as.character(Subject),
+#             DVDESC1 = case_when(!str_detect(DVDESC2,"^$|pattern")
+#                              ~ str_c(DVDESC1, DVDESC2, sep = " "),
+#                              .default = DVDESC1),
+#             Preventative = case_when(!str_detect(DVDESC5,"^$|pattern") & !str_detect(DVDESC6,"^$|pattern")
+#                              ~ str_c(DVDESC4, DVDESC5, DVDESC6, sep = " "),
+#                              .default = DVDESC4)) |> 
+  # gt() |>
+  # gtsave("pd.docx")
+```
+
+```{r}
+#| label: Import DE
+# read_sas(gsub("\\\\", "/", r"(\\wf00168p.oneabbott.com\data1\CDM\ADC-US-RES-23234\OpenClinica\Current\de.sas7bdat)")) |> 
+#   filter(!str_detect(DEYN01,regex("Check here if no data recorded",ignore_case = T))) |> 
+#   transmute( Subject = Subject,
+#             `Sensor SN` = DESPID02,
+#              `Date of the Incident` = format.Date(ymd(DEDTC02,tz = "America/Los_Angeles"),format = "%d %b %y"),
+#             `Time of the Incident` = DETM01,
+#             Description = str_to_sentence(DEORES02),
+#            `Action Taken` = str_to_sentence(DEORES03)) |> 
+#    gt() |> 
+#    gtsave("de.docx")
+```
+
+```{r}
+#|label: Import IV1
+iv1 <- read_sas(gsub("\\\\", "/", r"(\\wf00168p.oneabbott.com\data1\CDM\ADC-US-RES-23234\OpenClinica\Current\iv1.sas7bdat)"))
+iv1 <- iv1 |>
+       filter(!str_detect(IVYN01,regex("Check here if no data recorded",ignore_case = T))) |>
+       mutate(Subject = as.character(Subject)) |>
+       arrange(Subject)
+```
+
+```{r}
+#|label: Import IV2
+iv2 <- read_sas(gsub("\\\\", "/", r"(\\wf00168p.oneabbott.com\data1\CDM\ADC-US-RES-23234\OpenClinica\Current\iv2.sas7bdat)"))
+iv2 <- iv2 |>
+       filter(!is.na(IVID01)) |>
+       mutate(Subject = as.character(Subject),
+              IVID01 = as.character(IVID01)) |>
+       arrange(Subject)
+```
+
+```{r}
+#| label: IV2 left join IV1
+iv12 <- iv2 |> 
+        select(Subject,`__STUDYEVENTREPEATKEY`,IVID01,IVTM01,IVVAL01) |> 
+        left_join(iv1 |>
+                  select(Subject,`__STUDYEVENTREPEATKEY`,IVDTC01),
+                  by = join_by("Subject","__STUDYEVENTREPEATKEY")) |> 
+        select(!`__STUDYEVENTREPEATKEY`) |> 
+        arrange(Subject,IVDTC01)
+```
+
+```{r}
+#|label: Import kgr1
+kgr1 <- read_sas(gsub("\\\\", "/", r"(\\wf00168p.oneabbott.com\data1\CDM\ADC-US-RES-23234\OpenClinica\Current\kgr1.sas7bdat)"))
+kgr1 <- kgr1 |>
+        filter(!str_detect(KRYN01,regex("Check here if no data recorded",ignore_case = T))) |>
+        mutate(Subject = as.character(Subject)) |>
+        arrange(Subject)
+```
+
+```{r}
+#|label: Import kgr2
+kgr2 <- read_sas(gsub("\\\\", "/", r"(\\wf00168p.oneabbott.com\data1\CDM\ADC-US-RES-23234\OpenClinica\Current\kgr2.sas7bdat)"))
+kgr2 <- kgr2 |>
+        mutate(Subject = as.character(Subject),
+               KRSEQ02 = as.character(KRSEQ02)) |>
+        arrange(Subject)
+```
+
+```{r}
+#|label: Import ps
+ps <- read_sas(gsub("\\\\", "/", r"(\\wf00168p.oneabbott.com\data1\CDM\ADC-US-RES-23234\OpenClinica\Current\ps.sas7bdat)"))
+ps <- ps |>
+      filter(!str_detect(PSYN01,regex("Check here if no data recorded",ignore_case = T))) |>
+      mutate(Subject = as.character(Subject),
+             `Ketone Date Time` = ymd_hm(str_c(PSDTC01, PSTM01, sep = " ")),
+             KRSEQ01 = PSORES02,
+             `Glucose Date Time` = ymd_hm(str_c(PSDTC01, PSTM01, sep = " ")),
+             KRSEQ03 = PSORES01,
+             `Ref Type` = "Venous strip",
+             pump_suspend_start = ymd_hm(str_c(PSDTC01, PSTM02, sep = " ")),
+             pump_suspend_end = ymd_hm(str_c(PSDTC01, PSTM03, sep = " "))) |>
+      arrange(Subject)
+```
+
+```{r}
+#| label: KGR2 left join KGR1
+kgr12 <- kgr2 |> 
+         select(Subject,KRSEQ02:KRDTC03) |> 
+         left_join(kgr1 |> 
+                   select(Subject,KRDTC01),
+                   by = join_by(Subject == Subject)) |> 
+         arrange(Subject,KRDTC01)
+```
+
+```{r}
+#| label: Casey
+
+ps |> 
+  mutate(pump_duration = as.numeric(difftime(pump_suspend_end,pump_suspend_start,units = "hours"))) |> 
+  summarise(N = n(),
+            mean = mean(pump_duration),
+            min = min(pump_duration),
+            max = max(pump_duration)
+            )
+```
+
+
+```{r}
+kgr12 |> 
+  filter(Subject %in% c("90008","1330010")) |> 
+  select(Subject, ketone_time = KRDTC02, ketone_reference = KRSEQ01,
+                  glucose_time = KRDTC03, glucose_reference = KRSEQ03) |> 
+  openxlsx::write.xlsx("ketone&glucose.xlsx")
+```
+
+```{r}
+#| label: Import ketone.rds
+upload_ketone <- readRDS(gsub("\\\\", "/", r"(\\oneabbott.com\dept\ADC\Technical_OPS\Clinical_Affairs\Clinical Study Files\Apollo\ADC-US-RES-23234_IDE Pump Suspension Study\Statistics\Programs\Datasets\AL\ketone.rds)"))
+```
+
+```{r}
+#| label: Import Randox rds
+randox <- readRDS(gsub("\\\\", "/", r"(\\oneabbott.com\dept\ADC\Technical_OPS\Clinical_Affairs\Clinical Study Files\Apollo\ADC-US-RES-23234_IDE Pump Suspension Study\Statistics\Programs\Datasets\AL\randox.rds)"))
+```
+
+```{r}
+#| label: Study Results
+#| eval: false
+# 1
+# kgr12 |>
+#    select(!KRDTC02:KRDTC01) |>
+#    left_join(randox |>
+#              mutate(`8uL Result` = case_when(`8uL Result` == 2.9 ~ `2uL Result`*4,
+#                                                             .default = `8uL Result`)) |>
+#              summarise(Randox = mean(`8uL Result`,na.rm = T),.by = `Sample ID`),
+#              # summarise(Randox = mean(`2uL Result`,na.rm = T)*4,.by = `Sample ID`),
+#              by = join_by(KRSEQ02 == `Sample ID`)) |>
+#    filter(Subject != "1330004") |>
+#    filter(if_all(c(KRSEQ02:Randox), ~ !is.na(.x))) |>
+#    # filter(Subject %in% c(condition)) |>
+#    ggpubr::ggscatter(x = "KRSEQ01", y = "Randox", add = "reg.line") +
+#    # facet_wrap(~Subject,ncol = 2,nrow = 2) +
+#    labs(x = "Venous strip") +
+#    ggpubr::stat_regline_equation(aes(label = paste(..eq.label..,..rr.label.., sep = "~`,`~")),
+#                                   label.x = 0)
+
+# mean_sd <- list(mean = ~ mean(.x, na.rm = TRUE), 
+#                 sd = ~ sd(.x, na.rm = TRUE),
+#                 min = ~ min(.x, na.rm = TRUE),
+#                 max = ~ max(.x, na.rm = TRUE))
+# 2
+# kgr12 |> 
+#      slice(1,.by = Subject) |> 
+#      summarise(across(c(KRSEQ03,KRSEQ01),mean_sd))
+# 3
+# Ketone
+# kgr12 |> 
+#      slice_max(KRSEQ01,n = 1,with_ties = F,by = Subject) |>  
+#      summarise(across(c(KRSEQ01),mean_sd))
+# Glucose
+# kgr12 |> 
+#      slice_max(KRSEQ03,n = 1,with_ties = F,by = Subject) |>  
+#      summarise(across(c(KRSEQ03),mean_sd))
+# 4
+# kgr12 |> 
+#     slice_max(KRSEQ01,n = 1,with_ties = F,by = Subject) |> 
+#     mutate(Count = case_when(KRSEQ01 > 1 ~ "T",
+#                              .default = "F")) |> 
+#     tabyl(Count)
+# 5 
+# kgr12 |> 
+#     mutate(`Ketone Date Time` = ymd_hm(str_c(KRDTC01,KRDTC02,sep = " "))) |> 
+#     filter(`Ketone Date Time` <= first(`Ketone Date Time`) + hours(3),.by = Subject) |> 
+#     filter(KRSEQ01 > 1,.by = Subject) |> 
+#     filter(KRSEQ03 < 240,.by = Subject) |> 
+#     summarise(N = n_distinct(Subject))
+# 6 
+# kgr12 |>
+#     mutate(`Ketone Date Time` = ymd_hm(str_c(KRDTC01,KRDTC02,sep = " "))) |>
+#     filter(`Ketone Date Time` <= first(`Ketone Date Time`) + hours(6),.by = Subject) |>
+#     filter(KRSEQ01 > 1.5,.by = Subject) |> View()
+#     filter(KRSEQ03 < 240,.by = Subject) |>
+#     summarise(N = n_distinct(Subject))
+# 7
+# ketone |>
+#   filter(`Ref Type` == "Venous strip") |>
+#   summarise(across(c(duration_to_below_1mmol),mean_sd))
+```
+
+```{r}
+ketone_wide <- 
+          kgr12 |> 
+              filter(!is.na(KRSEQ02)) |> 
+              full_join(iv12, 
+                        by = join_by(Subject == Subject,KRSEQ02 == IVID01, KRDTC01 == IVDTC01)) |> 
+             left_join(randox |> 
+                         filter(!str_starts(`Sample ID`,"104")) |> 
+                          summarise(mean_2uL = mean(`2uL Result`,na.rm = T),
+                                                mean_8uL = mean(`8uL Result`,na.rm = T),.by = `Sample ID`) |> 
+                                    mutate(Randox = case_when(mean_8uL < 2.9 ~ mean_8uL,
+                                                                 mean_8uL >= 2.9 ~ mean_2uL*4,
+                                                                 .default = mean_2uL*4),.keep = "unused"),
+                                    by = join_by(KRSEQ02 == `Sample ID`)) |> 
+             left_join(ps |> 
+                        select(Subject,pump_suspend_start,pump_suspend_end), 
+                        by = join_by(Subject == Subject)) |> 
+             mutate(`Ketone Date Time` = case_when(
+                                         is.na(IVTM01)
+                                        ~ ymd_hm(str_c(KRDTC01,KRDTC02,sep = " ")),
+                                        .default = ymd_hm(str_c(KRDTC01,IVTM01,sep = " "))),
+                    `Glucose Date Time` = ymd_hm(str_c(KRDTC01,KRDTC03,sep = " "))) |>
+              bind_rows(ps |> 
+                        select(Subject,`Ketone Date Time`:pump_suspend_end)) |> 
+           select(!c(KRDTC02,KRDTC03:IVTM01, `Ref Type`)) |>
+           arrange(Subject,`Ketone Date Time`)
+```
+
+
+```{r}
+#| label: KGR12 Full join IV12
+kgriv121 <- kgr12 |> 
+            filter(!is.na(KRSEQ02)) |> 
+            full_join(iv12, 
+                      by = join_by(Subject == Subject,KRSEQ02 == IVID01, KRDTC01 == IVDTC01)) |> 
+            mutate(`Ref Type` = "Venous strip") |> 
+            bind_rows(
+                      kgr12 |> 
+                      filter(!is.na(KRSEQ02)) |> 
+                      full_join(iv12, 
+                      by = join_by(Subject == Subject,KRSEQ02 == IVID01, KRDTC01 == IVDTC01)) |> 
+                      select(!c(KRSEQ01,KRSEQ03,KRDTC03)) |> 
+            left_join(randox |> 
+                            summarise(mean_2uL = mean(`2uL Result`,na.rm = T),
+                                      mean_8uL = mean(`8uL Result`,na.rm = T),.by = `Sample ID`) |> 
+                            mutate(KRSEQ01 = case_when(mean_8uL < 2.9 ~ mean_8uL,
+                                                       mean_8uL >= 2.9 ~ mean_2uL*4,
+                                                       .default = mean_2uL*4),.keep = "unused"),
+                            by = join_by(KRSEQ02 == `Sample ID`)) |> 
+              filter(Subject != "1330004") |>
+              mutate(`Ref Type` = "Randox",.keep = "unused")
+              ) |> 
+           filter(!is.na(KRSEQ01)) |> 
+           mutate(`Ketone Date Time` = case_when(
+                                         is.na(IVTM01)
+                                        ~ ymd_hm(str_c(KRDTC01,KRDTC02,sep = " ")),
+                                        .default = ymd_hm(str_c(KRDTC01,IVTM01,sep = " "))),
+                  `Glucose Date Time` = ymd_hm(str_c(KRDTC01,KRDTC03,sep = " "))) |>
+           select(!c(KRDTC02,KRDTC03:IVTM01)) |>
+           arrange(`Ref Type`,Subject,`Ketone Date Time`)
+```
+
+```{r}
+p <- vector("list",length(unique(kgriv121$Subject)))
+for (names in unique(kgriv121$Subject)){
+p[[names]] <- kgriv121 |> 
+  filter(`Ref Type` == "Venous strip") |> 
+  # filter(IVVAL01 == "Valid" | is.na(IVVAL01)) |> 
+  mutate(kt = as.numeric(difftime(`Ketone Date Time`,first(`Ketone Date Time`),units = "hours")),
+         gt = as.numeric(difftime(`Glucose Date Time`,first(`Glucose Date Time`),units = "hours")),
+         .by = Subject) |> 
+  filter(Subject == names) |> 
+  ggplot() + 
+  geom_point(aes(x = gt, y = KRSEQ03), color = "#3399ff") + 
+  geom_line(aes(x = gt, y = KRSEQ03), color = "#3399ff") +
+  geom_point(aes(x = kt, y = KRSEQ01 * 100)) +
+  geom_line(aes(x = kt, y = KRSEQ01 * 100)) +
+  scale_x_continuous(name = "Time (Hours)", breaks = seq(0, 10, by = 1), limits = c(0,10)) + 
+  scale_y_continuous(
+    name = "Glucose (mg/dL)", breaks = seq(0, 450, by = 50), limits = c(0,450),
+    sec.axis = sec_axis(~ . /100, name = "Ketone (mmol/L)", breaks = seq(0, 4.5, by = 0.5))) +
+  theme_bw() +
+  labs(title =  names)
+   
+
+  ggsave(filename = paste0("plot_", names, ".png"), plot = p[[names]], width = 8, height = 6, dpi = 300)
+   # p[[names]] |> 
+   #   print()
+}
+```
+<!-- "90006" "1330003" "90008" "1330005" "1330010" -->
+
+```{r}
+(kgriv121 |> 
+  filter(`Ref Type` == "Venous strip") |> 
+  # filter(IVVAL01 == "Valid" | is.na(IVVAL01)) |> 
+  mutate(kt = as.numeric(difftime(`Ketone Date Time`,first(`Ketone Date Time`),units = "hours")),
+         gt = as.numeric(difftime(`Glucose Date Time`,first(`Glucose Date Time`),units = "hours")),
+         .by = Subject) |> 
+  ggplot(aes(x = kt, y = KRSEQ01, color = Subject)) + 
+  geom_point() +
+  geom_line() +
+  geom_hline(yintercept = 1,linewidth = 1, linetype = "twodash", color = "red") +
+  scale_x_continuous(name = "Time (Hours)", breaks = seq(0, 10, by = 1), limits = c(0,10)) + 
+  scale_y_continuous(name = "Ketone (mmol/L)", breaks = seq(0, 4.5, by = 0.5), limits = c(0,4.5)) +
+  theme_bw() + 
+  theme(panel.grid.major.y = element_blank(),panel.grid.minor.y = element_blank(),legend.position = "bottom",plot.title = element_text(hjust = 0.5))) %>% 
+  ggsave(filename = "Ketone.png", . ,width = 8, height = 6, dpi = 300)
+```
+
+```{r}
+(kgriv121 |> 
+  filter(`Ref Type` == "Venous strip") |> 
+  # filter(IVVAL01 == "Valid" | is.na(IVVAL01)) |> 
+  mutate(kt = as.numeric(difftime(`Ketone Date Time`,first(`Ketone Date Time`),units = "hours")),
+         gt = as.numeric(difftime(`Glucose Date Time`,first(`Glucose Date Time`),units = "hours")),
+         .by = Subject) |> 
+  ggplot(aes(x = gt, y = KRSEQ03, color = Subject)) + 
+  geom_point() +
+  geom_line() +
+  geom_hline(yintercept = 225,linewidth = 1, linetype = "twodash", color = "red") +
+  scale_x_continuous(name = "Time (Hours)", breaks = seq(0, 10, by = 1), limits = c(0,10)) + 
+  scale_y_continuous(name = "Glucose (mg/dL)", breaks = seq(0, 450, by = 50), limits = c(0,450)) +
+  theme_bw() + 
+  theme(panel.grid.major.y = element_blank(),panel.grid.minor.y = element_blank(),legend.position = "bottom",plot.title = element_text(hjust = 0.5))) %>% 
+  ggsave(filename = "Glucose.png", . ,width = 8, height = 6, dpi = 300)
+```
+
+```{r}
+#| label: Randox Quality Check
+kgriv12 <- kgriv121 |>
+           mutate(iv_diff_pre1 = as.numeric(difftime(lag(`Ketone Date Time`, n = 1),`Ketone Date Time`,units = "hours")),
+                  iv_diff_post1 = as.numeric(difftime(lead(`Ketone Date Time`, n = 1),`Ketone Date Time`,units = "hours")),
+                  ketone_rate_pre1 = case_when(-30 <= iv_diff_pre1 & iv_diff_pre1 < 0 ~
+                   (lag(KRSEQ01, n = 1) - KRSEQ01) / as.numeric(difftime(lag(`Ketone Date Time`, n = 1),`Ketone Date Time`,units = "hours")),
+                   .default = NA),
+                  ketone_rate_post1 = case_when(0 < iv_diff_post1 & iv_diff_post1 <= 30 ~
+                               (lead(KRSEQ01, n = 1) - KRSEQ01) / as.numeric(difftime(lead(`Ketone Date Time`, n = 1),`Ketone Date Time`,units = "hours")),
+                   .default = NA),
+                  .by = c(Subject,`Ref Type`)) |>
+          rowwise() |>
+          mutate(avg_pre1_post1 = mean(c(abs(ketone_rate_pre1),abs(ketone_rate_post1)))) |>
+          ungroup() |>
+          mutate(Exclusion = case_when(
+                              round_normal(avg_pre1_post1,1) >= 3.0 ~ "Flag",
+                              .default = "")) |>
+          filter((IVVAL01 == "Valid" | is.na(IVVAL01)) & Exclusion == "") |>
+          select(!c(iv_diff_pre1:last_col()))
+```
+
+```{r}
+#| label: Left join kgriv12 with Pump suspension
+
+kgriv12 <- kgriv12 |> 
+              left_join(ps |> 
+                        select(Subject,pump_suspend_start,pump_suspend_end), 
+                        by = join_by(Subject == Subject)) 
+  # filter(between(`Ketone Date Time`,pump_suspend_start,pump_suspend_end))
+```
+
+```{r}
+#| eval: false
+kgriv12 |> 
+     filter(`Ref Type` == "Randox") |> 
+     select(Subject, date_time = `Ketone Date Time`, Result = KRSEQ01) |> 
+     openxlsx::write.xlsx("Randox.xlsx")
+```
+
+```{r}
+#| eval: false
+vroom("cal_replacement_234_isc_prod1.txt", show_col_types = FALSE) |> 
+    transmute(sensor_serial_number = convert_UID_to_sensor_serial_number(sensor_UID),
+              slope = slope_na_mm,
+              intercept = intercept_na) |> 
+    openxlsx::write.xlsx("CalTable.xlsx")
+```
+
+```{r}
+#| label: Get Time duration Wide
+ketone_wide_updated <- 
+ketone_wide |> 
+          left_join(
+            # Find the Peak Time and consider duplicated max values
+            ketone_wide |> 
+              slice_max(Randox,n = 1,with_ties = F,na_rm = TRUE, by = c(Subject)) |> 
+              select(Subject,`Ketone Peak Time` = `Ketone Date Time`),
+              by = join_by(Subject)) |> 
+          left_join(
+            # Find the Peak Time and consider duplicated max values
+            ketone_wide |> 
+              slice_max(KRSEQ03,n = 1,with_ties = F,na_rm = TRUE, by = c(Subject)) |> 
+              select(Subject,`Glucose Peak Time` = `Glucose Date Time`),
+              by = join_by(Subject)) |> 
+          mutate(`Time < 1 mmol/L` = case_when(max(Randox,na.rm = T) > 1 & 
+                                               `Ketone Date Time` > `Ketone Peak Time` & 
+                                               Randox < 1  ~ `Ketone Date Time`),
+                 `Time < 1 mmol/L` = first(`Time < 1 mmol/L`,na_rm = T),
+
+                 duration_to_peak = as.numeric(difftime(`Ketone Date Time`,first(`Ketone Date Time`),units = "hours")),
+                 duration_to_below_1mmol = as.numeric(difftime(`Time < 1 mmol/L`,`Ketone Peak Time` ,units = "hours")),
+                 `Time < 250 mg/dL` = case_when(max(KRSEQ03,na.rm = T) > 250 & 
+                                                `Glucose Date Time` > `Glucose Peak Time` & 
+                                                KRSEQ03 < 250  ~ `Glucose Date Time`),
+                 `Time < 250 mg/dL` = first(`Time < 250 mg/dL`,na_rm = T),
+                 duration_to_below_250mg = as.numeric(difftime(`Time < 250 mg/dL`,`Glucose Peak Time` ,units = "hours")),
+                 .by = c(Subject))
+```  
+  
+```{r}
+#| label: Get Time duration
+ketone <- kgriv12 |> 
+          bind_rows(
+            ps |> 
+              select(Subject,`Ketone Date Time`:pump_suspend_end)) |> 
+          arrange(Subject, `Ref Type`, `Ketone Date Time`) |> 
+          left_join(
+            # Find the Peak Time and consider duplicated max values
+            kgriv12 |> 
+              slice_max(KRSEQ01,n = 1,with_ties = F,by = c(Subject,`Ref Type`)) |> 
+              select(Subject,`Ref Type` ,`Peak Time` = `Ketone Date Time`),
+              by = join_by(Subject,`Ref Type`)) |> 
+          mutate(`Time < 1 mmol/L` = case_when(max(KRSEQ01,na.rm = T) > 1 & 
+                                             `Ketone Date Time` > `Peak Time` & 
+                                              KRSEQ01 < 1  ~ `Ketone Date Time`),
+                 `Time < 1 mmol/L` = first(`Time < 1 mmol/L`,na_rm = T),
+
+                 duration_to_peak = as.numeric(difftime(`Ketone Date Time`,first(`Ketone Date Time`),units = "hours")),
+                 duration_to_below_1mmol = as.numeric(difftime(`Time < 1 mmol/L`,`Peak Time` ,units = "hours")),
+                 .by = c(Subject,`Ref Type`))
+```
+
+`r if(params$analysis){knitr::asis_output("# **Safety**")}`
+```{r eval = params$analysis}
+#| label: Summary for Ketone Reference
+summary_calculation <- list(Mean = ~ mean(.x, na.rm = T),
+                            Median = ~ median(.x, na.rm = T),
+                            SD = ~ sd(.x, na.rm = T),
+                            Min = ~ min(.x, na.rm = T),
+                            Max = ~ max(.x, na.rm = T),
+                            N = ~ sum(!is.na(.x),na.rm = T))
+ketone |>
+   group_by(Subject,`Ref Type`) |>
+   summarise_at("KRSEQ01",summary_calculation) |>
+   # Fix round half to even
+   mutate(across(c(Mean,SD), ~ round(.x + 0.00001,2))) |> 
+   gt() |>
+   cols_align(align = "center") |>
+   fmt_number(columns = c(Median,Min,Max),decimals = 2) |> 
+   opt_stylize(style = 6, color = "blue") |>
+   tab_header(title = md("**Ketone Test Result (mmol/L)**"))
+```
+
+```{r eval = params$analysis}
+#| label: Summary for Ketone Reference Baseline
+summary_calculation <- list(Mean = ~ mean(.x, na.rm = T),
+                            Median = ~ median(.x, na.rm = T),
+                            SD = ~ sd(.x, na.rm = T),
+                            Min = ~ min(.x, na.rm = T),
+                            Max = ~ max(.x, na.rm = T),
+                            N = ~ sum(!is.na(.x),na.rm = T))
+ketone |>
+   filter(`Ref Type` == "Venous strip") |>
+   slice_min(`Glucose Date Time`,by = Subject) |> 
+   summarise_at("KRSEQ03",summary_calculation) |>
+   # Fix round half to even
+   mutate(across(c(Mean,SD), ~ round(.x + 0.00001,2))) |> 
+   gt() |>
+   cols_align(align = "center") |>
+   fmt_number(columns = c(Median,Min,Max),decimals = 2) |> 
+   opt_stylize(style = 6, color = "blue") |>
+   tab_header(title = md("**Ketone Test Result (mmol/L)**"))
+```
+
+```{r eval = params$analysis}
+#| label: Summary for Ketone Reference Peak
+summary_calculation <- list(Mean = ~ mean(.x, na.rm = T),
+                            Median = ~ median(.x, na.rm = T),
+                            SD = ~ sd(.x, na.rm = T),
+                            Min = ~ min(.x, na.rm = T),
+                            Max = ~ max(.x, na.rm = T),
+                            N = ~ sum(!is.na(.x),na.rm = T))
+ketone |>
+   filter(`Ref Type` == "Venous strip") |>
+   slice_max(KRSEQ03,by = Subject) |> 
+   summarise_at("KRSEQ03",summary_calculation) |>
+   # Fix round half to even
+   mutate(across(c(Mean,SD), ~ round(.x + 0.00001,2))) |> 
+   gt() |>
+   cols_align(align = "center") |>
+   fmt_number(columns = c(Median,Min,Max),decimals = 2) |> 
+   opt_stylize(style = 6, color = "blue") |>
+   tab_header(title = md("**Ketone Test Result (mmol/L)**"))
+```
+
+```{r eval = params$analysis}
+#| label: Summary for Ketone Reference Average
+summary_calculation <- list(Mean = ~ mean(.x, na.rm = T),
+                            Median = ~ median(.x, na.rm = T),
+                            SD = ~ sd(.x, na.rm = T),
+                            Min = ~ min(.x, na.rm = T),
+                            Max = ~ max(.x, na.rm = T),
+                            N = ~ sum(!is.na(.x),na.rm = T))
+ketone |>
+   filter(`Ref Type` == "Venous strip") |>
+   # slice_max(KRSEQ01,by = Subject) |> 
+   summarise_at("KRSEQ03",summary_calculation) |>
+   # Fix round half to even
+   mutate(across(c(Mean,SD), ~ round(.x + 0.00001,2))) |> 
+   gt() |>
+   cols_align(align = "center") |>
+   fmt_number(columns = c(Median,Min,Max),decimals = 2) |> 
+   opt_stylize(style = 6, color = "blue") |>
+   tab_header(title = md("**Ketone Test Result (mmol/L)**"))
+```
+
+```{r eval = params$analysis}
+#| label: Summary for Ketone Reference End
+summary_calculation <- list(Mean = ~ mean(.x, na.rm = T),
+                            Median = ~ median(.x, na.rm = T),
+                            SD = ~ sd(.x, na.rm = T),
+                            Min = ~ min(.x, na.rm = T),
+                            Max = ~ max(.x, na.rm = T),
+                            N = ~ sum(!is.na(.x),na.rm = T))
+ketone |>
+   filter(`Ref Type` == "Venous strip") |>
+   slice_max(`Glucose Date Time`,by = Subject) |> 
+   summarise_at("KRSEQ03",summary_calculation) |>
+   # Fix round half to even
+   mutate(across(c(Mean,SD), ~ round(.x + 0.00001,2))) |> 
+   gt() |>
+   cols_align(align = "center") |>
+   fmt_number(columns = c(Median,Min,Max),decimals = 2) |> 
+   opt_stylize(style = 6, color = "blue") |>
+   tab_header(title = md("**Ketone Test Result (mmol/L)**"))
+```
+
+```{r eval = params$analysis}
+#| label: Duration Table
+#| column: page
+#| tbl-cap: "Duration Table"
+ketone |> 
+  slice_max(KRSEQ01,n = 1,with_ties = F,by = c(Subject,`Ref Type`)) |> 
+  left_join(
+    ketone |> 
+    select(Subject,`Start Time` = `Ketone Date Time`,`Ref Type`) |> 
+    slice(1,.by = c(Subject,`Ref Type`)),by = join_by(Subject,`Ref Type`)) |> 
+  select(Subject,`Ref Type`,`Start Time`,`Peak Time`,
+         `Max Ketone Reference(mmol/L)` = KRSEQ01,`Time once < 1 mmol/L` = `Time < 1 mmol/L`,
+         `Time to Peak(Hours)` = duration_to_peak, `Time to < 1 mmol/L(Hours)` = duration_to_below_1mmol) |> 
+  # Fix round half to even
+  mutate(across(c(`Time to Peak(Hours)`,`Time to < 1 mmol/L(Hours)`), ~ round(.x + 0.0001,2))) |>
+  arrange(Subject) |>
+  gt(groupname_col = c("Subject")) |>
+  cols_align(align = "center") |>
+  fmt_number(columns = "Max Ketone Reference(mmol/L)", decimals = 2) |> 
+  opt_stylize(style = 6, color = "blue")
+```
+
+```{r}
+ketone_wide_updated |> 
+     filter(max(KRSEQ03,na.rm = T) >= 250,.by = c(Subject)) |> 
+     slice_max(KRSEQ03, n = 1, with_ties = F,by = c(Subject)) |> 
+     summarise(across(c(duration_to_below_250mg),summary_calculation[c(1,3,6)],.names = "{.col} {.fn}")) |>
+     gt() 
+     # cols_align(align = "center") |>
+     # tab_spanner(label = "Maximum Ketone Level Achieved",columns = c("KRSEQ01 Mean","KRSEQ01 SD","KRSEQ01 N")) |>
+     # tab_spanner(label = "Time(Hours) To Peak Ketone Level From First Test",columns = c("duration_to_peak Mean","duration_to_peak SD","duration_to_peak N")) |>
+     # tab_spanner(label = "Time(Hours) From Peak Ketone Level to Ketone Level < 1 mmol/L",columns = c("duration_to_below_1mmol Mean","duration_to_below_1mmol SD","duration_to_below_1mmol N")) |>
+     # fmt_number(columns = contains(c("Mean","SD")),decimals = 2) |>
+     # cols_label(
+     #  `KRSEQ01 Mean` = "Mean",`KRSEQ01 SD` = "SD",
+     #  `KRSEQ01 N` = "N",
+     #  `duration_to_peak Mean` = "Mean",`duration_to_peak SD` = "SD",`duration_to_peak N` = "N",
+     #  `duration_to_below_1mmol Mean` = "Mean",`duration_to_below_1mmol SD` = "SD",
+     #  `duration_to_below_1mmol N` =  "N") |>
+     #  opt_stylize(style = 6, color = "blue")
+```
+
+
+```{r eval = params$analysis}
+#| label: Summary for Peak reaching 1 mmol/L
+#| column: page
+#| tbl-cap: "Summary for Peak reaching 1 mmol/L"
+ketone |> 
+     filter(max(KRSEQ01,na.rm = T) >= 1,.by = c(Subject,`Ref Type`)) |> 
+     slice_max(KRSEQ01, n = 1, with_ties = F,by = c(Subject,`Ref Type`)) |> 
+     summarise(across(c(KRSEQ01,duration_to_peak,duration_to_below_1mmol),summary_calculation[c(1,3,6)],.names = "{.col} {.fn}"),.by = c(`Ref Type`)) |>
+     gt() |>
+     cols_align(align = "center") |>
+     tab_spanner(label = "Maximum Ketone Level Achieved",columns = c("KRSEQ01 Mean","KRSEQ01 SD","KRSEQ01 N")) |>
+     tab_spanner(label = "Time(Hours) To Peak Ketone Level From First Test",columns = c("duration_to_peak Mean","duration_to_peak SD","duration_to_peak N")) |>
+     tab_spanner(label = "Time(Hours) From Peak Ketone Level to Ketone Level < 1 mmol/L",columns = c("duration_to_below_1mmol Mean","duration_to_below_1mmol SD","duration_to_below_1mmol N")) |>
+     fmt_number(columns = contains(c("Mean","SD")),decimals = 2) |>
+     cols_label(
+      `KRSEQ01 Mean` = "Mean",`KRSEQ01 SD` = "SD",
+      `KRSEQ01 N` = "N",
+      `duration_to_peak Mean` = "Mean",`duration_to_peak SD` = "SD",`duration_to_peak N` = "N",
+      `duration_to_below_1mmol Mean` = "Mean",`duration_to_below_1mmol SD` = "SD",
+      `duration_to_below_1mmol N` =  "N") |>
+      opt_stylize(style = 6, color = "blue")
+```
+
+```{r eval = params$analysis}
+#| label: Summary for Peak
+#| column: page
+#| tbl-cap: "Summary for Peak"
+ketone |> 
+     filter(KRSEQ01 == max(KRSEQ01,na.rm = T) & !is.na(`Time < 1 mmol/L`) ,.by = c(Subject,`Ref Type`)) |> 
+     slice_min(`Ketone Date Time`, n = 1, with_ties = F,by = c(Subject,`Ref Type`)) |> 
+     summarise(across(c(KRSEQ01,duration_to_peak,duration_to_below_1mmol),summary_calculation[c(1,3,6)],.names = "{.col} {.fn}"),.by = c(`Ref Type`)) |> 
+     gt() |> 
+     cols_align(align = "center") |>
+     tab_spanner(label = "Maximum Ketone Level Achieved",columns = c("KRSEQ01 Mean","KRSEQ01 SD","KRSEQ01 N")) |>
+     tab_spanner(label = "Time(Hours) To Peak Ketone Level From First Test",columns = c("duration_to_peak Mean","duration_to_peak SD","duration_to_peak N")) |>
+     tab_spanner(label = "Time(Hours) From Peak Ketone Level to Ketone Level < 1 mmol/L",columns = c("duration_to_below_1mmol Mean","duration_to_below_1mmol SD","duration_to_below_1mmol N")) |>
+     fmt_number(columns = contains(c("Mean","SD")),decimals = 2) |>
+     cols_label(
+      `KRSEQ01 Mean` = "Mean",`KRSEQ01 SD` = "SD",
+      `KRSEQ01 N` = "N",
+      `duration_to_peak Mean` = "Mean",`duration_to_peak SD` = "SD",`duration_to_peak N` = "N",
+      `duration_to_below_1mmol Mean` = "Mean",`duration_to_below_1mmol SD` = "SD",
+      `duration_to_below_1mmol N` =  "N") |>
+      opt_stylize(style = 6, color = "blue")
+```
+
+```{r eval = params$analysis}
+#| label: Summary for Peak all subjects
+#| column: page
+#| tbl-cap: "Summary for Peak all subjects"
+ketone |> 
+     filter(KRSEQ01 == max(KRSEQ01,na.rm = T),.by = c(Subject,`Ref Type`)) |> 
+     slice_min(`Ketone Date Time`, n = 1, with_ties = F,by = c(Subject,`Ref Type`)) |> 
+     summarise(across(c(KRSEQ01,duration_to_peak,duration_to_below_1mmol),summary_calculation[c(1,3,6)],.names = "{.col} {.fn}"), .by = c(`Ref Type`)) |> 
+     gt() |> 
+     cols_align(align = "center") |>
+     tab_spanner(label = "Maximum Ketone Level Achieved",columns = c("KRSEQ01 Mean","KRSEQ01 SD","KRSEQ01 N")) |>
+     tab_spanner(label = "Time(Hours) To Peak Ketone Level From First Test",columns = c("duration_to_peak Mean","duration_to_peak SD","duration_to_peak N")) |>
+     tab_spanner(label = "Time(Hours) From Peak Ketone Level to Ketone Level < 1 mmol/L",columns = c("duration_to_below_1mmol Mean","duration_to_below_1mmol SD","duration_to_below_1mmol N")) |>
+     fmt_number(columns = contains(c("Mean","SD")),decimals = 2) |>
+     cols_label(
+      `KRSEQ01 Mean` = "Mean",`KRSEQ01 SD` = "SD",
+      `KRSEQ01 N` = "N",
+      `duration_to_peak Mean` = "Mean",`duration_to_peak SD` = "SD",`duration_to_peak N` = "N",
+      `duration_to_below_1mmol Mean` = "Mean",`duration_to_below_1mmol SD` = "SD",
+      `duration_to_below_1mmol N` =  "N") |>
+      opt_stylize(style = 6, color = "blue")
+```
+
+```{r eval = params$analysis}
+#| label: Ketone Reference Plot
+#| fig-align: center
+
+ketone |>
+   mutate(eTime = as.numeric(difftime(`Ketone Date Time`,first(`Ketone Date Time`),units = "hours")),.by = c(Subject,`Ref Type`)) |> 
+  # filter(`Ref Type` == "Randox") |> 
+  ggplot(aes(x = eTime, y = KRSEQ01, color = Subject)) +
+  geom_point() + 
+  geom_line() + 
+  # facet_grid(cols = vars(`Ref Type`)) + 
+  scale_x_continuous(expand = c(0,0), breaks = c(seq(0,8.5,1)), limits = c(0,8.5)) + 
+  scale_y_continuous(expand = c(0,0), limits = c(0,5)) + 
+  geom_hline(yintercept = 1,linewidth = 1) + 
+  labs(title = "Ketone Reference",x = "Time(Hours)", y = "Ketone Test Result (mmol/L)") +
+  theme_bw() +
+  theme(panel.grid.major.y = element_blank(),panel.grid.minor.y = element_blank(),legend.position = "bottom",plot.title = element_text(hjust = 0.5))
+```
+
+```{r eval = params$analysis}
+#| label: Ketone Vary Over Time
+#| fig-align: center
+ketone |>
+   mutate(eTime = as.numeric(difftime(`Ketone Date Time`,first(`Ketone Date Time`),units = "hours")),
+          lag_diff = KRSEQ01 - lag(KRSEQ01),
+          .by = c(Subject,`Ref Type`)) |> 
+  ggplot(aes(x = eTime, y = lag_diff, color = Subject)) +
+  geom_point() + 
+  geom_line() + 
+  facet_grid(cols = vars(`Ref Type`)) + 
+  labs(title = "Ketone Vary Over Time",x = "Time(Hours)", y = "Ketone Test Result (mmol/L)") +
+  scale_x_continuous(expand = c(0,0), breaks = c(seq(0,8.5,1)), limits = c(0,8.5)) +
+  scale_y_continuous(expand = c(0,0), breaks = c(seq(-2.0,2.0,0.5)),limits = c(-2,2)) +
+  theme_bw() +
+  theme(panel.grid.major.y = element_blank(),panel.grid.minor.y = element_blank(),legend.position = "bottom",plot.title = element_text(hjust = 0.5))
+```
+
+```{r eval = params$analysis}
+#| label: Time From Baseline To Peak
+#| fig-align: center
+ketone |>
+  filter(`Peak Time` >= `Ketone Date Time`,max(KRSEQ01,na.rm = T) >= 1,.by = c(Subject,`Ref Type`)) |> 
+  ggplot(aes(x = duration_to_peak, y = KRSEQ01, color = Subject)) +
+  geom_point() +
+  geom_line() +
+  facet_grid(cols = vars(`Ref Type`)) + 
+  scale_x_continuous(expand = c(0,0), limits = c(0,7), breaks = c(seq(0,7,1))) + 
+  scale_y_continuous(expand = c(0,0), limits = c(0,5)) + 
+  labs(title = "Time From Baseline To Peak",x = "Time(Hours)", y = "Ketone Test Result (mmol/L)") +
+  theme_bw() +
+  theme(panel.grid.major.y = element_blank(),panel.grid.minor.y = element_blank(),legend.position = "bottom",plot.title = element_text(hjust = 0.5))
+```
+
+```{r eval = params$analysis}
+#| label: Time From Peak To 1 mmol/L
+#| fig-align: center
+ketone |>
+  filter(`Peak Time` <= `Ketone Date Time` & !is.na(duration_to_below_1mmol),.by = c(Subject,`Ref Type`)) |> 
+  ggplot(aes(x = as.numeric(difftime(`Ketone Date Time`,`Peak Time`,units = "hours")), y = KRSEQ01, color = Subject)) +
+  geom_point() +
+  geom_line() +
+  facet_grid(cols = vars(`Ref Type`)) + 
+  scale_x_continuous(expand = c(0,0),breaks = c(seq(0,4,1)),limits = c(0,4)) + 
+  scale_y_continuous(expand = c(0,0),breaks = c(seq(0,5,1)),limits = c(0,5)) + 
+  labs(title = "Time From Peak To 1 mmol/L",x = "Time(Hours)", y = "Ketone Test Result (mmol/L)") +
+  theme_bw() +
+  theme(panel.grid.major.y = element_blank(),panel.grid.minor.y = element_blank(),legend.position = "bottom",plot.title = element_text(hjust = 0.5))
+```
+
+<!-- randox -->
+```{r}
+#| label: Multiple sheet function
+read_excel_allsheets <- function(filename, tibble = FALSE, n, r, col_type) {
+    sheets <- readxl::excel_sheets(filename)
+    x <- lapply(sheets, function(X) readxl::read_excel(filename, sheet = X, skip = n, range = r, col_types = col_type))
+    if(!tibble) x <- lapply(x, as.data.frame)
+    names(x) <- sheets
+    x
+}
+```
+
+```{r}
+#| label: Wrangle Randox data
+#| warning: false
+#| message: false
+# bind_rows(
+#   read_excel_allsheets("Ranbut 133-101 to 110.xlsx", tibble = T, n = 4, r = cellranger::cell_cols("D:E"), col_type = c("text","numeric")) |>
+#   # Sample ID for Subject 1330007 is wrong
+#   discard_at(7) |>
+#   map(\(df) df |> slice(3:n())) |>
+#   map(\(df) df |> setNames(c("Sample ID","8uL Result"))) |>
+# list_rbind() |>
+#   bind_cols(
+# read_excel_allsheets("Ranbut 133-101 to 110.xlsx", tibble = T, n = 4, r = cellranger::cell_cols("H"), col_type = c("numeric")) |>
+#   discard_at(7) |>
+#   list_rbind() |>
+#   setNames(c("2uL Result"))),
+# 
+#   readxl::read_excel("Ranbut 133-101 to 110.xlsx",range = cellranger::cell_cols("D:E"), col_type = c("text","numeric"),sheet = "133-107") |>
+#   slice(3:n()) |>
+#   setNames(c("Sample ID","8uL Result")) |>
+#   bind_cols(
+#     readxl::read_excel("Ranbut 133-101 to 110.xlsx",range = cellranger::cell_cols("H"), col_type = c("numeric"), sheet = "133-107") |>
+#   setNames(c("2uL Result"))) |>
+#   mutate(`Sample ID` = str_replace(`Sample ID`,"106","107")),
+# 
+# readxl::read_excel("RANBUT ABBOTT STUDY - week 5.xlsx",range = cellranger::cell_cols("E:F"), col_type = c("text","numeric")) |>
+#   setNames(c("Sample ID","8uL Result")) |>
+#   bind_cols(
+#     readxl::read_excel("RANBUT ABBOTT STUDY - week 5.xlsx",range = cellranger::cell_cols("B"), col_type = c("numeric")) |>
+#   setNames(c("2uL Result"))),
+# 
+# readxl::read_excel("RANBUT ABBOTT STUDY - week 6.xlsx",range = cellranger::cell_cols("F:G"), col_type = c("text","numeric")) |>
+#   setNames(c("Sample ID","8uL Result")) |>
+#   bind_cols(
+#     readxl::read_excel("RANBUT ABBOTT STUDY - week 6.xlsx",range = cellranger::cell_cols("C"), col_type = c("numeric")) |>
+#   setNames(c("2uL Result"))),
+# 
+# readxl::read_excel("Sub_90013.xlsx",range = cellranger::cell_cols("E:F"), col_type = c("text","numeric")) |>
+#   setNames(c("Sample ID","8uL Result")) |>
+#   bind_cols(
+#     readxl::read_excel("Sub_90013.xlsx",range = cellranger::cell_cols("B"), col_type = c("numeric")) |>
+#   setNames(c("2uL Result"))),
+# 
+# readxl::read_excel("Ranbut Box Number 14&15.xlsx",range = cellranger::cell_cols("B:C"), col_type = c("text","numeric"),sheet = "Sheet2") |>
+#   slice(3:n()) |>
+#   setNames(c("Sample ID","8uL Result")) |>
+#   bind_cols(
+#     readxl::read_excel("Ranbut Box Number 14&15.xlsx",range = cellranger::cell_cols("F"), col_type = c("numeric"),sheet = "Sheet2") |>
+#   setNames(c("2uL Result"))),
+# 
+# readxl::read_excel("Ranbut Box Number 14&15.xlsx",range = cellranger::cell_cols("H:I"), col_type = c("text","numeric"),sheet = "Sheet2") |>
+#   slice(3:n()) |>
+#   setNames(c("Sample ID","8uL Result")) |>
+#   bind_cols(
+#     readxl::read_excel("Ranbut Box Number 14&15.xlsx",range = cellranger::cell_cols("L"), col_type = c("numeric"),sheet = "Sheet2") |>
+#   setNames(c("2uL Result")))) |>
+#   # Remove Gap
+#   filter(!is.na(`Sample ID`)) |>
+#   mutate(`Sample ID` = case_when(str_detect(`Sample ID`,"[:punct:]") ~
+#                     str_extract(`Sample ID`,regex("(?<=[:punct:])[:digit:]+")),
+#                     .default = str_extract(`Sample ID`,regex("(?<=9)[:digit:]+"))),
+#          across(c(`8uL Result`,`2uL Result`), ~ if_else(.x == 0.07,0,.x))
+#          # across(c(`8uL Result`,`2uL Result`), ~ replace_na(.x,0))
+#          ) |>
+#   arrange(`Sample ID`) |> 
+  # vroom_write(gsub("\\\\", "/", r"(\\oneabbott.com\dept\ADC\Technical_OPS\Clinical_Affairs\Clinical Study Files\Apollo\ADC-US-RES-23234_IDE Pump Suspension Study\Statistics\Programs\Datasets\AL\randox.csv)"),delim = ",")
+       # saveRDS(gsub("\\\\", "/", r"(\\oneabbott.com\dept\ADC\Technical_OPS\Clinical_Affairs\Clinical Study Files\Apollo\ADC-US-RES-23234_IDE Pump Suspension Study\Statistics\Programs\Datasets\AL\randox.rds)"))
+```
+<!-- randox -->
+
+```{r}
+#| label: Import SA
+# sa <- read_sas(gsub("\\\\", "/", r"(\\wf00168p.oneabbott.com\data1\CDM\ADC-US-RES-23234\OpenClinica\Current\sa.sas7bdat)"))
+```
+
+```{r}
+#| label: Wrangle SA
+# sa <- sa |> 
+#       filter(!str_detect(DUYN01,regex("CHECK HERE IF NO DATA RECORDED",ignore_case = T))) |>
+#       mutate(Subject = as.character(Subject),
+#              DUSEQ01 = as.numeric(DUSEQ01)) |> 
+#       arrange(Subject)
+```
+
+```{r}
+# | label: Import DU2
+# du2 <- read_sas(gsub("\\\\", "/", r"(\\wf00168p.oneabbott.com\data1\CDM\ADC-US-RES-23234\OpenClinica\Current\du2.sas7bdat)"))
+```
+
+```{r}
+# du2 <- du2 |>
+#        filter(!str_detect(UPDTC02,"^$|pattern")) |>
+#        mutate(Subject = as.character(Subject),
+#               UPDTC02  = hms::parse_hms(UPDTC02),
+#               UPID01 = as.numeric(UPID01)) |>
+#        arrange(Subject,desc(UPDTC01),UPDTC02)
+```
+
+```{r}
+#| label: Import ketone events, anaplus files csv
+#| eval: false
+file_list_ketone <- dir_ls(gsub("\\\\", "/", r"(C:\UDP\OutputFiles\Output_2023-12-20-08-11\outputs)"),recurse = T,glob = "*events.csv|*anaPlus.csv")
+```
+
+```{r}
+#| label: Ketone Filter events, anaPlus
+#| eval: false
+events_path_ketone <- filter_path(file_path = file_list_ketone)[[1]]
+anaplus_path_ketone <- filter_path(file_path = file_list_ketone)[[5]] 
+```
+
+```{r}
+#| label: Output ketone.rds
+#| warning: false
+#| eval: false
+mobi_anaPlus(events = events_path_ketone, ana = anaplus_path_ketone) |> 
+          mutate(`Date Time` = case_when(
+            # Subject 90009 RU1 Sensor Start is wrong
+            `Sensor Serial Number` == "089CR2CRA" & 
+  Type == "SENSOR_STARTED (58)" ~ `Date Time` - dhours(12),
+            `Sensor Serial Number` == "089CR2FAX" ~ `Date Time` + dhours(2),
+            `Sensor Serial Number` == "089CR2ELD" ~ `Date Time` - dhours(1),
+              .default = `Date Time`)) |> 
+          arrange(`Subject ID`,`Condition ID`,`Date Time`) |>
+          fill(`Sensor Serial Number`,.direction = "updown") |> 
+        # Consider Replaced sensor
+          filter(`Sensor Serial Number` != "089CR2EAN" | is.na(`Sensor Serial Number`)) |> 
+     saveRDS(gsub("\\\\", "/", r"(\\oneabbott.com\dept\ADC\Technical_OPS\Clinical_Affairs\Clinical Study Files\Apollo\ADC-US-RES-23234_IDE Pump Suspension Study\Statistics\Programs\Datasets\AL\ketone.rds)"))
+```
+
+```{r eval = params$analysis}
+#| label: Pair Ketone Reference
+PairKetone <- function(sensor_data){
+  # ketone reference
+  ketone |>
+    filter(!is.na(KRSEQ01)) |> 
+    select(!c(`Peak Time`:duration_to_below_1mmol)) |> 
+    rename(`Subject ID` = Subject) |> 
+    inner_join(
+      # Sensor Data
+      sensor_data |>
+        dplyr::mutate(
+          # `Date Time` = force_tz(`Date Time`,tz = "UTC"),
+          `Lower Bound` = round_date(`Date Time`,"minute") - dminutes(5),
+          `Upper Bound` = round_date(`Date Time`,"minute") + dminutes(5)
+        ),
+      by = join_by("Subject ID", between(`Ketone Date Time`,`Lower Bound`,`Upper Bound`)),
+      multiple = "all"
+    ) |> 
+    # Select the nearest time
+    group_by(`Subject ID`,`Ketone Date Time`,`Ref Type`) |>
+    arrange(desc(`Date Time`)) |> 
+    slice_min(abs(`Ketone Date Time` - round_date(`Date Time`,"minute")),n = 1,with_ties = F) |>
+    ungroup() |> 
+    # Select the nearest time
+    group_by(`Subject ID`,`Date Time`,`Ref Type`) |>
+    arrange(desc(`Date Time`)) |>
+    slice_min(abs(`Ketone Date Time` - round_date(`Date Time`,"minute")),n = 1,with_ties = F) |>
+    ungroup() |> 
+    select(!c(contains("Bound")))
+}
+```
+
+```{r eval = params$analysis}
+#| label: Pair Ketone
+Ap <- upload_ketone |> 
+      select(!c(Path, Tr)) |> 
+      # Handle Date Time is earlier than sensor start time
+      left_join(upload_ketone |> 
+                  filter(Type == "SENSOR_STARTED (58)") |> 
+                  select(`Sensor Serial Number`, `Start Date Time` = `Date Time`),
+                   by = join_by(`Sensor Serial Number`)) |> 
+      filter(`Date Time` >= `Start Date Time`) |> 
+      mutate(eTime = as.numeric(difftime(`Date Time`,first(`Date Time`),units = "days")),
+             Day = ceiling(eTime),
+             `Start Date Time` = NULL,
+             .by = c(`Sensor Serial Number`)) |> 
+      # filter(Type == "906") |>
+      # filter(`Subject ID` == "1330005", `Condition ID` == "LL1") |>
+      group_split(`Subject ID`,`Condition ID`,Type,`Sensor Serial Number`) |>
+      # New anonymous function
+      map(\(df) PairKetone(sensor_data = df),.progress = T) |>
+      list_rbind() |>
+      # Rate
+      mutate(Site = case_when(str_starts(`Subject ID`,"133") ~ "Yale",
+                              .default = "RCR"),
+             ANA = (ANA/100)*1.25,
+             Level = case_when(KRSEQ01 < 1 ~ "< 1 mmol/L",
+                              .default = ">= 1 mmol/L"),
+            # Accuracy
+            `Difference(mmol/L)` = ANA - KRSEQ01,
+            `Absolute Difference(mmol/L)` = abs(`Difference(mmol/L)`),
+            `Relative Difference(%)` = (`Difference(mmol/L)`/KRSEQ01)*100,
+            `Absolute Relative Difference(%)` = abs(`Relative Difference(%)`)) |>
+      arrange(`Ref Type`,`Subject ID`)
+```
+
+```{r}
+sensor_breaks <- c(seq(0,480,5))
+
+upload_ketone |> 
+  semi_join(
+        Ap |> 
+        filter(Type == "905") |> 
+        group_by(`Subject ID`, `Condition ID`, `Sensor Serial Number`,`Ref Type`) |>
+        summarise(r = cor(x = KRSEQ01, y = (ANA/100)*1.25, use = "everything", method = "pearson"), .groups = "drop") |> 
+        filter(`Ref Type` == "Venous strip") |> 
+        slice_max(r, n = 1, with_ties = F, by = `Subject ID`), by = join_by(`Sensor Serial Number` == `Sensor Serial Number`)) |> 
+  left_join(ps |>
+             select(Subject,pump_suspend_start,pump_suspend_end),
+             by = join_by(`Subject ID` == Subject)) |> 
+  filter(`Date Time` >= pump_suspend_start - dminutes(6)) |>
+  # filter(between(`Date Time`, pump_suspend_start, pump_suspend_end)) |>
+  filter(Type == "905") |> 
+  mutate(sensor_interval = as.numeric(difftime(`Date Time`,pump_suspend_start,units = "mins"))) |> 
+  filter(sensor_interval <= 480) |> 
+  mutate(group = cut(sensor_interval, breaks = sensor_breaks,include.lowest = T)) |>
+  group_by(`Subject ID`, `Condition ID`, `Sensor Serial Number`, group) |>
+  summarise(mean_ana = mean((ANA/100)*1.25, na.rm = T), .groups = "drop") |> 
+  pivot_wider(id_cols = c(`Subject ID`:`Sensor Serial Number`), names_from = group, values_from = mean_ana) |> 
+  arrange(`Subject ID`) |> 
+  openxlsx::write.xlsx("sensor.xlsx")
+```
+
+```{r}
+ref_breaks <- c(seq(0,480,15))
+
+ketone |> 
+  filter(`Ref Type` == "Venous strip") |> 
+  mutate(ref_interval = as.numeric(difftime(`Ketone Date Time`,pump_suspend_start,units = "mins")),
+         group = cut(ref_interval, breaks = ref_breaks,include.lowest = T)) |>
+  filter(ref_interval <= 480) |>
+  group_by(Subject, group) |>
+  summarise(mean_ketone_ref = mean(KRSEQ01, na.rm = T), .groups = "drop") |> 
+  arrange(group) |> 
+  pivot_wider(id_cols = c(Subject), names_from = group, values_from = mean_ketone_ref) |> 
+  arrange(Subject) |> 
+  openxlsx::write.xlsx("ketone.xlsx")
+```
+
+```{r}
+ref_breaks <- c(seq(0,480,15))
+
+ketone |> 
+  filter(`Ref Type` == "Randox") |> 
+  mutate(ref_interval = as.numeric(difftime(`Ketone Date Time`,pump_suspend_start,units = "mins")),
+         group = cut(ref_interval, breaks = ref_breaks,include.lowest = T)) |>
+  filter(ref_interval <= 480) |>
+  group_by(Subject, group) |>
+  summarise(mean_ketone_ref = mean(KRSEQ01, na.rm = T), .groups = "drop") |> 
+  arrange(group) |> 
+  pivot_wider(id_cols = c(Subject), names_from = group, values_from = mean_ketone_ref) |> 
+  arrange(Subject) |> 
+  openxlsx::write.xlsx("randox.xlsx")
+```
+
+```{r}
+ref_breaks <- c(seq(0,480,15))
+
+ketone |> 
+  filter(`Ref Type` == "Venous strip") |> 
+  mutate(ref_interval = as.numeric(difftime(`Glucose Date Time`,pump_suspend_start,units = "mins")),
+         group = cut(ref_interval, breaks = ref_breaks,include.lowest = T)) |>
+  filter(ref_interval <= 480) |>
+  group_by(Subject, group) |> 
+  summarise(mean_glucose_ref = mean(KRSEQ03, na.rm = T), .groups = "drop") |> 
+  arrange(group) |> 
+  pivot_wider(id_cols = c(Subject), names_from = group, values_from = mean_glucose_ref) |> 
+  arrange(Subject) |> 
+  openxlsx::write.xlsx("glucose.xlsx")
+```
+
+```{r}
+#| label: How many patients had a ketone level >1.0 mmol/L 
+
+ketone_wide |> 
+  filter(between(`Ketone Date Time`, pump_suspend_start, pump_suspend_end)) |> 
+  summarise(N = n_distinct(Subject),
+            n_greater1 = n_distinct(Subject[Randox > 1.5]),
+            n_greater1less250 = n_distinct(Subject[Randox > 1.5 & KRSEQ03 < 250]))
+```
+
+```{r}
+ketone_wide |>
+  mutate(
+    ref_interval = as.numeric(difftime(`Ketone Date Time`, pump_suspend_start, units = "hours")),
+    group = cut(ref_interval, breaks = seq(0, 6, 1), include.lowest = TRUE)) |>
+  filter(ref_interval <= 6) |>
+  group_by(group) |>
+  summarise(N = n_distinct(Subject),
+            n_greater1 = n_distinct(Subject[Randox >= 1]),
+            n_less250 = n_distinct(Subject[KRSEQ03 < 250]),
+            n_greater1less250 = n_distinct(Subject[Randox >= 1 & KRSEQ03 < 250]), .groups = "drop") |> 
+  mutate(across(c(n_greater1:n_greater1less250), ~ str_c(round_normal(.x / N*100,1), "% (", .x, ")")))
+```
+
+```{r}
+ketone |>
+  filter(`Ref Type` == "Venous strip") |>
+  filter(between(`Ketone Date Time`, pump_suspend_start, pump_suspend_end)) |>
+  mutate(
+    ref_interval = as.numeric(difftime(`Ketone Date Time`, pump_suspend_start, units = "hours")),
+    # ref_interval = as.numeric(difftime(pump_suspend_end, pump_suspend_start, units = "hours")),
+    group = cut(ref_interval, breaks = seq(0, 6, 1), include.lowest = TRUE)) |>
+  filter(ref_interval <= 6) |>
+  group_by(group) |>
+  summarise(N = n_distinct(Subject),
+            n_greater1 = n_distinct(Subject[KRSEQ01 >= 1]),
+            n_less250 = n_distinct(Subject[KRSEQ03 < 250]),
+            n_greater1less250 = n_distinct(Subject[KRSEQ01 >= 1 & KRSEQ03 < 250]), .groups = "drop") |> 
+  mutate(across(c(n_greater1:n_greater1less250), ~ str_c(round_normal(.x / N*100,1), "% (", .x, ")")))
+```
+
+```{r}
+Ap |> 
+semi_join(
+        Ap |> 
+        filter(Type == "905") |> 
+        group_by(`Subject ID`, `Condition ID`, `Sensor Serial Number`,`Ref Type`) |>
+        summarise(r = cor(x = KRSEQ01, y = ANA, use = "everything", method = "pearson"), .groups = "drop") |> 
+        filter(`Ref Type` == "Venous strip") |> 
+        slice_max(r, n = 1, with_ties = F, by = `Subject ID`), by = join_by(`Sensor Serial Number` == `Sensor Serial Number`)) |> 
+  filter(`Ref Type` == "Randox" & Type == "905") |> 
+  filter(between(`Ketone Date Time`, pump_suspend_start, pump_suspend_end)) |>
+  # filter(`Ketone Date Time` > pump_suspend_end) |>
+  ggplot(aes(x = KRSEQ01, y = ANA)) +
+  geom_point(alpha = 0.3) + 
+  geom_smooth(method = "lm", se = FALSE) + 
+  ggpubr::stat_cor(aes(label = ..r.label..)) + 
+  # ggpmisc::stat_poly_eq(aes(label = paste(..eq.label.., ..rr.label.., sep = "~`,`~")),
+  #                       parse = TRUE, coef.digits = 4, rr.digits  = 3) +
+  labs(x = "Randox (mmol/L)", y = "Sensor Ketone (mmol/L)" , title = "Sensor Ketone vs Randox") +
+  scale_x_continuous(limits = c(0,4), breaks = seq(0,4,0.5)) +
+  scale_y_continuous(limits = c(0,4), breaks = seq(0,4,0.5)) +
+  theme(aspect.ratio = 1) +
+  scale_fill_brewer(palette = "Paired") + 
+  theme_classic()
+```
+
+<!-- 90004 -->
+```{r}
+Ap |> 
+semi_join(
+        Ap |> 
+        filter(Type == "906") |> 
+        group_by(`Subject ID`, `Condition ID`, `Sensor Serial Number`,`Ref Type`) |>
+        summarise(r = cor(x = KRSEQ01, y = ANA, use = "everything", method = "pearson"), .groups = "drop") |> 
+        filter(`Ref Type` == "Venous strip") |> 
+        slice_max(r, n = 1, with_ties = F, by = `Subject ID`), by = join_by(`Sensor Serial Number` == `Sensor Serial Number`)) |> 
+  filter(`Ref Type` == "Venous strip" & Type == "906") |> 
+  mutate(sensor_interval = as.numeric(difftime(`Date Time`, pump_suspend_start, units = "hours")),
+         ket_interval = as.numeric(difftime(`Ketone Date Time`, pump_suspend_start, units = "hours")),
+         gluc_interval = as.numeric(difftime(`Glucose Date Time`, pump_suspend_start, units = "hours"))) |> 
+  filter(`Subject ID` == "90004") |> 
+  ggplot() +
+  # geom_point(aes(x = sensor_interval, y = ANA, color = "Sensor Data")) + 
+  geom_line(aes(x = sensor_interval, y = ANA, color = "Sensor Data")) + 
+  geom_point(aes(x = ket_interval, y = KRSEQ01 , color = "Blood Ketone")) +
+  geom_point(aes(x = gluc_interval, y = KRSEQ03 / 180, color = "Blood Glucose")) +
+  scale_y_continuous(name = "Primary Axis Label", sec.axis = sec_axis(~. * 180, name = "Secondary Axis Label"))
+```
+
+<!-- 90002 -->
+
+```{r eval = params$analysis}
+#| label: Rate Deviation Data
+Ap_rate <- Ap |> 
+           filter(between(ANA,0.6,3)) |> 
+           mutate(
+             sensor_rate = (ANA-lag(ANA)) / (as.numeric(difftime(`Date Time`,lag(`Date Time`),units = "hours"))),
+             ref_rate = ((KRSEQ01-lag(KRSEQ01))) / (as.numeric(difftime(`Ketone Date Time`,lag(`Ketone Date Time`),units = "hours"))),
+            `Rate Deviation` = round((ref_rate - sensor_rate) + 0.0000000001,1),
+            `Absolute Rate Deviation` = abs(`Rate Deviation`),
+              # Assign Category
+                  `Rate Deviation(mmol/L/hour)` = fct_case_when(
+                  `Rate Deviation` < -3 ~ "<-3",
+                  `Rate Deviation` >= -3 & `Rate Deviation` < -2 ~ "[-3, -2)",
+                  `Rate Deviation` >= -2 & `Rate Deviation` < -1 ~ "[-2, -1)",
+                  `Rate Deviation` >= -1 & `Rate Deviation` < 0 ~ "[-1, 0)",
+                  `Rate Deviation` >= 0 & `Rate Deviation` <= 1 ~ "[0, 1]",
+                  `Rate Deviation` > 1 & `Rate Deviation` <= 2 ~ "(1, 2]",
+                  `Rate Deviation` > 2 & `Rate Deviation` <= 3 ~ "(2, 3]",
+                    `Rate Deviation` > 3  ~ ">3"),
+               `Absolute Rate Deviation(mmol/L/hour)` = fct_case_when(
+                    `Absolute Rate Deviation` >= 0 & `Absolute Rate Deviation` <= 1~ "[0, 1]",
+                    `Absolute Rate Deviation` > 1 & `Absolute Rate Deviation` <= 2 ~ "(1, 2]",
+                    `Absolute Rate Deviation` > 2 & `Absolute Rate Deviation` <= 3 ~ "(2, 3]",
+                    `Absolute Rate Deviation` > 3  ~ ">3"),.by = c(`Sensor Serial Number`,`Ref Type`))
+```
+
+```{r eval = params$analysis}
+#| label: Summary for Ketone Reference End
+summary_calculation <- list(Mean = ~ mean(.x, na.rm = T),
+                            Median = ~ median(.x, na.rm = T),
+                            SD = ~ sd(.x, na.rm = T),
+                            Min = ~ min(.x, na.rm = T),
+                            Max = ~ max(.x, na.rm = T),
+                            N = ~ sum(!is.na(.x),na.rm = T))
+Ap_rate |>
+   filter(`Ref Type` == "Randox") |>
+   # slice_max(`Glucose Date Time`,by = Subject) |> 
+   summarise_at("ref_rate",summary_calculation) |>
+   # Fix round half to even
+   mutate(across(c(Mean,SD), ~ round(.x + 0.00001,2))) |> 
+   gt() |>
+   cols_align(align = "center") |>
+   fmt_number(columns = c(Median,Min,Max),decimals = 2) |> 
+   opt_stylize(style = 6, color = "blue") |>
+   tab_header(title = md("**Ketone Test Result (mmol/L)**"))
+```
+
+```{r}
+Ap_rate |>
+   filter(`Ref Type` == "Randox") |>
+   filter(ref_rate > 1) |> 
+   summarise(n = n_distinct(`Subject ID`))
+```
+
+
+```{r eval = params$analysis}
+#| label: Summary for Rate Deviation
+#| tbl-cap: "Summary for Rate Deviation"
+Ap_rate |> 
+   filter(!is.na(`Rate Deviation`)) |> 
+   group_split(`Ref Type`) |> 
+   map(\(df) df |> tabyl(`Rate Deviation(mmol/L/hour)`)) |> 
+   map(\(df) df |> adorn_totals("row")) |>
+   list_rbind(names_to = "Ref Type") |> 
+   mutate(`Ref Type` = case_when(`Ref Type` == 1 ~ "Randox",
+                                 .default = "Venous strip")) |> 
+   gt(groupname_col = "Ref Type") |> 
+   cols_align(align = "center") |>
+   fmt_percent(columns = percent, decimals = 2) |>
+   opt_stylize(style = 6, color = "blue")
+```
+
+```{r eval = params$analysis}
+#| label: Summary for Absolute Rate Deviation
+#| tbl-cap: "Summary for Absolute Rate Deviation"
+Ap_rate |> 
+   filter(!is.na(`Rate Deviation`)) |> 
+   group_split(`Ref Type`) |>
+   map(\(df) df |> tabyl(`Absolute Rate Deviation(mmol/L/hour)`)) |> 
+   map(\(df) df |> adorn_totals("row")) |> 
+   list_rbind(names_to = "Ref Type") |> 
+   mutate(`Ref Type` = case_when(`Ref Type` == 1 ~ "Randox",
+                                 .default = "Venous strip")) |> 
+   gt(groupname_col = "Ref Type") |> 
+   cols_align(align = "center") |>
+   fmt_percent(columns = percent, decimals = 2) |> 
+   opt_stylize(style = 6, color = "blue")
+```
+
+```{r eval = params$analysis}
+#| label: Summary statistics for rate deviation
+#| tbl-cap: "Summary statistics for Rate Deviation"
+diff_calculation <- list(Mean = ~ mean(.x, na.rm = T),
+                          Median = ~ median(.x, na.rm = T),
+                          SD = ~ sd(.x, na.rm = T),
+                          Min = ~ min(.x, na.rm = T),
+                          Max = ~ max(.x, na.rm = T),
+                          N = ~ sum(!is.na(.x),na.rm = T))
+Ap_rate |>
+   filter(!is.na(`Rate Deviation`)) |> 
+   pivot_longer(`Rate Deviation`:`Absolute Rate Deviation`,names_to = "Variable") |> 
+   group_by(`Ref Type`,Variable) |>
+   summarise_at(.vars = c("value"),.funs = diff_calculation) |>
+   gt() |>
+   cols_align(align = "center") |>
+   fmt_number(columns = Mean:Max,decimals = 2) |>
+   opt_stylize(style = 6, color = "blue")
+```
+
+```{r}
+Ap_rate |>
+   semi_join(
+        Ap |> 
+        filter(Type == "905") |> 
+        group_by(`Subject ID`, `Condition ID`, `Sensor Serial Number`,`Ref Type`) |>
+        summarise(r = cor(x = KRSEQ01, y = ANA, use = "everything", method = "pearson"), .groups = "drop") |> 
+        filter(`Ref Type` == "Venous strip") |> 
+        slice_max(r, n = 1, with_ties = F, by = `Subject ID`), by = join_by(`Sensor Serial Number` == `Sensor Serial Number`)) |> 
+   filter(!is.na(sensor_rate) & !is.na(ref_rate)) |>
+   filter(Type == "905") |> 
+  filter(`Ref Type` == "Randox") |> 
+  # filter(between(`Date Time`, pump_suspend_start, pump_suspend_end)) |> 
+  filter(`Date Time` > pump_suspend_end) |> 
+  # select(`Subject ID`,`Ref Type`, ref_rate) |> 
+  select(`Subject ID`, sensor_rate) |> 
+  openxlsx::write.xlsx("sensor_rate.xlsx")
+```
+
+
+```{r eval = params$analysis}
+#| label: Histogram of Rate of Change
+Ap_rate |>
+   semi_join(
+        Ap |> 
+        filter(Type == "905") |> 
+        group_by(`Subject ID`, `Condition ID`, `Sensor Serial Number`,`Ref Type`) |>
+        summarise(r = cor(x = KRSEQ01, y = ANA, use = "everything", method = "pearson"), .groups = "drop") |> 
+        filter(`Ref Type` == "Venous strip") |> 
+        slice_max(r, n = 1, with_ties = F, by = `Subject ID`), by = join_by(`Sensor Serial Number` == `Sensor Serial Number`)) |> 
+   filter(!is.na(sensor_rate) & !is.na(ref_rate)) |>
+   filter(Type == "905") |> 
+  filter(`Ref Type` == "Randox") |> 
+   ggplot() +
+   geom_histogram(aes(x = ref_rate, y = after_stat(density),fill = `Ref Type`),bins = 50) +
+   labs(title = "Histogram of Reference Rate") + 
+   # facet_grid(cols = vars(`Ref Type`)) + 
+   scale_x_continuous(breaks = c(seq(-10,10,2)),limits = c(-10,10)) +
+   theme_bw() + 
+   theme(panel.grid.major.y = element_blank(),panel.grid.minor.y = element_blank(),legend.position = "bottom",plot.title = element_text(hjust = 0.5))
+```
+
+```{r eval = params$analysis}
+#| label: Histogram of Rate Deviation
+Ap_rate |>
+   filter(!is.na(`Rate Deviation`)) |>
+   ggplot() +
+   geom_histogram(aes(x = `Rate Deviation`, y = after_stat(density),fill = `Ref Type`),bins = 50) +
+   labs(title = "Histogram of Rate Deviation") + 
+   facet_grid(cols = vars(`Ref Type`)) + 
+   scale_x_continuous(breaks = c(seq(-10,10,2)),limits = c(-10,10)) +
+   theme_bw() + 
+   theme(panel.grid.major.y = element_blank(),panel.grid.minor.y = element_blank(),legend.position = "bottom",plot.title = element_text(hjust = 0.5))
+```
+
+`r if(params$analysis){knitr::asis_output("# **Accuracy Performance**")}`
+```{r eval = params$analysis}
+#| label: System Agreement function
+system_agreement_fun <- function(data, wider_name = NULL, group_var) {
+ketone_breaks <- c(0,0.1,0.2,0.3,0.4,Inf)
+ketone_breaks_percent <- c(0,10,20,30,40,Inf)
+ sys <- data |> 
+        bind_rows(
+          data |> 
+          mutate(Level = "Overall")) |> 
+        filter(between(ANA,0.6,3)) |>
+        mutate(Level = factor(Level,levels = c("< 1 mmol/L",">= 1 mmol/L","Overall")),
+               Group = case_when(Level %in% c("< 1 mmol/L","Overall") & KRSEQ01 < 1 ~ cut(round(`Absolute Difference(mmol/L)` + 0.0001,1), breaks = ketone_breaks,include.lowest = T),
+                                 Level %in% c(">= 1 mmol/L","Overall") & KRSEQ01 >= 1 ~ cut(round(`Absolute Relative Difference(%)` + 0.001,0), breaks = ketone_breaks_percent,include.lowest = T)),
+               # Modify Overall Group
+               Group = case_when(Level == "Overall" & Group == "[0,0.1]" ~ "[0,10]",
+                                 Level == "Overall" & Group == "(0.1,0.2]" ~ "(10,20]",
+                                 Level == "Overall" & Group == "(0.2,0.3]" ~ "(20,30]",
+                                 Level == "Overall" & Group == "(0.3,0.4]" ~ "(30,40]",
+                                 Level == "Overall" & Group == "(0.4,Inf]" ~ "(40,Inf]",
+                                 .default = Group),
+               Group = factor(Group, 
+                            levels = c("[0,0.1]","(0.1,0.2]","(0.2,0.3]","(0.3,0.4]","(0.4,Inf]"
+                                      ,"[0,10]","(10,20]","(20,30]","(30,40]","(40,Inf]"))) |> 
+          group_by(pick({{group_var}})) |>
+          count(Level,Group,.drop = F) |> 
+         # Remove redundant factor levels
+         filter(!(Level == "< 1 mmol/L"
+                & Group %in% c("[0,10]","(10,20]","(20,30]","(30,40]","(40,Inf]")) &
+                !(Level %in% c(">= 1 mmol/L","Overall")
+                & Group %in% c("[0,0.1]","(0.1,0.2]","(0.2,0.3]","(0.3,0.4]","(0.4,Inf]"))) |>
+          mutate(Sum = sum(n),
+                 cum = case_when(row_number() %in% c(1:4) ~ cumsum(n),
+                      .default = n),
+                 Percent = case_when(Sum == 0 ~ 0,
+                          .default = round((cum/Sum)*100,1))) |> 
+         ungroup() |> 
+         filter(!is.na(Level))
+
+ sys |>
+         mutate(Group = case_when(
+           Group %in% c("[0,10]","[0,0.1]") ~ "Within ± 10% / Within ± 0.1 mmol/L",
+           Group %in% c("(10,20]","(0.1,0.2]") ~ "Within ± 20% / Within ± 0.2 mmol/L",
+           Group %in% c("(20,30]","(0.2,0.3]") ~ "Within ± 30% / Within ± 0.3 mmol/L",
+           Group %in% c("(30,40]","(0.3,0.4]") ~ "Within ± 40% / Within ± 0.4 mmol/L",
+           Group %in% c("(40,Inf]","(0.4,Inf]") ~ "Outside ± 40%/ Outside ± 0.4 mmol/L"),
+          `N(%)` = str_c(cum,"/",Sum," ","(",Percent,"%)")) |>
+    pivot_wider(id_cols = !c(n:Percent),names_from = Group,values_from = `N(%)`)
+}
+```
+
+```{r eval = params$analysis}
+#| label: System Agreement plot of Difference between CGM and Reference
+#| fig-align: center
+Ap |> 
+    filter(between(ANA,0.6,3)) |>
+    ggplot(aes(x = KRSEQ01, y = `Difference(mmol/L)`, color = Site, shape = Site)) +
+    geom_point() +
+    geom_hline(yintercept = 0) + 
+    facet_grid(cols = vars(`Ref Type`)) +
+    labs(title = "System Agreement plot of Difference between CGM and Reference", x = "Reference (mmol/L)", y = "Bias (mmol/L)") +
+    theme_bw() +
+    theme(panel.grid.major.y = element_blank(),panel.grid.minor.y = element_blank(),legend.position = "bottom",plot.title = element_text(hjust = 0.5),legend.text = element_text(size = 8))
+```
+
+```{r eval = params$analysis}
+#| label: System Agreement group by Site and Reference type
+#| column: page
+#| tbl-cap: "System Agreement group by Site and Reference Type"
+Ap |> 
+   bind_rows(Ap |> 
+               mutate(Site = "Overall")) |> 
+   mutate(Site = factor(Site, levels = c("Yale","RCR","Overall"))) |> 
+   system_agreement_fun(wider_name = NULL,group_var = c(Site,`Ref Type`,Level)) |> 
+   gt(groupname_col = c("Site","Ref Type")) |>
+   cols_align(align = "center") |>
+   cols_width(everything() ~ px(200)) |>
+   opt_stylize(style = 6, color = "blue")
+```
+
+```{r eval = params$analysis}
+#| label: difference measure function
+diff_measure_fun <- function(data, group_var){
+data |> 
+   bind_rows(
+     data |> 
+        mutate(Level = "Overall")) |> 
+    filter(between(ANA,0.6,3)) |>
+    group_by(pick({{group_var}})) |> 
+     summarise(
+      across(c(`Difference(mmol/L)`:`Absolute Relative Difference(%)`), 
+              diff_calculation[1:3],.names = "{.col} {.fn}"), N = n()) |> 
+     relocate(N,.after = last_col()) |> 
+     gt()  |> 
+     cols_align(align = "center") |> 
+     tab_spanner(label = "Difference(mmol/L)",columns = c("Difference(mmol/L) Mean","Difference(mmol/L) Median","Difference(mmol/L) SD")) |> 
+     tab_spanner(label = "Abs. Difference (mmol/L)",columns = c("Absolute Difference(mmol/L) Mean","Absolute Difference(mmol/L) Median","Absolute Difference(mmol/L) SD")) |> 
+     tab_spanner(label = "Relative Difference(%)",columns = c("Relative Difference(%) Mean","Relative Difference(%) Median","Relative Difference(%) SD")) |> 
+     tab_spanner(label = "Absolute Relative Difference(%)",columns = c("Absolute Relative Difference(%) Mean","Absolute Relative Difference(%) Median","Absolute Relative Difference(%) SD")) |> 
+     fmt_number(columns = contains(c("Mean","Median")),decimals = 1) |> 
+     fmt_number(columns = contains(c("SD")),decimals = 1) |> 
+     cols_label(
+      `Difference(mmol/L) Mean` = "Mean",`Difference(mmol/L) Median` = "Median",
+      `Difference(mmol/L) SD` = "SD",
+      `Relative Difference(%) Mean` = "Mean",`Relative Difference(%) Median` = "Median",`Relative Difference(%) SD` = "SD",
+      `Absolute Difference(mmol/L) Mean` = "Mean",`Absolute Difference(mmol/L) Median` = "Median",
+      `Absolute Difference(mmol/L) SD` =  "SD",`Absolute Relative Difference(%) Mean` = "Mean",
+      `Absolute Relative Difference(%) Median` = "Median",
+      `Absolute Relative Difference(%) SD` = "SD"
+    ) |> 
+      opt_stylize(style = 6, color = "blue")
+}
+```
+
+```{r eval = params$analysis}
+#| label: Mean Bias plot by day
+#| fig-align: center
+Ap |> 
+   filter(between(ANA,0.6,3)) |>
+   group_by(Site,`Ref Type`,Day) |> 
+   summarise(`Mean Bias(%)` = mean(`Relative Difference(%)`,na.rm = T),
+             N = n(),.groups = "drop") |> 
+    ggplot(aes(x = Day, y = `Mean Bias(%)`, color = Site, shape = Site)) +
+    geom_line() +
+    geom_point(aes(size = N)) +
+    facet_grid(cols = vars(`Ref Type`)) +
+    labs(title = "Mean Bias(%) by Day") +
+    scale_x_continuous(breaks = seq(1,9,1),limits = c(1,9)) +
+    theme_bw() +
+    theme(panel.grid.major.y = element_blank(),panel.grid.minor.y = element_blank(),legend.position = "bottom",plot.title = element_text(hjust = 0.5),legend.text = element_text(size = 8)) +
+    guides(size = guide_legend(title = "Number of Pairing"))
+```
+
+```{r eval = params$analysis}
+#| label: Difference Measures group by Site and Reference type
+#| column: page
+#| tbl-cap: "Difference Measures group by Site and Reference Type"
+Ap |> 
+  bind_rows(Ap |> 
+            mutate(Site = "Overall")) |> 
+   mutate(Site = factor(Site, levels = c("Yale","RCR","Overall"))) |> 
+   diff_measure_fun(group_var = c(Site,`Ref Type`,Level))
+```
+
+```{r eval = params$analysis}
+#| label: Concurrence function
+concur_fun <- function(data, group_var, trans = FALSE){
+    if (trans == FALSE){
+    map2(data %>%
+          group_split(pick({{group_var}})) %>% 
+          map(\(df) df %>% select({{group_var}})) %>% 
+          map(\(df) df %>% slice(1:5)),
+          data %>%
+                   # Create YSI and GM Category
+                   # Round half to even, so add noise
+          mutate(`KM (mmol/L)` =
+                              fct_case_when(ANA < 0.6 ~ "<0.6",
+                                            ANA >= 0.6 & ANA < 1.0 ~ "[0.6-1.0)",
+                                            ANA >= 1.0 & ANA <= 1.5 ~ "[1.0-1.5]",
+                                            ANA > 1.5 & ANA <= 3.0 ~ "(1.5-3.0]",
+                                            ANA > 3.0 ~ ">3.0"),
+                `Ref (mmol/L)` =
+                            fct_case_when(KRSEQ01 < 0.6 ~ "<0.6",
+                                          KRSEQ01 >= 0.6 & KRSEQ01 < 1.0 ~ "[0.6-1.0)",
+                                          KRSEQ01 >= 1.0 & KRSEQ01 <= 1.5 ~ "[1.0-1.5]",
+                                          KRSEQ01 > 1.5 & KRSEQ01 <= 3.0 ~ "(1.5-3.0]",
+                                          KRSEQ01 > 3.0 ~ ">3.0")) %>%
+          group_split(pick({{group_var}})) %>%
+          map(\(df) tabyl(df,`KM (mmol/L)`,`Ref (mmol/L)`)) %>% 
+          adorn_totals("col") %>%
+          adorn_percentages("row") %>%
+          adorn_pct_formatting(digits = 1) %>%
+          adorn_ns(),bind_cols) %>% 
+          list_rbind() %>% 
+          mutate(Total = str_remove_all(Total,"100.0%|\\(|\\)"))}
+    else {
+          map2(data %>%
+          group_split(pick({{group_var}})) %>% 
+          map(\(df) df %>% select({{group_var}})) %>% 
+          map(\(df) df %>% slice(1:5)),
+          data %>%
+                          # Create YSI and GM Category
+                        # Round half to even, so add noise
+          mutate(`KM (mmol/L)` =
+                              fct_case_when(ANA < 0.6 ~ "<0.6",
+                                            ANA >= 0.6 & ANA < 1.0 ~ "[0.6-1.0)",
+                                            ANA >= 1.0 & ANA <= 1.5 ~ "[1.0-1.5]",
+                                            ANA > 1.5 & ANA <= 3.0 ~ "(1.5-3.0]",
+                                            ANA > 3.0 ~ ">3.0"),
+                `Ref (mmol/L)` =
+                            fct_case_when(KRSEQ01 < 0.6 ~ "<0.6",
+                                          KRSEQ01 >= 0.6 & KRSEQ01 < 1.0 ~ "[0.6-1.0)",
+                                          KRSEQ01 >= 1.0 & KRSEQ01 <= 1.5 ~ "[1.0-1.5]",
+                                          KRSEQ01 > 1.5 & KRSEQ01 <= 3.0 ~ "(1.5-3.0]",
+                                          KRSEQ01 > 3.0 ~ ">3.0")) %>%
+          group_split(pick({{group_var}})) %>%
+          map(\(df) tabyl(df,`Ref (mmol/L)`,`KM (mmol/L)`)) %>% 
+          adorn_totals("col") %>%
+          adorn_percentages("row") %>%
+          adorn_pct_formatting(digits = 1) %>%
+          adorn_ns(),bind_cols) %>% 
+          list_rbind() %>% 
+          mutate(Total = str_remove_all(Total,"100.0%|\\(|\\)"))
+    }
+}
+```
+
+```{r eval = params$analysis}
+#| label: KM vs Ref
+#| tbl-cap: "KM vs Ref"
+Ap |> 
+   concur_fun(group_var = c(`Ref Type`),trans = F) |> 
+   gt(groupname_col = c("Ref Type")) |> 
+   cols_align(align = "center") |>
+   sub_missing(columns = everything(),missing_text = "") |>
+   opt_stylize(style = 6, color = "blue") |> 
+   tab_spanner(label = "Ref (mmol/L)",columns = !contains("Total")) |> 
+   tab_header(title = md("Concurrence Analysis by Ketone Level (KM vs. Ref)"))
+```
+
+```{r eval = params$analysis}
+#| label: Ref vs KM
+#| tbl-cap: "Ref vs KM"
+Ap |> 
+   concur_fun(group_var = c(`Ref Type`),trans = T) |>
+   gt(groupname_col = c("Ref Type")) |> 
+   cols_align(align = "center") |>
+   sub_missing(columns = everything(),missing_text = "") |>
+   opt_stylize(style = 6, color = "blue") |> 
+   tab_spanner(label = "KM (mmol/L)",columns = -contains("Total")) |> 
+   tab_header(title = md("Concurrence Analysis by Ketone Level (Ref vs. KM)"))
+```
+
+`r if(params$analysis){knitr::asis_output("# **Appendix**")}`
+```{r eval = params$analysis}
+#| label: Reg function
+reg_plot <- function(condition){
+kgr12 |>
+   select(!KRDTC02:KRDTC01) |>
+   left_join(
+             randox |>
+             summarise(mean_2uL = mean(`2uL Result`,na.rm = T),
+                       mean_8uL = mean(`8uL Result`,na.rm = T),.by = `Sample ID`) |>
+             mutate(Randox = case_when(mean_8uL < 2.9 ~ mean_8uL,
+                                        mean_8uL >= 2.9 ~ mean_2uL*4,
+                                       .default = mean_2uL*4),.keep = "unused"),
+     
+             # randox |>
+             # mutate(`8uL Result` = case_when(`8uL Result` == 2.9 ~ `2uL Result`*4,
+             #                                                .default = `8uL Result`)) |>
+             # summarise(Randox = mean(`8uL Result`,na.rm = T),.by = `Sample ID`),
+             # summarise(Randox = mean(`2uL Result`,na.rm = T)*4,.by = `Sample ID`),
+             by = join_by(KRSEQ02 == `Sample ID`)) |>
+   filter(if_all(c(KRSEQ02:Randox), ~ !is.na(.x))) |>
+   filter(Subject %in% c(condition)) |>
+   ggpubr::ggscatter(x = "KRSEQ01", y = "Randox", add = "reg.line", color = "Subject") +
+   facet_wrap(~Subject,ncol = 2,nrow = 2) +
+   labs(x = "Venous strip") +
+   ggpubr::stat_regline_equation(aes(label = paste(..eq.label..,..rr.label.., sep = "~`,`~")),
+                                  label.x = 0)
+}
+```
+
+```{r eval = params$analysis}
+#| label: Reg Plot
+reg_plot(condition = unique(iv12$Subject)[1:4])
+reg_plot(condition = unique(iv12$Subject)[5:8])
+reg_plot(condition = unique(iv12$Subject)[9:12])
+reg_plot(condition = unique(iv12$Subject)[13:16])
+reg_plot(condition = unique(iv12$Subject)[17:20])
+reg_plot(condition = unique(iv12$Subject)[21:23])
+```
+
+```{r}
+#|label: Import DM
+dm <- read_sas(gsub("\\\\", "/", r"(\\wf00168p.oneabbott.com\data1\CDM\ADC-US-RES-23234\OpenClinica\Current\dm.sas7bdat)"))
+dm <- dm |>
+      filter(!str_detect(DMYN,regex("Check here if no data recorded",ignore_case = T))) |>
+      mutate(Subject = as.character(Subject)) |>
+      arrange(Subject)
+```
+
+```{r}
+#|label: Import VS
+vs <- read_sas(gsub("\\\\", "/", r"(\\wf00168p.oneabbott.com\data1\CDM\ADC-US-RES-23234\OpenClinica\Current\vs.sas7bdat)"))
+vs <- vs |>
+      filter(!str_detect(VSYN01,regex("Check here if no data recorded",ignore_case = T))) |>
+      mutate(across(starts_with("VSO"), ~ as.numeric(.x)),
+             Subject = as.character(Subject)) |>
+      arrange(Subject)
+```
+
+```{r}
+#|label: Import MH1
+mh1 <- read_sas(gsub("\\\\", "/", r"(\\wf00168p.oneabbott.com\data1\CDM\ADC-US-RES-23234\OpenClinica\Current\mh1.sas7bdat)"))
+mh1 <- mh1 |>
+       filter(!str_detect(MHYN01,regex("Check here if no data recorded",ignore_case = T))) |>
+       mutate(Subject = as.character(Subject)) |>
+       arrange(Subject)
+```
+
+```{r}
+#|label: Import MA
+ma <- read_sas(gsub("\\\\", "/", r"(\\wf00168p.oneabbott.com\data1\CDM\ADC-US-RES-23234\OpenClinica\Current\ma.sas7bdat)"))
+ma <- ma |>
+      filter(!str_detect(QSYN01,regex("Check here if no data recorded",ignore_case = T))) |>
+      mutate(Subject = as.character(Subject)) |>
+      arrange(Subject)
+```
+
+```{r}
+#| eval: false
+dm |> 
+    select(Subject,SEX:RACE) |> 
+    left_join(vs |> 
+                 select(Subject,starts_with("VSOR")),
+              by = join_by(Subject == Subject)) |> 
+    mutate(`Weight(Kg)` = measurements::conv_unit(VSORES03,"lbs","kg"),
+          `Height(Inches)` = VSORES01*12 + VSORES02,
+          `Height(Meter)` = measurements::conv_unit(`Height(Inches)`,"inch","m"),
+           BMI = `Weight(Kg)`/(`Height(Meter)`)**2) |> 
+   left_join(mh1 |> 
+                select(Subject,MHORES01:last_col()),
+              by = join_by(Subject == Subject)) |> 
+   left_join(ma |> 
+             select(Subject,QSORES01:last_col()),
+              by = join_by(Subject == Subject)) |> 
+   select(Subject,SEX:RACE, `Weight(Pound)` = VSORES03,`Weight(Kg)`:last_col()) |> View()
+   # sjlabelled::label_to_colnames() |> 
+   # openxlsx::write.xlsx("Demography.xlsx")
+```
+
+```{r}
+#|label: Import LB2
+lb2 <- read_sas(gsub("\\\\", "/", r"(\\wf00168p.oneabbott.com\data1\CDM\ADC-US-RES-23234\OpenClinica\Current\lb2.sas7bdat)"))
+lb2 <- lb2 |>
+       mutate(Subject = as.character(Subject),
+              LBORES01 = parse_number(LBORES01)) |>
+       filter(!is.na(LBORES01)) |> 
+       arrange(Subject)
+```
+
+```{r}
+lb2 |> 
+  summarise(N = n(),
+            AIC_7 = n_distinct(Subject[LBORES01 < 7.0]))
+```
+
+
+```{r eval = params$plot}
+breakdown_condition_plot <- function(Id) {
+  highchart() %>%
+  # Add title
+  hc_title(text = str_c("Subject = ",Id)) %>% 
+  # continuous Sensor Data
+  hc_add_series(
+    # name = "Libre Sensor Reading",
+    data = upload_ketone %>%
+           filter(`Subject ID` == Id,
+                  Type == "906", year(`Date Time`) == 2023) %>%
+           slice(seq(1,n(),3),.by = c(`Sensor Serial Number`)) %>%
+           # multiple and consecutive wears
+           arrange(`Date Time`),
+    type = "line",
+    yAxis = 0,
+    hcaes(x = datetime_to_timestamp(`Date Time`), y = (ANA/100)*1.25, group = `Condition ID`)) %>%
+    # Glucose Reference 
+    hc_add_series(
+    name = "Glucose Test Result",
+    data = kgriv121 %>%
+           filter(Subject == Id,`Ref Type` == "Venous strip", (IVVAL01 == "Valid" | is.na(IVVAL01))),
+    type = "scatter",
+    yAxis = 1,
+    color = "#9900FF",
+    marker = list(symbol = "triangle"),
+    hcaes(x = datetime_to_timestamp(`Glucose Date Time`), y = KRSEQ03)) %>%
+    # Ketone Venous Strip 
+    hc_add_series(
+    name = "Ketone Venous Strip",
+    data = kgriv121 %>%
+           filter(Subject == Id, `Ref Type` == "Venous strip", (IVVAL01 == "Valid" | is.na(IVVAL01))),
+    type = "scatter",
+    yAxis = 0,
+    color = "#FF0000",
+    marker = list(symbol = "square"),
+    hcaes(x = datetime_to_timestamp(`Ketone Date Time`), y = KRSEQ01)) %>% 
+    # Randox
+    hc_add_series(
+    name = "Ketone Randox",
+    data = kgriv121 %>%
+           filter(Subject == Id, `Ref Type` == "Randox", (IVVAL01 == "Valid" | is.na(IVVAL01))),
+    type = "scatter",
+    yAxis = 0,
+    color = "#33ff99",
+    marker = list(symbol = "diamond"),
+    hcaes(x = datetime_to_timestamp(`Ketone Date Time`), y = KRSEQ01)) %>% 
+    # Add X label
+    hc_xAxis(title = list(text = "Date Time"),
+             type = "datetime", 
+             dateTimeLabelFormats = list(day = '%d %b %y')) %>%
+    # Add Y axis
+    # Add new y axis
+    hc_yAxis_multiples(list(title = list(text = "Ketone Test Result(mmol/L)"), opposite = FALSE),
+                      list(showLastLabel = FALSE, opposite = TRUE, title = list(text = "Glucose Test Result(mg/dL)"))) %>%
+    # hc_yAxis(title = list(text = "Ketone Test Result (mmol/L)")) %>%
+    # Change the size of marker
+    hc_plotOptions(scatter = list(
+                            marker = list(radius = 1.9, symbol = "circle"))) %>%
+    # Change the format of point
+    hc_tooltip(pointFormat = '{point.x: %Y-%m-%d %H:%M:%S} {point.y:.1f} ')  %>% 
+    # Add zoom in function
+    hc_chart(zoomType = "xy") %>% 
+    # Add navigator
+    hc_navigator(enabled = TRUE)
+}
+```
+
+```{r}
+#| column: screen
+#| eval: false
+breakdown_condition_plot(Id = "1330001")
+```
+
+```{r eval = params$plot}
+#| label: For Loop Plots
+#| column: screen
+plots <- list()
+for (i in 1:n_distinct(upload_ketone$`Subject ID`)){
+  plots[[i]] <- breakdown_condition_plot(Id = unique(upload_ketone$`Subject ID`)[i])
+}
+htmltools::tagList(plots)
+```

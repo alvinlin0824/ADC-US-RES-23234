@@ -1,0 +1,88 @@
+---
+title: "Anomaly Detection in Time Series"
+author: "Alvin, Lin"
+date: "`r Sys.Date()`"
+format:
+   html:
+     theme: flatly
+     self-contained: true
+toc: true
+toc-depth: 3
+toc-location: left
+execute:
+  echo: false
+  warning: false 
+  keep-md: true
+---
+
+```{r}
+#| label: Libaray Packages 
+#| message: false
+library(tidyverse)
+library(timetk)
+library(modeltime)
+library(tidymodels)
+```
+
+```{r}
+#| label: Import Kgriv12
+kgriv12 <- readRDS(gsub("\\\\", "/", r"(\\oneabbott.com\dept\ADC\Technical_OPS\Clinical_Affairs\Clinical Study Files\Apollo\ADC-US-RES-23234_IDE Pump Suspension Study\Statistics\Programs\Datasets\AL\kgriv12.rds)")) |> 
+           filter(IVVAL01 == "Valid" | is.na(IVVAL01))
+```
+
+# **STL Decomposition**
+`r htmltools::a("STL Decomposition",href = gsub("\\\\", "/", r"(https://www.wessa.net/download/stl.pdf)"))`
+```{r}
+#| label: Visualize the Observed and predicted
+kgriv12 |> 
+  filter(Subject == "90004") |> 
+  group_by(Subject,`Ref Type`) |> 
+  plot_time_series(`Ketone Date Time`, KRSEQ01, .facet_ncol = 1, .facet_collapse = TRUE)
+```
+
+```{r}
+#| label: STL Observed
+kgriv12 |> 
+  filter(Subject == "90004") |> 
+  group_by(Subject,`Ref Type`) |> 
+  anomalize(`Ketone Date Time`, KRSEQ01, .iqr_alpha = 0.21, .max_anomalies = 0.05, .message = FALSE) |>
+  plot_anomalies_cleaned(`Ketone Date Time`,.interactive = T)
+```
+
+```{r}
+#| label: Plot anomalies
+kgriv12 |> 
+  filter(Subject == "90004") |> 
+  group_by(Subject,`Ref Type`) |> 
+  anomalize(`Ketone Date Time`, KRSEQ01, .iqr_alpha = 0.21, .max_anomalies = 0.05, .message = FALSE) |> 
+  plot_anomalies(`Ketone Date Time`,.facet_ncol = 1,.facet_collapse = TRUE)
+```
+
+# **ARIMA**
+```{r}
+arima_spec <- arima_reg() |> 
+              set_engine("auto_arima")
+```
+
+<!-- https://www.r-bloggers.com/2020/09/time-series-in-5-minutes-part-6-modeling-time-series-data/ -->
+<!-- https://neptune.ai/blog/anomaly-detection-in-time-series -->
+<!-- https://business-science.github.io/modeltime/reference/arima_reg.html -->
+```{r}
+# kgriv12 |> 
+#   filter(Subject == "90004",`Ref Type` == "Randox") |> 
+model_fit <- arima_spec |> 
+             fit(KRSEQ01 ~ `Ketone Date Time`, data = kgriv12 |> 
+                                                      filter(Subject == "90004",`Ref Type` == "Randox"))
+  # nest(data = !c(Subject,`Ref Type`)) |> 
+  # mutate(model = map(data, ~ arima_spec |> 
+  #                            fit(KRSEQ01 ~ `Ketone Date Time`, data = .x))) |> 
+  # unnest()
+```
+```{r}
+tibble(`Ketone Date Time` = model_fit$fit$data$`Ketone Date Time`, Values = model_fit$fit$data$.actual, Type = "Observed") |> 
+  bind_rows(tibble(`Ketone Date Time` = model_fit$fit$data$`Ketone Date Time`, Values = model_fit$fit$data$.fitted, Type = "Fitted")) |> 
+plot_time_series(`Ketone Date Time`, Values,.color_var = Type) 
+# model_fit$fit$data$.fitted
+# model_fit$fit$data$.actual
+```
+
